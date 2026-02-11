@@ -1,0 +1,51 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "API (Backend)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-api",
+            "program": "${workspaceFolder}/src/NkplmErp.API/bin/Debug/net9.0/NkplmErp.API.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/NkplmErp.API",
+            "stopAtEntry": false,
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+(https?://\\S+)",
+                "uriFormat": "%s/swagger"
+            },
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development",
+                "ASPNETCORE_URLS": "http://127.0.0.1:5270"
+            }
+        },
+        {
+            "name": "Blazor (Frontend)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-blazor",
+            "program": "${workspaceFolder}/src/NkplmErp.Blazor/bin/Debug/net9.0/NkplmErp.Blazor.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/NkplmErp.Blazor",
+            "stopAtEntry": false,
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+            },
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development",
+                "ASPNETCORE_URLS": "http://127.0.0.1:5075"
+            }
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Full Stack (API + Blazor)",
+            "configurations": [
+                "API (Backend)",
+                "Blazor (Frontend)"
+            ]
+        }
+    ]
+}

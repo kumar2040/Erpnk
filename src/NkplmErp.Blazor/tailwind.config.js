@@ -1,0 +1,35 @@
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+    content: [
+        './**/*.razor',
+        './**/*.cshtml',
+        './**/*.cs',
+        './Pages/**/*.{razor,cshtml}',
+        './Shared/**/*.{razor,cshtml}',
+        './Components/**/*.{razor,cshtml}'
+    ],
+    darkMode: 'class',
+    theme: {
+        extend: {
+            colors: {
+                'glass-bg': 'rgba(255, 255, 255, 0.05)',
+                'glass-border': 'rgba(255, 255, 255, 0.1)',
+                'primary-glow': '#38bdf8',
+                'bg-dark': '#0f172a',
+                'text-muted': '#94a3b8',
+                'primary': '#00396A', // 👈 your color
+            },
+            backdropBlur: {
+                glass: '12px',
+            },
+            fontFamily: {
+                sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                poppins: ['Poppins', 'sans-serif'], // 👈 added
+            },
+            fontSize: {
+                11: '11px', // 👈 optional shortcut (text-11)
+            },
+        },
+    },
+    plugins: [],
+};

@@ -1,0 +1,162 @@
+@page "/main-dashboard"
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using NkplmErp.Shared.DTOs
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+
+<style>
+    /* Premium Midnight Blue Theme Matching Mockup */
+    :root {
+        --midnight-blue: #002d54; /* Deep midnight blue from image */
+        --card-bg: #ffffff;
+        --grid-header-bg: #002d54;
+    }
+
+    /* Styling for QuickGrid specifically */
+    ::deep .quick-grid {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    ::deep thead th {
+        background-color: var(--grid-header-bg) !important;
+        color: #374151  !important;
+        font-size: 0.75rem !important;
+        font-weight: 700 !important;
+        text-transform: none !important; /* Image uses Title Case headers */
+        letter-spacing: 0.02em !important;
+        padding: 0.875rem 1rem !important;
+        border: none !important;
+        white-space: nowrap !important;
+    }
+
+    ::deep thead th:first-child {
+        border-top-left-radius: 0.4rem !important;
+    }
+
+    ::deep thead th:last-child {
+        border-top-right-radius: 0.4rem !important;
+    }
+
+    ::deep tbody td {
+        padding: 0.875rem 1rem !important;
+        font-size: 0.85rem !important;
+        color: #374151 !important; /* Gray 700 */
+        border-bottom: 1px solid #f3f4f6 !important; /* Gray 100 */
+        vertical-align: middle !important;
+    }
+
+    ::deep tr:hover td {
+        background-color: #f9fafb !important;
+    }
+
+    /* Column specific alignment */
+    ::deep .text-center th, ::deep .text-center td {
+        text-align: center !important;
+    }
+
+    /* Expand button matching mockup */
+    .expand-btn {
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #9ca3af;
+        border: 1px solid #f0f1f5;
+        border-radius: 4px;
+        font-size: 10px;
+        transition: all 0.2s;
+    }
+
+    .expand-btn:hover {
+        background-color: #f3f4f6;
+        color: var(--midnight-blue);
+    }
+    table td{
+        color:#4C4C4C;
+        border-bottom:1px solid #f0f1f5;
+        font-size:12px;
+        padding:4px !important;
+
+
+    }
+    table tr:hover{
+        background-color:#eaeff5 !important;
+        color:#4C4C4C;
+    }
+    table thead{
+        background-color:#00396A;
+        color:#fff;
+        font-size:14px;
+        border-radius:4px;
+    }
+    .quick-grid table {
+    table-layout: auto; /* instead of fixed */
+}
+
+    
+</style>
+
+<div class="min-h-screen bg-[#f8fafc] p-0 font-sans">
+    <!-- Top Bar Mockup (Partial) -->
+   
+
+    <!-- 3-Column Layout -->
+   <div class="flex flex-col md:flex-row gap-4 md:gap-3">
+        
+        <!-- Left Column: Order Status -->
+        <div class="rounded-2xl border border-gray-100 w-[35%] bg-white rounded-xl shadow p-1">
+            <div class="p-2 flex justify-between items-center bg-white">
+                <h3 class="font-bold text-[#002d54] text-sm">Order Status</h3>
+                <button class="expand-btn" @onclick="OpenMainModal">
+                    <span class="oi oi-fullscreen-enter"></span>
+                </button>
+            </div>
+            
+            <div class="flex-1 overflow-auto px-1 pb-1">
+                <QuickGrid Items="@OrderSummaries" Class="quick-grid">
+                     <PropertyColumn Property="@(s => s.SN)" Title="SN" Sortable="true" Class="w-10 min-w-11 max-w-12 " />
+                    <PropertyColumn Property="@(s => s.CustomerName)" Title="Customer Name" Sortable="true" Class="font-medium " />
+                    <PropertyColumn Property="@(s => s.TotalOrder)" Title="Total PO" Sortable="true" Align="Align.Center" Class="font-medium   text-center  w-10 min-w-13 max-w-13 " />
+                    <PropertyColumn Property="@(s => s.RunningOrder)" Title="Running PO" Sortable="true" Align="Align.Center" Class="font-medium w-min min-w-[1rem]   text-center w-13 min-w-13 max-w-13   " />
+                    <PropertyColumn Property="@(s => s.NotStartedOrder)" Title="Pending PO" Sortable="true" Align="Align.Center" Class="font-medium w-min min-w-[1rem]   text-center w-13 min-w-13 max-w-13  " />
+                </QuickGrid>
+
+                @if (!OrderSummaries.Any() && !IsLoading)
+                {
+                    <div class="py-12 text-center text-gray-400">
+                        <span class="oi oi-inbox text-3xl block mb-2 opacity-10"></span>
+                        <p class="text-xs font-medium">No records found</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Middle Column: Production Status -->
+        <div class="w-[45%] bg-white rounded-xl shadow p-1">
+            <div class="p-4 flex justify-between items-center bg-white">
+                <h3 class="font-bold text-[#002d54] text-sm">Production Status</h3>
+                <button class="expand-btn">
+                    <span class="oi oi-fullscreen-enter"></span>
+                </button>
+            </div>
+            <div class="flex-1 overflow-auto px-4 pb-4">
+                 
+            </div>
+        </div>
+
+        <!-- Right Column: Setting Piece -->
+        <div class="w-[20%] bg-white rounded-xl shadow p-1">
+            <div class="p-4 flex justify-between items-center bg-white">
+                <h3 class="font-bold text-[#002d54] text-sm">Setting Piece</h3>
+                <button class="expand-btn">
+                    <span class="oi oi-fullscreen-enter"></span>
+                </button>
+            </div>
+            <div class="flex-1 overflow-auto px-4 pb-4">
+                 
+            </div>
+        </div>
+
+    </div>
+</div>

@@ -1,0 +1,17 @@
+/Users/vijayanand/Erpnk/src/NkplmErp.Application/bin/Debug/net9.0/NkplmErp.Application.deps.json
+/Users/vijayanand/Erpnk/src/NkplmErp.Application/bin/Debug/net9.0/NkplmErp.Application.dll
+/Users/vijayanand/Erpnk/src/NkplmErp.Application/bin/Debug/net9.0/NkplmErp.Application.pdb
+/Users/vijayanand/Erpnk/src/NkplmErp.Application/bin/Debug/net9.0/NkplmErp.Domain.dll
+/Users/vijayanand/Erpnk/src/NkplmErp.Application/bin/Debug/net9.0/NkplmErp.Shared.dll
+/Users/vijayanand/Erpnk/src/NkplmErp.Application/bin/Debug/net9.0/NkplmErp.Domain.pdb
+/Users/vijayanand/Erpnk/src/NkplmErp.Application/bin/Debug/net9.0/NkplmErp.Shared.pdb
+/Users/vijayanand/Erpnk/src/NkplmErp.Application/obj/Debug/net9.0/NkplmErp.Application.csproj.AssemblyReference.cache
+/Users/vijayanand/Erpnk/src/NkplmErp.Application/obj/Debug/net9.0/NkplmErp.Application.GeneratedMSBuildEditorConfig.editorconfig
+/Users/vijayanand/Erpnk/src/NkplmErp.Application/obj/Debug/net9.0/NkplmErp.Application.AssemblyInfoInputs.cache
+/Users/vijayanand/Erpnk/src/NkplmErp.Application/obj/Debug/net9.0/NkplmErp.Application.AssemblyInfo.cs
+/Users/vijayanand/Erpnk/src/NkplmErp.Application/obj/Debug/net9.0/NkplmErp.Application.csproj.CoreCompileInputs.cache
+/Users/vijayanand/Erpnk/src/NkplmErp.Application/obj/Debug/net9.0/NkplmErp.9896B88F.Up2Date
+/Users/vijayanand/Erpnk/src/NkplmErp.Application/obj/Debug/net9.0/NkplmErp.Application.dll
+/Users/vijayanand/Erpnk/src/NkplmErp.Application/obj/Debug/net9.0/refint/NkplmErp.Application.dll
+/Users/vijayanand/Erpnk/src/NkplmErp.Application/obj/Debug/net9.0/NkplmErp.Application.pdb
+/Users/vijayanand/Erpnk/src/NkplmErp.Application/obj/Debug/net9.0/ref/NkplmErp.Application.dll

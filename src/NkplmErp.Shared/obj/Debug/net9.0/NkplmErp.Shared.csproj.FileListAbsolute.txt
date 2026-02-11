@@ -1,0 +1,12 @@
+/Users/vijayanand/Erpnk/src/NkplmErp.Shared/bin/Debug/net9.0/NkplmErp.Shared.deps.json
+/Users/vijayanand/Erpnk/src/NkplmErp.Shared/bin/Debug/net9.0/NkplmErp.Shared.dll
+/Users/vijayanand/Erpnk/src/NkplmErp.Shared/bin/Debug/net9.0/NkplmErp.Shared.pdb
+/Users/vijayanand/Erpnk/src/NkplmErp.Shared/obj/Debug/net9.0/NkplmErp.Shared.csproj.AssemblyReference.cache
+/Users/vijayanand/Erpnk/src/NkplmErp.Shared/obj/Debug/net9.0/NkplmErp.Shared.GeneratedMSBuildEditorConfig.editorconfig
+/Users/vijayanand/Erpnk/src/NkplmErp.Shared/obj/Debug/net9.0/NkplmErp.Shared.AssemblyInfoInputs.cache
+/Users/vijayanand/Erpnk/src/NkplmErp.Shared/obj/Debug/net9.0/NkplmErp.Shared.AssemblyInfo.cs
+/Users/vijayanand/Erpnk/src/NkplmErp.Shared/obj/Debug/net9.0/NkplmErp.Shared.csproj.CoreCompileInputs.cache
+/Users/vijayanand/Erpnk/src/NkplmErp.Shared/obj/Debug/net9.0/NkplmErp.Shared.dll
+/Users/vijayanand/Erpnk/src/NkplmErp.Shared/obj/Debug/net9.0/refint/NkplmErp.Shared.dll
+/Users/vijayanand/Erpnk/src/NkplmErp.Shared/obj/Debug/net9.0/NkplmErp.Shared.pdb
+/Users/vijayanand/Erpnk/src/NkplmErp.Shared/obj/Debug/net9.0/ref/NkplmErp.Shared.dll

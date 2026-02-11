@@ -1,0 +1,6 @@
+@NkplmErp.API_HostAddress = http://localhost:5270
+
+GET {{NkplmErp.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

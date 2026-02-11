@@ -1,0 +1,20 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Update="Microsoft.EntityFrameworkCore" Version="9.0.2" />
+    <PackageReference Update="Microsoft.EntityFrameworkCore.Relational" Version="9.0.2" />
+    <PackageReference Update="Microsoft.EntityFrameworkCore.Abstractions" Version="9.0.2" />
+    <PackageReference Update="Microsoft.EntityFrameworkCore.Design" Version="9.0.2" />
+    <PackageReference Update="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.2" />
+    <PackageReference Update="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.2" />
+    <PackageReference Update="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.2" />
+    <PackageReference Update="Microsoft.Extensions.DependencyInjection" Version="9.0.2" />
+    <PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.2" />
+    <PackageReference Update="Microsoft.Extensions.Logging" Version="9.0.2" />
+    <PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="9.0.2" />
+    <PackageReference Update="Microsoft.Extensions.Options" Version="9.0.2" />
+    <PackageReference Update="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.3" />
+  </ItemGroup>
+</Project>

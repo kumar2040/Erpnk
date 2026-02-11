@@ -1,0 +1,26 @@
+@using Microsoft.AspNetCore.Authorization
+@inject IAuthorizationService AuthorizationService
+
+@if (isAuthorized)
+{
+    @ChildContent
+}
+
+@code {
+    [Parameter] public string Permission { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    private bool isAuthorized;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (AuthStateTask != null)
+        {
+            var user = (await AuthStateTask).User;
+            isAuthorized = user.HasClaim("Permission", Permission);
+        }
+    }
+}

@@ -1,0 +1,192 @@
+@* Reusable Confirmation Dialog Component *@
+
+@if (IsVisible)
+{
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" 
+         @onclick="HandleOverlayClick">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4" @onclick:stopPropagation>
+            <div class="p-6">
+                @* Icon and Title *@
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="flex-shrink-0 w-12 h-12 @IconBackgroundClass rounded-full flex items-center justify-center">
+                        <i class="oi @IconClass @IconColorClass text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">@Title</h3>
+                        @if (!string.IsNullOrEmpty(Subtitle))
+                        {
+                            <p class="text-sm text-gray-600">@Subtitle</p>
+                        }
+                    </div>
+                </div>
+
+                @* Message *@
+                <div class="text-gray-700 mb-6">
+                    @if (MessageContent != null)
+                    {
+                        @MessageContent
+                    }
+                    else
+                    {
+                        <p>@Message</p>
+                    }
+                </div>
+
+                @* Actions *@
+                <div class="flex justify-end gap-3">
+                    <button @onclick="HandleCancel" 
+                            disabled="@IsProcessing"
+                            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        @CancelText
+                    </button>
+                    <button @onclick="HandleConfirm" 
+                            disabled="@IsProcessing"
+                            class="px-4 py-2 @ConfirmButtonClass rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        @(IsProcessing ? ProcessingText : ConfirmText)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>
+    /// Controls the visibility of the dialog
+    /// </summary>
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    /// <summary>
+    /// Dialog title
+    /// </summary>
+    [Parameter]
+    public string Title { get; set; } = "Confirm Action";
+
+    /// <summary>
+    /// Optional subtitle below title
+    /// </summary>
+    [Parameter]
+    public string Subtitle { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Message text (use MessageContent for custom markup)
+    /// </summary>
+    [Parameter]
+    public string Message { get; set; } = "Are you sure you want to proceed?";
+
+    /// <summary>
+    /// Custom message content (overrides Message)
+    /// </summary>
+    [Parameter]
+    public RenderFragment? MessageContent { get; set; }
+
+    /// <summary>
+    /// Type of dialog: danger, warning, info, success
+    /// </summary>
+    [Parameter]
+    public string Type { get; set; } = "warning";
+
+    /// <summary>
+    /// Confirm button text
+    /// </summary>
+    [Parameter]
+    public string ConfirmText { get; set; } = "Confirm";
+
+    /// <summary>
+    /// Cancel button text
+    /// </summary>
+    [Parameter]
+    public string CancelText { get; set; } = "Cancel";
+
+    /// <summary>
+    /// Processing state text
+    /// </summary>
+    [Parameter]
+    public string ProcessingText { get; set; } = "Processing...";
+
+    /// <summary>
+    /// Is the action being processed
+    /// </summary>
+    [Parameter]
+    public bool IsProcessing { get; set; }
+
+    /// <summary>
+    /// Close on overlay click
+    /// </summary>
+    [Parameter]
+    public bool CloseOnOverlayClick { get; set; } = false;
+
+    /// <summary>
+    /// Event callback when confirmed
+    /// </summary>
+    [Parameter]
+    public EventCallback OnConfirm { get; set; }
+
+    /// <summary>
+    /// Event callback when cancelled
+    /// </summary>
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private string IconClass => Type switch
+    {
+        "danger" => "oi-warning",
+        "warning" => "oi-warning",
+        "info" => "oi-info",
+        "success" => "oi-check",
+        _ => "oi-warning"
+    };
+
+    private string IconColorClass => Type switch
+    {
+        "danger" => "text-red-600",
+        "warning" => "text-yellow-600",
+        "info" => "text-blue-600",
+        "success" => "text-green-600",
+        _ => "text-yellow-600"
+    };
+
+    private string IconBackgroundClass => Type switch
+    {
+        "danger" => "bg-red-100",
+        "warning" => "bg-yellow-100",
+        "info" => "bg-blue-100",
+        "success" => "bg-green-100",
+        _ => "bg-yellow-100"
+    };
+
+    private string ConfirmButtonClass => Type switch
+    {
+        "danger" => "bg-red-600 text-white hover:bg-red-700",
+        "warning" => "bg-yellow-600 text-white hover:bg-yellow-700",
+        "info" => "bg-blue-600 text-white hover:bg-blue-700",
+        "success" => "bg-green-600 text-white hover:bg-green-700",
+        _ => "bg-blue-600 text-white hover:bg-blue-700"
+    };
+
+    private async Task HandleOverlayClick()
+    {
+        if (CloseOnOverlayClick && !IsProcessing)
+        {
+            await HandleCancel();
+        }
+    }
+
+    private async Task HandleConfirm()
+    {
+        if (!IsProcessing)
+        {
+            await OnConfirm.InvokeAsync();
+        }
+    }
+
+    private async Task HandleCancel()
+    {
+        if (!IsProcessing)
+        {
+            IsVisible = false;
+            await OnCancel.InvokeAsync();
+        }
+    }
+}
