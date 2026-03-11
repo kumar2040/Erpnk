@@ -35,12 +35,13 @@ namespace NkplmErp.Infrastructure.Persistence.Migrations.Application
             migrationBuilder.Sql(@"
                 CREATE OR ALTER PROCEDURE [dbo].[GetCustomerOrderStatusSummary]
                     @Year INT,
-                    @Type NVARCHAR(50) = NULL
+                    @Type NVARCHAR(50) = NULL,
+                    @Limit INT = NULL
                 AS
                 BEGIN
                     SET NOCOUNT ON;
 
-                    SELECT 
+                    SELECT TOP (ISNULL(@Limit, 2147483647))
                         u.Id AS CustomerId,
                         ISNULL(u.FirstName + ' ' + u.LastName, u.UserName) AS CustomerName,
                         ISNULL(SUM(CASE WHEN o.Status = 'NotStarted' THEN 1 ELSE 0 END), 0) AS NotStartedOrder,

@@ -18,17 +18,13 @@
             </div>
            </div>
             <div class="flex items-center gap-6">
-                <!-- Notifications -->
-                <button class="relative flex h-10 w-10 items-center justify-center rounded-full text-amber-500 hover:bg-gray-50 transition-colors">
-                    <i class="oi oi-bell" style="font-size: 1.25rem;"></i>
-                    <span class="absolute top-2 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">1</span>
-                </button>
+                
 
                 <!-- Date & Time -->
                 <div class="hidden items-center gap-3 text-sm font-medium text-gray-600 md:flex">
                     <span>@DateTime.Now.ToString("dddd, dd MMM, yyyy")</span>
                     <span class="h-4 w-px bg-gray-300"></span>
-                    <span>@DateTime.Now.ToString("hh:mm tt")</span>
+                    
                 </div>
 
                 <!-- User Profile -->
@@ -36,9 +32,16 @@
                     <Authorized>
                         <div class="flex items-center gap-3">
                 <div class="text-right">
-                    <p class="text-xs font-bold text-gray-800">Sushant Pant</p>
+                    <p class="text-xs font-bold text-gray-800">Admin</p>
                     <p class="text-[10px] text-gray-400">Administrator</p>
                 </div>
+                            <!-- Notifications -->
+                            <button
+                                class="relative flex h-10 w-10 items-center justify-center rounded-full text-amber-500 hover:bg-gray-50 transition-colors">
+                                <i class="oi oi-bell" style="font-size: 1.25rem;"></i>
+                                <span
+                                class="absolute top-2 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">1</span>
+                            </button>
                 <div class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-xs ring-2 ring-emerald-50 ring-offset-2">
                      <img src="https://ui-avatars.com/api/?name=@(context.User.Identity?.Name ?? "User")&background=random" alt="Avatar" class="h-full w-full object-cover" />
                 </div>
@@ -58,7 +61,7 @@
             </div>
         </header>
 
-        <article class="p-[5px]">
+        <article class="p-[5px] py-4">
             <div class="mx-auto max-w-[1600px]">
                 @Body
             </div>

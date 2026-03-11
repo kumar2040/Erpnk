@@ -14,6 +14,7 @@
 /Users/vijayanand/Erpnk/src/NkplmErp.Security/obj/Debug/net9.0/NkplmErp.Security.AssemblyInfoInputs.cache
 /Users/vijayanand/Erpnk/src/NkplmErp.Security/obj/Debug/net9.0/NkplmErp.Security.AssemblyInfo.cs
 /Users/vijayanand/Erpnk/src/NkplmErp.Security/obj/Debug/net9.0/NkplmErp.Security.csproj.CoreCompileInputs.cache
+/Users/vijayanand/Erpnk/src/NkplmErp.Security/obj/Debug/net9.0/NkplmErp.Security.sourcelink.json
 /Users/vijayanand/Erpnk/src/NkplmErp.Security/obj/Debug/net9.0/NkplmErp.35CBD628.Up2Date
 /Users/vijayanand/Erpnk/src/NkplmErp.Security/obj/Debug/net9.0/NkplmErp.Security.dll
 /Users/vijayanand/Erpnk/src/NkplmErp.Security/obj/Debug/net9.0/refint/NkplmErp.Security.dll

@@ -1,4 +1,7 @@
-﻿<CascadingAuthenticationState>
+﻿@using NkplmErp.Blazor.Services.Auth
+@inject TokenProvider TokenProvider
+
+<CascadingAuthenticationState>
     <Router AppAssembly="@typeof(App).Assembly">
         <Found Context="routeData">
             <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
@@ -23,3 +26,24 @@
         </NotFound>
     </Router>
 </CascadingAuthenticationState>
+
+@code {
+    [Parameter] public string? InitialToken { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Console.WriteLine(">>>> [DEBUG] App.razor Initializing...");
+        try
+        {
+            if (!string.IsNullOrEmpty(InitialToken))
+            {
+                TokenProvider.Token = InitialToken;
+                Console.WriteLine(">>>> [DEBUG] InitialToken applied to TokenProvider.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($">>>> [DEBUG] CRITICAL ERROR in App.razor: {ex.Message}");
+        }
+    }
+}

@@ -51,6 +51,7 @@
 /Users/vijayanand/Erpnk/database/NkplmErp.Migrations/obj/Debug/net9.0/NkplmErp.Migrations.AssemblyInfoInputs.cache
 /Users/vijayanand/Erpnk/database/NkplmErp.Migrations/obj/Debug/net9.0/NkplmErp.Migrations.AssemblyInfo.cs
 /Users/vijayanand/Erpnk/database/NkplmErp.Migrations/obj/Debug/net9.0/NkplmErp.Migrations.csproj.CoreCompileInputs.cache
+/Users/vijayanand/Erpnk/database/NkplmErp.Migrations/obj/Debug/net9.0/NkplmErp.Migrations.sourcelink.json
 /Users/vijayanand/Erpnk/database/NkplmErp.Migrations/obj/Debug/net9.0/NkplmErp.4DB2943E.Up2Date
 /Users/vijayanand/Erpnk/database/NkplmErp.Migrations/obj/Debug/net9.0/NkplmErp.Migrations.dll
 /Users/vijayanand/Erpnk/database/NkplmErp.Migrations/obj/Debug/net9.0/refint/NkplmErp.Migrations.dll

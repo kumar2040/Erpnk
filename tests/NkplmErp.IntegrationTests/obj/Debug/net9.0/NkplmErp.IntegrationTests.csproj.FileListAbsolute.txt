@@ -210,6 +210,7 @@
 /Users/vijayanand/Erpnk/tests/NkplmErp.IntegrationTests/obj/Debug/net9.0/NkplmErp.IntegrationTests.AssemblyInfoInputs.cache
 /Users/vijayanand/Erpnk/tests/NkplmErp.IntegrationTests/obj/Debug/net9.0/NkplmErp.IntegrationTests.AssemblyInfo.cs
 /Users/vijayanand/Erpnk/tests/NkplmErp.IntegrationTests/obj/Debug/net9.0/NkplmErp.IntegrationTests.csproj.CoreCompileInputs.cache
+/Users/vijayanand/Erpnk/tests/NkplmErp.IntegrationTests/obj/Debug/net9.0/NkplmErp.IntegrationTests.sourcelink.json
 /Users/vijayanand/Erpnk/tests/NkplmErp.IntegrationTests/obj/Debug/net9.0/NkplmErp.3990D51B.Up2Date
 /Users/vijayanand/Erpnk/tests/NkplmErp.IntegrationTests/obj/Debug/net9.0/NkplmErp.IntegrationTests.dll
 /Users/vijayanand/Erpnk/tests/NkplmErp.IntegrationTests/obj/Debug/net9.0/refint/NkplmErp.IntegrationTests.dll

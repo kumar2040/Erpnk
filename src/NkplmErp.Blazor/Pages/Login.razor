@@ -4,71 +4,82 @@
 @inject IAuthService AuthService
 @inject NavigationManager NavigationManager
 @inject NkplmErp.Blazor.Services.Toast.ToastService ToastService
-@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+@inject IJSRuntime JSRuntime
 
 <div class="login-container">
     <div class="login-card">
-        <div class="login-header">
-            <h2>NKPLM ERP</h2>
-            <p>Banking-Grade Enterprise Management</p>
-        </div>
-
-        @if (!showMfa)
+        @if (isRedirecting)
         {
-                <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
-                    <DataAnnotationsValidator />
-
-                    <div class="form-group">
-                        <label>Email Address</label>
-                        <InputText @bind-Value="loginModel.Email" class="form-control" placeholder="admin@nkplm.erp" />
-                    </div>
-
-                    <div class="form-group">
-                        <label>Password</label>
-                        <InputText @bind-Value="loginModel.Password" type="password" class="form-control" placeholder="••••••••" />
-                    </div>
-
-
-                    <button type="submit" class="btn-login" disabled="@isSubmitting">
-                    @if (isSubmitting)
-                    {
-                                <span class="spinner"></span>
-                    }
-                    else
-                    {
-                                <span>Sign In</span>
-                    }
-                    </button>
-                </EditForm>
-
-                <div class="divider">
-                    <span>OR</span>
-                </div>
-
-                <button class="btn-biometric" @onclick="HandleBiometricLogin" disabled="@(isSubmitting || string.IsNullOrEmpty(loginModel.Email))">
-                    <i class="oi oi-person"></i> Sign in with Face / Touch ID
-                </button>
+            <div style="text-align: center; padding: 2rem;">
+                <div class="spinner" style="width: 3rem; height: 3rem; margin: 0 auto 1rem;"></div>
+                <p style="color: #f8fafc; font-size: 1.1rem;">Signing you in...</p>
+                <p style="color: #94a3b8; font-size: 0.9rem;">Redirecting to dashboard</p>
+            </div>
         }
         else
         {
-                <div class="mfa-section">
-                    <p>Please enter the verification code from your authenticator app.</p>
-                    <div class="form-group">
-                        <InputText @bind-Value="mfaCode" class="form-control mfa-input" placeholder="000 000" maxlength="6" />
+            <div class="login-header">
+                <h2>NKPLM ERP</h2>
+                
+            </div>
+
+            @if (!showMfa)
+            {
+                    <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
+                        <DataAnnotationsValidator />
+
+                        <div class="form-group">
+                            <label>Email Address</label>
+                            <InputText @bind-Value="loginModel.Email" class="form-control" placeholder="admin@nkplm.erp" />
+                        </div>
+
+                        <div class="form-group">
+                            <label>Password</label>
+                            <InputText @bind-Value="loginModel.Password" type="password" class="form-control" placeholder="••••••••" />
+                        </div>
+
+
+                        <button type="submit" class="btn-login" disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                                    <span class="spinner"></span>
+                        }
+                        else
+                        {
+                                    <span>Sign In</span>
+                        }
+                        </button>
+                    </EditForm>
+
+                    <div class="divider">
+                        <span>OR</span>
                     </div>
 
-
-                    <button @onclick="HandleMfa" class="btn-login" disabled="@isSubmitting">
-                        Verify & Continue
+                    <button class="btn-biometric" @onclick="HandleBiometricLogin" disabled="@(isSubmitting || string.IsNullOrEmpty(loginModel.Email))">
+                        <i class="oi oi-person"></i> Sign in with Face / Touch ID
                     </button>
-                </div>
+            }
+            else
+            {
+                    <div class="mfa-section">
+                        <p>Please enter the verification code from your authenticator app.</p>
+                        <div class="form-group">
+                            <InputText @bind-Value="mfaCode" class="form-control mfa-input" placeholder="000 000" maxlength="6" />
+                        </div>
+
+
+                        <button @onclick="HandleMfa" class="btn-login" disabled="@isSubmitting">
+                            Verify & Continue
+                        </button>
+                    </div>
+            }
+            
+            <div style="margin-top: 2rem; text-align: center;">
+                <button @onclick="ClearSession" class="btn-link" style="color: #64748b; background: none; border: none; cursor: pointer; text-decoration: underline; font-size: 0.8rem;">
+                    Having trouble? Reset Session
+                </button>
+            </div>
         }
-        
-        <div style="margin-top: 2rem; text-align: center;">
-            <button @onclick="ClearSession" class="btn-link" style="color: #64748b; background: none; border: none; cursor: pointer; text-decoration: underline; font-size: 0.8rem;">
-                Having trouble? Reset Session
-            </button>
-        </div>
     </div>
 </div>
 
@@ -238,6 +249,7 @@
     private LoginRequest loginModel = new();
     private bool isSubmitting;
     private bool showMfa;
+    private bool isRedirecting;
     private string mfaCode = "";
 
     private async Task HandleLogin()
@@ -255,22 +267,27 @@
                 }
                 else
                 {
+                    isRedirecting = true;
                     ToastService.ShowSuccess("Welcome back! Login successful.");
-                    NavigationManager.NavigateTo("/");
+                    await Task.Delay(500);
+                    await JSRuntime.InvokeVoidAsync("submitToken", result.Token);
                 }
             }
             else
             {
-                ToastService.ShowError(result.Message);
+                ToastService.ShowError(result.Message ?? "Login failed");
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            ToastService.ShowError("An unexpected error occurred. Please try again.");
+            ToastService.ShowError($"Login error: {ex.Message}");
         }
         finally
         {
-            isSubmitting = false;
+            if (!isRedirecting)
+            {
+                isSubmitting = false;
+            }
         }
     }
 
@@ -281,28 +298,33 @@
         try
         {
             var result = await AuthService.VerifyMfa(new MfaVerifyRequest
-                {
-                    Email = loginModel.Email,
-                    Code = mfaCode
-                });
+            {
+                Email = loginModel.Email,
+                Code = mfaCode
+            });
 
             if (result.IsSuccess)
             {
+                isRedirecting = true;
                 ToastService.ShowSuccess("Verification successful.");
-                NavigationManager.NavigateTo("/");
+                await Task.Delay(500);
+                await JSRuntime.InvokeVoidAsync("submitToken", result.Token);
             }
             else
             {
-                ToastService.ShowError(result.Message);
+                ToastService.ShowError(result.Message ?? "MFA verification failed");
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            ToastService.ShowError("MFA verification failed.");
+            ToastService.ShowError($"MFA error: {ex.Message}");
         }
         finally
         {
-            isSubmitting = false;
+            if (!isRedirecting)
+            {
+                isSubmitting = false;
+            }
         }
     }
 
@@ -321,28 +343,32 @@
             var result = await AuthService.LoginBiometric(loginModel.Email);
             if (result.IsSuccess)
             {
+                isRedirecting = true;
                 ToastService.ShowSuccess("Biometric login successful.");
-                NavigationManager.NavigateTo("/");
+                await Task.Delay(500);
+                await JSRuntime.InvokeVoidAsync("submitToken", result.Token);
             }
             else
             {
-                ToastService.ShowError(result.Message);
+                ToastService.ShowError(result.Message ?? "Biometric login failed");
             }
         }
         catch (Exception ex)
         {
-            ToastService.ShowError($"Biometric login failed: {ex.Message}");
+            ToastService.ShowError($"Biometric error: {ex.Message}");
         }
         finally
         {
-            isSubmitting = false;
+            if (!isRedirecting)
+            {
+                isSubmitting = false;
+            }
         }
     }
 
     private async Task ClearSession()
     {
-        await LocalStorage.RemoveItemAsync("authToken");
-        await LocalStorage.RemoveItemAsync("refreshToken");
+        await AuthService.Logout();
         ToastService.ShowInfo("Session cleared. Please login again.");
     }
 }

@@ -28,41 +28,58 @@ public class IdentityService(
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
     {
-        var user = await _userManager.FindByEmailAsync(request.Email);
-        if (user == null || !await _userManager.CheckPasswordAsync(user, request.Password))
+        try
         {
-            await _auditService.LogAsync("system", "LoginFailed", "User", request.Email, "", "Invalid credentials");
-            return new AuthResponse { IsSuccess = false, Message = "Invalid credentials." };
-        }
+            Console.WriteLine($"DEBUG: Security - LoginAsync attempt for email: {request.Email}");
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null)
+            {
+                Console.WriteLine($"DEBUG: Security - User not found: {request.Email}");
+                await _auditService.LogAsync("system", "LoginFailed", "User", request.Email, "", "Invalid credentials");
+                return new AuthResponse { IsSuccess = false, Message = "Invalid credentials." };
+            }
 
-        var fingerprint = _deviceService.GetDeviceFingerprint();
-        await _auditService.LogAsync(user.Id, "LoginAttempt", "User", user.Id, "", $"Device: {fingerprint}");
+            if (!await _userManager.CheckPasswordAsync(user, request.Password))
+            {
+                Console.WriteLine($"DEBUG: Security - Invalid password for user: {user.Email}");
+                await _auditService.LogAsync("system", "LoginFailed", "User", request.Email, "", "Invalid credentials");
+                return new AuthResponse { IsSuccess = false, Message = "Invalid credentials." };
+            }
 
-        if (user.MfaEnabled)
-        {
+            var fingerprint = _deviceService.GetDeviceFingerprint();
+            await _auditService.LogAsync(user.Id, "LoginAttempt", "User", user.Id, "", $"Device: {fingerprint}");
+
+            if (user.MfaEnabled)
+            {
+                return new AuthResponse
+                {
+                    IsSuccess = true,
+                    RequiresMfa = true,
+                    Message = "MFA Required."
+                };
+            }
+
+            var roles = await _userManager.GetRolesAsync(user);
+            var token = await _jwtTokenService.GenerateTokenAsync(user, roles);
+            var refreshToken = _jwtTokenService.GenerateRefreshToken();
+
+            await SaveRefreshToken(user.Id, refreshToken);
+
+            await _auditService.LogAsync(user.Id, "LoginSuccess", "User", user.Id, "", "JWT & Refresh Token Generated");
+
             return new AuthResponse
             {
                 IsSuccess = true,
-                RequiresMfa = true,
-                Message = "MFA Required."
+                Token = token,
+                RefreshToken = refreshToken,
+                Message = "Login successful."
             };
         }
-
-        var roles = await _userManager.GetRolesAsync(user);
-        var token = await _jwtTokenService.GenerateTokenAsync(user, roles);
-        var refreshToken = _jwtTokenService.GenerateRefreshToken();
-
-        await SaveRefreshToken(user.Id, refreshToken);
-
-        await _auditService.LogAsync(user.Id, "LoginSuccess", "User", user.Id, "", "JWT & Refresh Token Generated");
-
-        return new AuthResponse
+        catch (Exception ex)
         {
-            IsSuccess = true,
-            Token = token,
-            RefreshToken = refreshToken,
-            Message = "Login successful."
-        };
+            Console.WriteLine($"DEBUG: Security - Exception in LoginAsync: {ex.Message}");
+            return new AuthResponse { IsSuccess = false, Message = $"Login error: {ex.Message}" };
+        }
     }
 
     public async Task<AuthResponse> VerifyMfaAsync(string email, string code)
@@ -231,5 +248,22 @@ public class IdentityService(
         await _auditService.LogAsync("system", "UserRegistered", "User", user.Id, "", "Manual registration");
 
         return new AuthResponse { IsSuccess = true, Message = "User registered successfully." };
+    }
+
+    public async Task<UserInfoDto?> GetUserByEmailAsync(string email)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user == null) return null;
+
+        var roles = await _userManager.GetRolesAsync(user);
+
+        return new UserInfoDto
+        {
+            Id = user.Id,
+            Email = user.Email!,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Roles = roles.ToList()
+        };
     }
 }

@@ -1,4 +1,3 @@
-using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components.Authorization;
 using System.Net.Http.Headers;
 
@@ -9,16 +8,19 @@ namespace NkplmErp.Blazor.Services.Auth;
 
 public class AuthenticationDelegatingHandler : DelegatingHandler
 {
-    private readonly CustomAuthStateProvider _authStateProvider;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly TokenProvider _tokenProvider;
     private readonly ILogger<AuthenticationDelegatingHandler> _logger;
 
     public Guid InstanceId { get; } = Guid.NewGuid();
 
     public AuthenticationDelegatingHandler(
-        CustomAuthStateProvider authStateProvider, 
+        IHttpContextAccessor httpContextAccessor,
+        TokenProvider tokenProvider,
         ILogger<AuthenticationDelegatingHandler> logger)
     {
-        _authStateProvider = authStateProvider;
+        _httpContextAccessor = httpContextAccessor;
+        _tokenProvider = tokenProvider;
         _logger = logger;
         _logger.LogInformation("DEBUG: AuthHandler Created: InstanceId={InstanceId}", InstanceId);
     }
@@ -29,29 +31,58 @@ public class AuthenticationDelegatingHandler : DelegatingHandler
         
         try
         {
-            // Use the cached token from CustomAuthStateProvider
-            // This is populated by the UI (MainDashboard) calling GetAuthenticationStateAsync()
-            // avoiding JS interop calls inside the HttpClient pipeline.
-            var token = _authStateProvider.AuthToken;
+            _logger.LogInformation("DEBUG: AuthHandler[{InstanceId}] - Sending {Method} request to {Url}", 
+                InstanceId, request.Method, requestUrl);
+            
+            // Priority 1: TokenProvider (reliable in SignalR circuit)
+            // Priority 2: HttpContext (reliable during initial Prerender/Render)
+            string? token = _tokenProvider.Token;
+            
+            if (string.IsNullOrEmpty(token))
+            {
+                var context = _httpContextAccessor.HttpContext;
+                if (context != null)
+                {
+                    token = context.Request.Cookies["X-Auth-Token"];
+                }
+            }
 
             if (!string.IsNullOrEmpty(token))
             {
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-                _logger.LogInformation("DEBUG: AuthHandler[{InstanceId}] - Attached cached token for {requestUrl}. Provider[{ProviderId}]", InstanceId, requestUrl, _authStateProvider.InstanceId);
+                _logger.LogInformation("DEBUG: AuthHandler[{InstanceId}] - Token attached from {Source}", 
+                    InstanceId, !string.IsNullOrEmpty(_tokenProvider.Token) ? "TokenProvider" : "Cookie");
             }
             else
             {
-                // Fallback: If token is missing from provider, try one last time to get it 
-                // but only if we are not in a context that forbids it.
-                // However, for Blazor Server, relying on the provider is safest.
-                _logger.LogWarning("DEBUG: AuthHandler[{InstanceId}] - No cached token found in Provider[{ProviderId}] for {requestUrl}", InstanceId, _authStateProvider.InstanceId, requestUrl);
+                _logger.LogWarning("DEBUG: AuthHandler[{InstanceId}] - No authentication token found", InstanceId);
             }
+            
+            _logger.LogInformation("DEBUG: AuthHandler[{InstanceId}] - Calling base.SendAsync...", InstanceId);
+            var response = await base.SendAsync(request, cancellationToken);
+            _logger.LogInformation("DEBUG: AuthHandler[{InstanceId}] - base.SendAsync returned with status: {StatusCode}", InstanceId, response.StatusCode);
+            return response;
+        }
+        catch (HttpRequestException httpEx)
+        {
+            _logger.LogError(httpEx, "DEBUG: AuthHandler[{InstanceId}] - HttpRequestException on {Url}", InstanceId, requestUrl);
+            return new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError);
+        }
+        catch (OperationCanceledException opEx)
+        {
+            _logger.LogError(opEx, "DEBUG: AuthHandler[{InstanceId}] - Request timeout on {Url}", InstanceId, requestUrl);
+            return new HttpResponseMessage(System.Net.HttpStatusCode.RequestTimeout);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "DEBUG: AuthHandler[{InstanceId}] - Error reading token from Provider: {Message}", InstanceId, ex.Message);
+            _logger.LogError(ex, "DEBUG: AuthHandler[{InstanceId}] - Unexpected CRITICAL error on {Url}: {Message}", 
+                InstanceId, requestUrl, ex.Message);
+            
+            // Return a safe 500 error instead of throwing to avoid crashing the Blazor circuit
+            return new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError)
+            {
+                Content = new StringContent($"Critical Auth Handler Error: {ex.Message}")
+            };
         }
-
-        return await base.SendAsync(request, cancellationToken);
     }
 }

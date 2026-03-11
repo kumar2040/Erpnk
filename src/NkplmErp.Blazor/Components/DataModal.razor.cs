@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Components;
 
-namespace NkplmErp.Components
+namespace NkplmErp.Blazor.Components
 {
     public partial class DataModal : ComponentBase
     {
@@ -21,6 +21,15 @@ namespace NkplmErp.Components
 
         [Parameter]
         public bool IsLoading { get; set; }
+
+        [Parameter]
+        public bool FullScreen { get; set; }
+
+        [Parameter]
+        public string? MaxWidth { get; set; }
+
+        [Parameter(CaptureUnmatchedValues = true)]
+        public IDictionary<string, object>? AdditionalAttributes { get; set; }
 
         protected override async Task OnParametersSetAsync()
         {

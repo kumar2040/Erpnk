@@ -18,7 +18,10 @@
     <component type="typeof(HeadOutlet)" render-mode="Server" />
 </head>
 <body>
-    <component type="typeof(App)" render-mode="Server" />
+    @{
+        var token = Request.Cookies["X-Auth-Token"];
+    }
+    <component type="typeof(App)" render-mode="Server" param-InitialToken="@token" />
 
     <div id="blazor-error-ui">
         <environment include="Staging,Production">
@@ -32,6 +35,7 @@
     </div>
 
     <script src="_framework/blazor.server.js"></script>
+    <script src="js/site.js"></script>
     <script src="js/webauthn-interop.js"></script>
 </body>
 </html>

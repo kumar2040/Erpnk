@@ -1,0 +1,86 @@
+@using NkplmErp.Blazor.Services.Lookup
+@using NkplmErp.Shared.DTOs
+@namespace NkplmErp.Blazor.Components
+@inject ILookupClient LookupClient
+
+<div class="w-full @Class">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="block text-sm text-gray-600 font-medium mb-1">@Label</label>
+    }
+    <select class="select-custom w-full h-10 px-3 border border-gray-300 rounded-md text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none @(IsLoading ? "opacity-50 pointer-events-none" : "")"
+            value="@SelectedValue"
+            @onchange="HandleChange">
+        <option value="">@DefaultOptionText</option>
+        @if (!string.IsNullOrEmpty(KeyColumnName))
+        {
+            @foreach (var item in _kvOptions)
+            {
+                <option value="@item.Key">@item.Value</option>
+            }
+        }
+        else
+        {
+            @foreach (var option in _options)
+            {
+                <option value="@option">@option</option>
+            }
+        }
+    </select>
+</div>
+
+@code {
+    [Parameter] public string? TableName { get; set; }
+    [Parameter] public string? ColumnName { get; set; }
+    [Parameter] public string? KeyColumnName { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string DefaultOptionText { get; set; } = "All";
+    
+    [Parameter] public string? SelectedValue { get; set; }
+    [Parameter] public EventCallback<string?> SelectedValueChanged { get; set; }
+
+    private List<string> _options = new();
+    private List<LookupItemDto> _kvOptions = new();
+    private bool IsLoading { get; set; } = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(TableName) && !string.IsNullOrEmpty(ColumnName) && _options.Count == 0 && _kvOptions.Count == 0)
+        {
+            await LoadOptions();
+        }
+    }
+
+    private async Task LoadOptions()
+    {
+        IsLoading = true;
+        try
+        {
+            if (!string.IsNullOrEmpty(KeyColumnName))
+            {
+                var results = await LookupClient.GetLookupItemsAsync(TableName!, KeyColumnName!, ColumnName!);
+                _kvOptions = results.ToList();
+            }
+            else
+            {
+                var results = await LookupClient.GetDistinctValuesAsync(TableName!, ColumnName!);
+                _options = results.ToList();
+            }
+        }
+        catch (Exception)
+        {
+            // Silently fail or show error
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task HandleChange(ChangeEventArgs e)
+    {
+        SelectedValue = e.Value?.ToString();
+        await SelectedValueChanged.InvokeAsync(SelectedValue);
+    }
+}

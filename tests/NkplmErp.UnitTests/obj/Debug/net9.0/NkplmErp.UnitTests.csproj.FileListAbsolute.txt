@@ -183,6 +183,7 @@
 /Users/vijayanand/Erpnk/tests/NkplmErp.UnitTests/obj/Debug/net9.0/NkplmErp.UnitTests.AssemblyInfoInputs.cache
 /Users/vijayanand/Erpnk/tests/NkplmErp.UnitTests/obj/Debug/net9.0/NkplmErp.UnitTests.AssemblyInfo.cs
 /Users/vijayanand/Erpnk/tests/NkplmErp.UnitTests/obj/Debug/net9.0/NkplmErp.UnitTests.csproj.CoreCompileInputs.cache
+/Users/vijayanand/Erpnk/tests/NkplmErp.UnitTests/obj/Debug/net9.0/NkplmErp.UnitTests.sourcelink.json
 /Users/vijayanand/Erpnk/tests/NkplmErp.UnitTests/obj/Debug/net9.0/NkplmErp.D451B721.Up2Date
 /Users/vijayanand/Erpnk/tests/NkplmErp.UnitTests/obj/Debug/net9.0/NkplmErp.UnitTests.dll
 /Users/vijayanand/Erpnk/tests/NkplmErp.UnitTests/obj/Debug/net9.0/refint/NkplmErp.UnitTests.dll

@@ -1,5 +1,4 @@
 using System.Net.Http.Json;
-using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components.Authorization;
 using NkplmErp.Shared.DTOs;
 using Fido2NetLib;
@@ -11,51 +10,40 @@ public interface IAuthService
     Task<AuthResponse> Login(LoginRequest loginRequest);
     Task Logout();
     Task<AuthResponse> VerifyMfa(MfaVerifyRequest mfaRequest);
-    Task<string> TryRefreshToken();
     Task<AuthResponse> ConfirmMfa(string code);
     Task<AuthResponse> RegisterBiometric(string deviceName);
     Task<AuthResponse> LoginBiometric(string email);
     Task<MfaSetupResponse> GetMfaSetup();
+    Task<UserInfoDto?> GetUserInfo(CancellationToken cancellationToken = default);
 }
 
 public class AuthService : IAuthService, IDisposable
 {
     private readonly HttpClient _httpClient;
-    private readonly AuthenticationStateProvider _authStateProvider;
-    private readonly ILocalStorageService _localStorage;
+    private readonly TokenProvider _tokenProvider;
     private readonly Microsoft.JSInterop.IJSRuntime _jsRuntime;
     private System.Timers.Timer? _refreshTimer;
 
     public AuthService(HttpClient httpClient,
-                       AuthenticationStateProvider authStateProvider,
-                       ILocalStorageService localStorage,
+                       TokenProvider tokenProvider,
                        Microsoft.JSInterop.IJSRuntime jsRuntime)
     {
         _httpClient = httpClient;
-        _authStateProvider = authStateProvider;
-        _localStorage = localStorage;
+        _tokenProvider = tokenProvider;
         _jsRuntime = jsRuntime;
-        // InitializeRefreshTimer(); // Move to Login/Verify actions only to avoid startup crash
     }
 
     private void InitializeRefreshTimer()
     {
+        if (_refreshTimer != null) return;
         _refreshTimer = new System.Timers.Timer(5 * 60 * 1000); // 5 minutes
         _refreshTimer.Elapsed += async (s, e) => 
         {
             try
             {
-                // Ensure we run on the main thread if needed, or just suppress context issues if possible. 
-                // However, Blazor Server timers generally run on a thread pool thread.
-                // Since ILocalStorageService requires JS interaction, we might need to be careful.
-                // Note: In Blazor Server, accessing localStorage from a background timer is tricky because the circuit might be idle.
-                // Ideally, we should check if the circuit is alive.
                 await TryRefreshToken();
             }
-            catch
-            {
-                // Ignore errors during background refresh to prevent crash
-            }
+            catch { }
         };
         _refreshTimer.AutoReset = true;
         _refreshTimer.Start();
@@ -64,17 +52,30 @@ public class AuthService : IAuthService, IDisposable
     public async Task<AuthResponse> Login(LoginRequest loginRequest)
     {
         var response = await _httpClient.PostAsJsonAsync("api/v1/auth/login", loginRequest);
-        var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
-
-        if (result!.IsSuccess && !result.RequiresMfa)
+        
+        if (response.IsSuccessStatusCode)
         {
-            await _localStorage.SetItemAsync("authToken", result.Token);
-            await _localStorage.SetItemAsync("refreshToken", result.RefreshToken);
-            ((CustomAuthStateProvider)_authStateProvider).NotifyUserAuthentication(result.Token);
-            InitializeRefreshTimer(); // Restart timer on login
+            try 
+            {
+                var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
+                if (result!.IsSuccess && !result.RequiresMfa)
+                {
+                    _tokenProvider.Token = result.Token;
+                    InitializeRefreshTimer();
+                }
+                return result;
+            }
+            catch (Exception ex)
+            {
+                var rawContent = await response.Content.ReadAsStringAsync();
+                return new AuthResponse { IsSuccess = false, Message = $"JSON Parsing Error: {ex.Message}. Raw Response: {rawContent}" };
+            }
         }
-
-        return result;
+        else
+        {
+            var rawContent = await response.Content.ReadAsStringAsync();
+            return new AuthResponse { IsSuccess = false, Message = $"Server Error ({response.StatusCode}): {rawContent}" };
+        }
     }
 
     public async Task<AuthResponse> VerifyMfa(MfaVerifyRequest mfaRequest)
@@ -84,10 +85,8 @@ public class AuthService : IAuthService, IDisposable
 
         if (result!.IsSuccess)
         {
-            await _localStorage.SetItemAsync("authToken", result.Token);
-            await _localStorage.SetItemAsync("refreshToken", result.RefreshToken);
-            ((CustomAuthStateProvider)_authStateProvider).NotifyUserAuthentication(result.Token);
-            InitializeRefreshTimer(); // Restart timer on login
+            _tokenProvider.Token = result.Token;
+            InitializeRefreshTimer();
         }
 
         return result;
@@ -97,13 +96,7 @@ public class AuthService : IAuthService, IDisposable
     {
         try 
         {
-            var token = await _localStorage.GetItemAsync<string>("authToken");
-            var refreshToken = await _localStorage.GetItemAsync<string>("refreshToken");
-
-            if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(refreshToken))
-                return string.Empty;
-
-            var refreshRequest = new TokenRefreshRequest { Token = token, RefreshToken = refreshToken };
+            var refreshRequest = new TokenRefreshRequest { Token = "", RefreshToken = "" }; // Token is handled by cookies
             var response = await _httpClient.PostAsJsonAsync("api/v1/auth/refresh", refreshRequest);
 
             if (!response.IsSuccessStatusCode)
@@ -119,16 +112,10 @@ public class AuthService : IAuthService, IDisposable
                 return string.Empty;
             }
 
-            await _localStorage.SetItemAsync("authToken", result.Token);
-            await _localStorage.SetItemAsync("refreshToken", result.RefreshToken);
-            ((CustomAuthStateProvider)_authStateProvider).NotifyUserAuthentication(result.Token);
-
+            _tokenProvider.Token = result.Token;
             return result.Token;
         }
-        catch
-        {
-            return string.Empty;
-        }
+        catch { return string.Empty; }
     }
 
     public async Task<MfaSetupResponse> GetMfaSetup()
@@ -148,21 +135,16 @@ public class AuthService : IAuthService, IDisposable
     public async Task Logout()
     {
         _refreshTimer?.Stop();
-        await _localStorage.RemoveItemAsync("authToken");
-        await _localStorage.RemoveItemAsync("refreshToken");
-        ((CustomAuthStateProvider)_authStateProvider).NotifyUserLogout();
+        _refreshTimer = null;
+        await _httpClient.PostAsync("api/v1/auth/logout", null);
+        _tokenProvider.Token = null;
     }
 
     public async Task<AuthResponse> RegisterBiometric(string deviceName)
     {
         try
         {
-            var token = await _localStorage.GetItemAsync<string>("authToken");
             var request = new HttpRequestMessage(HttpMethod.Get, $"api/v1/auth/biometric-registration-options?deviceName={deviceName}");
-            if (!string.IsNullOrEmpty(token))
-            {
-                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-            }
 
             var optionsResponse = await _httpClient.SendAsync(request);
 
@@ -212,10 +194,8 @@ public class AuthService : IAuthService, IDisposable
 
             if (result!.IsSuccess)
             {
-                await _localStorage.SetItemAsync("authToken", result.Token);
-                await _localStorage.SetItemAsync("refreshToken", result.RefreshToken);
-                ((CustomAuthStateProvider)_authStateProvider).NotifyUserAuthentication(result.Token);
-                InitializeRefreshTimer(); // Restart timer on login
+                _tokenProvider.Token = result.Token;
+                InitializeRefreshTimer();
             }
 
             return result;
@@ -223,6 +203,34 @@ public class AuthService : IAuthService, IDisposable
         catch (Exception ex)
         {
             return new AuthResponse { IsSuccess = false, Message = ex.Message };
+        }
+    }
+
+    public async Task<UserInfoDto?> GetUserInfo(CancellationToken cancellationToken = default)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            Console.WriteLine($"DEBUG: AuthService[{_httpClient.GetHashCode()}] - GetUserInfo START");
+            var response = await _httpClient.GetAsync("api/v1/auth/userinfo", cancellationToken);
+            Console.WriteLine($"DEBUG: AuthService - GetUserInfo response: {response.StatusCode} (Elapsed: {sw.ElapsedMilliseconds}ms)");
+            
+            if (!response.IsSuccessStatusCode) return null;
+            
+            Console.WriteLine("DEBUG: AuthService - Reading JSON content...");
+            var user = await response.Content.ReadFromJsonAsync<UserInfoDto>(cancellationToken: cancellationToken);
+            Console.WriteLine($"DEBUG: AuthService - GetUserInfo SUCCESS for: {user?.Email} (Total: {sw.ElapsedMilliseconds}ms)");
+            return user;
+        }
+        catch (OperationCanceledException)
+        {
+            Console.WriteLine($"DEBUG: AuthService - GetUserInfo TIMEOUT/CANCEL after {sw.ElapsedMilliseconds}ms");
+            return null;
+        }
+        catch (Exception ex)
+        { 
+            Console.WriteLine($"DEBUG: AuthService - GetUserInfo EXCEPTION after {sw.ElapsedMilliseconds}ms: {ex.Message}");
+            return null; 
         }
     }
 

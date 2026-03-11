@@ -1,0 +1,238 @@
+@using NkplmErp.Shared.DTOs
+
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-2">
+    <style>
+    .dept-cell {
+      transition: all 0.16s ease;
+      position: relative;
+    }
+    .dept-cell:hover {
+      transform: scale(1.06);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      z-index: 10;
+    }
+    .delay-warning {
+      background-color: #fee2e2 !important;
+      border: 1px solid #f87171;
+    }
+    .final-row .dept-cell {
+      background-color: #ecfdf5 !important;
+    }
+    .tooltip-target:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      top: -32px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1f2937ee;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 30;
+    }
+    @@media (max-width: 480px) {
+      .grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+      .dept-cell { font-size: 0.75rem; padding: 0.4rem 0.3rem; }
+      .dept-cell i { font-size: 0.875rem; margin-bottom: 0.2rem; }
+    }
+  </style>
+
+    @if (Items == null || !Items.Any())
+    {
+        <div class="col-span-full py-16 text-center text-gray-400">
+            <i class="fa-solid fa-box-open text-4xl mb-3 block opacity-20"></i>
+            <p class="text-sm font-medium">No production flow data found.</p>
+        </div>
+    }
+    else
+    {
+        @foreach (var order in Items)
+        {
+            var progressPct = ProgressPercent(order);
+            var daysLeft = DaysLeft(order);
+            var isRisk = daysLeft.HasValue && daysLeft.Value <= 7;
+
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow transition-all overflow-hidden text-sm">
+
+                <!-- Order header -->
+                <div class="px-5 py-3.5 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-purple-50/30">
+                    <div class="flex justify-between items-start gap-3">
+                        <div>
+                            <div class="font-semibold text-gray-900 text-base truncate">@order.OrderNo</div>
+                            <div class="text-gray-600 text-xs mt-0.5">@order.PCS?.ToString("N0") pcs</div>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <div class="text-xs font-medium px-3 py-1 rounded-full @(isRisk ? "bg-rose-100 text-rose-800" : "bg-indigo-100 text-indigo-800")">
+                                @(order.ShippingDate?.ToString("dd MMM yyyy") ?? "—")
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 grid grid-cols-3 gap-3 text-xs text-center">
+                        <div>
+                            <div class="text-gray-500">Entry</div>
+                            <div class="font-medium">@(order.OrderEntryStart?.ToString("dd MMM") ?? "—")</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-500">Ship</div>
+                            <div class="font-medium @(isRisk ? "text-rose-700" : "text-gray-800")">
+                                @(order.ShippingDate?.ToString("dd MMM") ?? "—")
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-gray-500">Days</div>
+                            <div class="font-medium">@(order.ProductionDays?.ToString() ?? "—")</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress bar -->
+                <div class="px-5 pt-3 pb-1">
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-600">Progress</span>
+                        <span class="font-semibold text-indigo-700">@progressPct%</span>
+                    </div>
+                    <div class="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div class="h-full rounded-full @ProgressBarColor(progressPct)"
+                             style="width:@progressPct%"></div>
+                    </div>
+                </div>
+
+                <!-- Department cells -->
+                <div class="p-4 pt-2 grid grid-cols-5 gap-x-2.5 gap-y-3.5 text-center">
+
+                    <!-- NS -->
+                    <div class="bg-gray-100/80 rounded-lg py-2 px-1.5">
+                        <i class="fa-solid fa-ban text-red-600 text-base mb-0.5"></i>
+                        <div class="font-semibold text-red-700">@(order.Ns ?? 0)</div>
+                        <div class="text-xs text-gray-700">NS</div>
+                    </div>
+
+                    <!-- NR (shown as KNITTER) -->
+                    <div class="bg-amber-50/80 rounded-lg py-2 px-1.5">
+                        <i class="fa-solid fa-user-tie text-amber-700 text-base mb-0.5"></i>
+                        <div class="font-semibold text-amber-800">@(order.Nr ?? 0)</div>
+                        <div class="text-xs text-amber-700">KNITTER</div>
+                    </div>
+
+                    <!-- CHK -->
+                    <div class="bg-gray-50 rounded-lg py-2 px-1.5">
+                        <i class="fa-solid fa-check-double text-green-600 text-sm mb-0.5"></i>
+                        <div class="font-semibold text-green-700">@(order.CHK ?? 0)</div>
+                        <div class="text-xs text-gray-600">CHK</div>
+                    </div>
+
+                    <!-- KCH -->
+                    <div class="bg-indigo-50 rounded-lg py-2 px-1.5 ring-1 ring-indigo-300">
+                        <i class="fa-solid fa-shirt text-indigo-600 text-base mb-0.5"></i>
+                        <div class="font-semibold text-indigo-700">@(order.KCH ?? 0)</div>
+                        <div class="text-xs text-gray-600">KCH</div>
+                    </div>
+
+                    <!-- DYE -->
+                    <div class="bg-gray-50 rounded-lg py-2 px-1.5">
+                        <i class="fa-solid fa-fill-drip text-purple-600 text-sm mb-0.5"></i>
+                        <div class="font-semibold text-purple-700">@(order.DYE ?? 0)</div>
+                        <div class="text-xs text-gray-600">DYE</div>
+                    </div>
+
+                    <!-- HUB -->
+                    <div class="bg-gray-50 rounded-lg py-2 px-1.5">
+                        <i class="fa-solid fa-cubes text-amber-600 text-sm mb-0.5"></i>
+                        <div class="font-semibold text-amber-700">@(order.HUB ?? 0)</div>
+                        <div class="text-xs text-gray-600">HUB</div>
+                    </div>
+
+                    <!-- LNK -->
+                    <div class="bg-gray-50 rounded-lg py-2 px-1.5">
+                        <i class="fa-solid fa-link text-pink-600 text-sm mb-0.5"></i>
+                        <div class="font-semibold text-pink-700">@(order.LNK ?? 0)</div>
+                        <div class="text-xs text-gray-600">LNK</div>
+                    </div>
+
+                    <!-- MND -->
+                    <div class="bg-gray-50 rounded-lg py-2 px-1.5">
+                        <i class="fa-solid fa-scissors text-teal-600 text-sm mb-0.5"></i>
+                        <div class="font-semibold text-teal-700">@(order.MND ?? 0)</div>
+                        <div class="text-xs text-gray-600">MND</div>
+                    </div>
+
+                    <!-- PRND -->
+                    <div class="bg-gray-50 rounded-lg py-2 px-1.5">
+                        <i class="fa-solid fa-print text-cyan-600 text-sm mb-0.5"></i>
+                        <div class="font-semibold text-cyan-700">@(order.PRND ?? 0)</div>
+                        <div class="text-xs text-gray-600">PRND</div>
+                    </div>
+
+                    <!-- TLR -->
+                    <div class="bg-gray-50 rounded-lg py-2 px-1.5">
+                        <i class="fa-solid fa-ruler-combined text-amber-600 text-sm mb-0.5"></i>
+                        <div class="font-semibold text-amber-700">@(order.TLR ?? 0)</div>
+                        <div class="text-xs text-gray-600">TLR</div>
+                    </div>
+                     <!-- PLM (EMB filler slot) -->
+                    <div class="bg-gray-50 rounded-lg py-2.5 px-1.5">
+                        <i class="fa-solid fa-needle text-rose-500 text-base mb-0.5"></i>
+                        <div class="font-semibold text-rose-700">@(order.EMB ?? 0)</div>
+                        <div class="text-xs text-gray-600">EMB</div>
+                    </div>
+                    <!-- WSH -->
+                    <div class="bg-teal-50 rounded-lg py-2.5 px-1.5">
+                        <i class="fa-solid fa-soap text-emerald-600 text-base mb-0.5"></i>
+                        <div class="font-semibold text-emerald-700">@(order.WSH ?? 0)</div>
+                        <div class="text-xs text-gray-600">WSH</div>
+                    </div>
+
+                    <!-- PRS -->
+                    <div class="bg-teal-50 rounded-lg py-2.5 px-1.5">
+                        <i class="fa-solid fa-shirt text-amber-700 text-base mb-0.5"></i>
+                        <div class="font-bold text-amber-800">@(order.PRS ?? 0)</div>
+                        <div class="text-xs text-amber-700 font-medium">PRS</div>
+                    </div>
+
+                    <!-- PCK -->
+                    <div class="bg-emerald-50 rounded-lg py-2.5 px-1.5">
+                        <i class="fa-solid fa-box text-emerald-700 text-base mb-0.5"></i>
+                        <div class="font-bold text-emerald-800">@(order.PCK ?? 0)</div>
+                        <div class="text-xs text-emerald-700 font-medium">PCK</div>
+                    </div>
+                   <div class="bg-emerald-50 rounded-lg py-2.5 px-1.5">
+                        <i class="fa-solid fa-box text-emerald-700 text-base mb-0.5"></i>
+                        <div class="font-bold text-emerald-800">@(order.Total_Dispatch ?? 0)</div>
+                        <div class="text-xs text-emerald-700 font-medium">DSP</div>
+                    </div>
+                     <div class="bg-emerald-50 rounded-lg py-2.5 px-1.5">
+                        <i class="fa-solid fa-box text-emerald-700 text-base mb-0.5"></i>
+                        <div class="font-bold text-emerald-800">@(order.totalPacked ?? 0)</div>
+                        <div class="text-xs text-emerald-700 font-medium">BOX</div>
+                    </div>
+                    <!-- DSP (Total Shipped) -->
+                    <div class="@(order.totalDispatched == 0 ? "bg-rose-50 ring-1 ring-rose-300" : "bg-emerald-50") rounded-lg py-2.5 px-1.5">
+                        <i class="fa-solid fa-truck-fast @(order.totalDispatched == 0 ? "text-red-700" : "text-emerald-700") text-base mb-0.5"></i>
+                        <div class="font-bold @(order.totalDispatched == 0 ? "text-red-800" : "text-emerald-800")">@(order.totalDispatched ?? 0)</div>
+                        <div class="text-xs @(order.totalDispatched == 0 ? "text-red-700" : "text-emerald-700") font-medium">SHP</div>
+                    </div>
+                   
+                   
+
+                </div>
+
+                <!-- Footer -->
+                <div class="px-5 py-2.5 bg-gray-50 border-t border-gray-100 text-xs text-gray-600 flex justify-between items-center">
+                    <span class="font-medium @(isRisk ? "text-rose-700" : "text-gray-700")">
+                        @(daysLeft.HasValue ? $"{daysLeft.Value} days left" : "—")
+                    </span>
+                    <span class="text-indigo-600 hover:underline cursor-pointer"
+                          @onclick="() => OnOrderSelected.InvokeAsync(order)">
+                        Details →
+                    </span>
+                </div>
+
+            </div>
+        }
+    }
+
+</div>

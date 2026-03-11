@@ -4,5 +4,12 @@ namespace NkplmErp.Application.Interfaces;
 
 public interface IBuyerOrderSummaryService
 {
-    Task<IEnumerable<BuyerOrderSummaryDto>> GetBuyerOrderSummaryAsync(int year, string type);
+    Task<IEnumerable<BuyerOrderSummaryDto>> GetBuyerOrderSummaryAsync(int year, string type,int maxrec);
+    Task<IEnumerable<int>> GetBuyerOrderYearsAsync(int? customerId);
+    Task<IEnumerable<BuyerOrderHistoryDto>> GetBuyerOrderHistoryAsync(int customerId, int? year = null);
+    Task<IEnumerable<BuyerProfile>> GetBuyerProfileAsync(int customerId, int? year = null);
+    Task<IEnumerable<AbsentBuyer>> GetAbsentBuyer();
+    Task<IEnumerable<OrderStatusDetailDto>> GetOrderStatusDetailAsync(int year, string status);
+    Task<IEnumerable<ProductionFlowDto>> GetProductionFlowAsync(int buyerId, string? orderNo = null);
+
 }

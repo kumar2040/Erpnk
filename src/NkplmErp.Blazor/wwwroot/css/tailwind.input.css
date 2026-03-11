@@ -23,4 +23,8 @@
     .btn-glass {
         @apply bg-white/5 border border-white/10 text-white px-5 py-3 rounded-xl font-semibold transition-all duration-200 hover:bg-white/10;
     }
+
+    .select-custom {
+        @apply text-[#4C4C4C] w-full border border-gray-300 rounded-lg px-4 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition;
+    }
 }

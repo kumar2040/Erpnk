@@ -10,6 +10,7 @@
 /Users/vijayanand/Erpnk/src/NkplmErp.Application/obj/Debug/net9.0/NkplmErp.Application.AssemblyInfoInputs.cache
 /Users/vijayanand/Erpnk/src/NkplmErp.Application/obj/Debug/net9.0/NkplmErp.Application.AssemblyInfo.cs
 /Users/vijayanand/Erpnk/src/NkplmErp.Application/obj/Debug/net9.0/NkplmErp.Application.csproj.CoreCompileInputs.cache
+/Users/vijayanand/Erpnk/src/NkplmErp.Application/obj/Debug/net9.0/NkplmErp.Application.sourcelink.json
 /Users/vijayanand/Erpnk/src/NkplmErp.Application/obj/Debug/net9.0/NkplmErp.9896B88F.Up2Date
 /Users/vijayanand/Erpnk/src/NkplmErp.Application/obj/Debug/net9.0/NkplmErp.Application.dll
 /Users/vijayanand/Erpnk/src/NkplmErp.Application/obj/Debug/net9.0/refint/NkplmErp.Application.dll

@@ -32,6 +32,28 @@ public class DataSeeder
         await SeedUsersAsync(defaultTenantId);
         await SeedProductsAsync(defaultTenantId);
         await SeedOrdersAsync(defaultTenantId);
+        await SeedLegacyTablesAsync();
+    }
+
+    private async Task SeedLegacyTablesAsync()
+    {
+        var sqlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "scripts", "populate_tables.sql");
+        // Fallback for different build environments
+        if (!File.Exists(sqlPath))
+        {
+            sqlPath = Path.Combine(Directory.GetCurrentDirectory(), "scripts", "populate_tables.sql");
+        }
+
+        if (File.Exists(sqlPath))
+        {
+            var sql = await File.ReadAllTextAsync(sqlPath);
+            await _appContext.Database.ExecuteSqlRawAsync(sql);
+        }
+        else
+        {
+            // If file not found in build path, we can still use the raw SQL here if needed, 
+            // but for now we rely on the script file being present.
+        }
     }
 
     private async Task SeedRolesAndPermissionsAsync()
@@ -107,21 +129,17 @@ public class DataSeeder
 
         foreach (var (email, role, firstName, lastName) in users)
         {
-            if (await _userManager.FindByEmailAsync(email) == null)
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
             {
-                var user = new User
+                user = new User
                 {
                     UserName = email,
                     Email = email,
                     FirstName = firstName,
                     LastName = lastName,
                     EmailConfirmed = true,
-                    BranchId = tenantId, // Using BranchId as TenantId link for User context if needed, strictly User entity doesn't have TenantId in the definition seen, but Product does. 
-                                         // WAIT, looking at User.cs from file listing earlier, it didn't show TenantId inheriting from ITenant. 
-                                         // Looking at file 638, product implements ITenant. 
-                                         // Let's re-verify User.cs content to be sure where to store TenantId or if it relies on BranchId.
-                                         // File 583 (SecurityDbContext) User entity config doesn't show TenantId.
-                                         // Migration 584 shows BranchId. Let's assume BranchId is the link or we just seed it for now.
+                    BranchId = tenantId,
                     IsActive = true
                 };
                 
@@ -130,6 +148,12 @@ public class DataSeeder
                 {
                     await _userManager.AddToRoleAsync(user, role);
                 }
+            }
+            else
+            {
+                // In Development, ensure the password is what we expect
+                await _userManager.RemovePasswordAsync(user);
+                await _userManager.AddPasswordAsync(user, "Password123!");
             }
         }
 

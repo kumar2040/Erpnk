@@ -72,11 +72,14 @@
         background-color: #f3f4f6;
         color: var(--midnight-blue);
     }
+    .select-custom{
+        color:#4C4C4C !important; 
+    }
     table td{
         color:#4C4C4C;
         border-bottom:1px solid #f0f1f5;
         font-size:12px;
-        padding:4px !important;
+        padding:3px !important;
 
 
     }
@@ -93,13 +96,55 @@
     .quick-grid table {
     table-layout: auto; /* instead of fixed */
 }
+ .col-header-content{
+ 
+    padding-right:0px !important;
+ }
+ /* 1. Make the header text and sort button white */
+::deep thead th {
+    color: white;
+}
 
-    
+/* 2. Target the sorting icon (SVG) */
+::deep .col-sort-button::before {
+    filter: brightness(0) invert(1); /* Turns black icons white */
+}
+
+/* 3. Handle the active sort indicators */
+::deep .col-sort-direction {
+    border-top-color: white !important;
+    border-bottom-color: white !important;
+}
+
+/* 4. Ensure the button background doesn't interfere */
+::deep .col-sort-button {
+    color: white;
+}
+.modal-body{
+    padding:0.4rem !important;
+}
+.modal-body table td{
+        color:#4C4C4C;
+        border-bottom:1px solid #f0f1f5;
+        font-size:14px;
+        padding:6px !important;
+
+
+    }
+
+  .quickgrid[theme=default] .col-title {
+    gap:0.2rem !important;
+    }  
 </style>
 
 <div class="min-h-screen bg-[#f8fafc] p-0 font-sans">
-    <!-- Top Bar Mockup (Partial) -->
-   
+    @if (LastErrorMessage != null)
+    {
+        <div class="m-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+            <h4 class="font-bold mb-1">System Error</h4>
+            <p>@LastErrorMessage</p>
+        </div>
+    }
 
     <!-- 3-Column Layout -->
    <div class="flex flex-col md:flex-row gap-4 md:gap-3">
@@ -114,34 +159,90 @@
             </div>
             
             <div class="flex-1 overflow-auto px-1 pb-1">
-                <QuickGrid Items="@OrderSummaries" Class="quick-grid">
-                     <PropertyColumn Property="@(s => s.SN)" Title="SN" Sortable="true" Class="w-10 min-w-11 max-w-12 " />
-                    <PropertyColumn Property="@(s => s.CustomerName)" Title="Customer Name" Sortable="true" Class="font-medium " />
-                    <PropertyColumn Property="@(s => s.TotalOrder)" Title="Total PO" Sortable="true" Align="Align.Center" Class="font-medium   text-center  w-10 min-w-13 max-w-13 " />
-                    <PropertyColumn Property="@(s => s.RunningOrder)" Title="Running PO" Sortable="true" Align="Align.Center" Class="font-medium w-min min-w-[1rem]   text-center w-13 min-w-13 max-w-13   " />
-                    <PropertyColumn Property="@(s => s.NotStartedOrder)" Title="Pending PO" Sortable="true" Align="Align.Center" Class="font-medium w-min min-w-[1rem]   text-center w-13 min-w-13 max-w-13  " />
-                </QuickGrid>
-
-                @if (!OrderSummaries.Any() && !IsLoading)
+                @if (IsLoading)
                 {
                     <div class="py-12 text-center text-gray-400">
-                        <span class="oi oi-inbox text-3xl block mb-2 opacity-10"></span>
-                        <p class="text-xs font-medium">No records found</p>
+                        <div class="spinner border-2 border-gray-100 border-t-blue-500 rounded-full w-4 h-4 animate-spin mx-auto mb-2"></div>
+                        <p class="text-[10px]">Loading summaries...</p>
                     </div>
+                }
+                else
+                {
+                    <QuickGrid Items="@OrderSummaries" class="quick-grid">
+                        <PropertyColumn Property="@(s => s.SN)" Title="SN" Sortable="true" />
+                        <TemplateColumn Title="Customer Name">
+                            <button type="button" class="text-blue-600 hover:text-blue-800 hover:underline text-left text-xs" @onclick="() => ShowHistory(context)">
+                                @context.CustomerName
+                            </button>
+                        </TemplateColumn>
+                        <PropertyColumn Property="@(s => s.TotalOrder)" Title="TotalPO" Sortable="true" Align="Align.Center" />
+                        <PropertyColumn Property="@(s => s.RunningOrder)" Title="RunningPO" Sortable="true" Align="Align.Center" />
+                        <PropertyColumn Property="@(s => s.NotStartedOrder)" Title="WaitingPO" Sortable="true" Align="Align.Center" />
+                        
+                    </QuickGrid>
+
+                    @if (!OrderSummaries.Any())
+                    {
+                        <div class="py-8 text-center text-gray-400">
+                            <span class="oi oi-inbox text-2xl block mb-2 opacity-10"></span>
+                            <p class="text-[10px] font-medium">No records found</p>
+                        </div>
+                    }
                 }
             </div>
         </div>
 
         <!-- Middle Column: Production Status -->
         <div class="w-[45%] bg-white rounded-xl shadow p-1">
-            <div class="p-4 flex justify-between items-center bg-white">
+            <div class="p-2 flex justify-between items-center bg-white">
                 <h3 class="font-bold text-[#002d54] text-sm">Production Status</h3>
                 <button class="expand-btn">
                     <span class="oi oi-fullscreen-enter"></span>
                 </button>
             </div>
-            <div class="flex-1 overflow-auto px-4 pb-4">
-                 
+            <div class="flex-1 overflow-auto px-1 pb-1">
+                @if (IsOrderDetailLoading)
+                {
+                    <div class="py-12 text-center text-gray-400">
+                        <div class="spinner border-2 border-gray-100 border-t-blue-500 rounded-full w-4 h-4 animate-spin mx-auto mb-2"></div>
+                        <p class="text-[10px]">Loading details...</p>
+                    </div>
+                }
+                else
+                {
+                    <QuickGrid TGridItem="OrderStatusDetailDto" Items="@OrderStatusDetailList" class="quick-grid">
+                        <TemplateColumn Title="Customer Name">
+                            <button type="button" class="text-blue-600 hover:text-blue-800 hover:underline text-left text-xs" @onclick="() => ShowHistory((OrderStatusDetailDto)context)">
+                                @context.CustomerName
+                            </button>
+                        </TemplateColumn>
+
+                        <TemplateColumn Title="Order No">
+                            <button type="button" class="text-blue-600 hover:text-blue-800 hover:underline text-left text-xs" @onclick="() => ShowProductionFlow((OrderStatusDetailDto)context)">
+                                @context.OrderNo
+                            </button>
+                        </TemplateColumn>
+                        
+                        
+                        
+                        <PropertyColumn Property="@(s => s.OrderQty)" Title="OrderQty" Sortable="true"  Align="Align.Right" />
+                        <TemplateColumn Title="Shipping Date" Sortable="true">
+                            @(context.LatestShippingDate?.ToString("dd MMM yy") ?? "-")
+                        </TemplateColumn>
+                        <PropertyColumn Property="@(s => s.CoveragePercent)" Title="Progress" Sortable="true"  Align="Align.Right"/>
+                        <TemplateColumn Title="Projected" Sortable="true">
+                            @(context.Packingdate?.ToString("dd MMM yy") ?? "-")
+                        </TemplateColumn>
+                    </QuickGrid>
+
+                    @if (!OrderStatusDetailList.Any())
+                    {
+                        <div class="py-8 text-center text-gray-400">
+                            <span class="oi oi-inbox text-2xl block mb-2 opacity-10"></span>
+                            <p class="text-[10px] font-medium">No records found</p>
+                        </div>
+                    }
+                }
             </div>
         </div>
 
@@ -160,3 +261,305 @@
 
     </div>
 </div>
+
+<DataModal @bind-IsVisible="showModal" Title="Order Status Details" IsLoading="@IsLoading" FullScreen="true">
+    <div class="p-4 sm:p-6 max-h-[85vh] overflow-y-auto">
+        <!-- Header if needed -->
+ 
+
+        <!-- The responsive two-column container -->
+        <div class="flex flex-col lg:flex-row gap-6 lg:gap-8">
+
+            <!-- Left Grid Card -->
+            <div class="flex-1 min-w-0 bg-white rounded-lg shadow border border-gray-200 p-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800 tracking-tight">Order Summary</h3>
+                    <div class="relative w-full sm:w-64">
+                        <input type="text" 
+                               class="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200" 
+                               placeholder="Search customer..." 
+                               @bind="orderSearchTerm" 
+                               @bind:event="oninput" />
+                    </div>
+                </div>
+
+                <QuickGrid Items="@FilteredOrderSummariesPop" class="quick-grid w-full text-sm">
+                    <PropertyColumn Property="@(s => s.SN)"                            Title="SN"            Sortable="true"                    Class="text-center" />
+
+                    <TemplateColumn Title="Customer Name">
+                        <button type="button"
+                                class="text-blue-600 hover:text-blue-800 hover:underline text-left text-xs font-medium"
+                                @onclick="() => ShowHistory(context)">
+                            @context.CustomerName
+                        </button>
+                    </TemplateColumn>
+
+                    <PropertyColumn Property="@(s => s.TotalOrder)"                        Title="TotalPO"       Sortable="true"
+                                    Align="Align.Center" />
+
+                    <PropertyColumn Property="@(s => s.RunningOrder)"              Title="RunningPO"                      Sortable="true"
+                                    Align="Align.Center" />
+
+                    <PropertyColumn Property="@(s => s.NotStartedOrder)"    Title="WaitingPO"            Sortable="true"
+                                    Align="Align.Center" />
+                </QuickGrid>
+            </div>
+
+            <!-- Right Grid Card -->
+            <div class="flex-1 min-w-0 bg-white rounded-lg shadow border border-gray-200 p-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800 tracking-tight">Absent Buyer List</h3>
+                    <div class="relative w-full sm:w-64">
+                        <input type="text" 
+                               class="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200" 
+                               placeholder="Search customer..." 
+                               @bind="absentSearchTerm" 
+                               @bind:event="oninput" />
+                   
+                    </div>
+                </div>
+
+                <QuickGrid Items="@FilteredAbsentBuyerList" Pagination="@absentPagination" class="quick-grid w-full text-sm">
+                    <PropertyColumn Property="@(s => s.SN)" Title="SN"            Sortable="true"                    Class="text-center" />
+
+                    <TemplateColumn Title="Customer Name">
+                        <button type="button"
+                                class="text-blue-600 hover:text-blue-800 hover:underline text-left text-xs font-medium"
+                                @onclick="() => ShowHistory(context)">
+                            @context.CustomerName
+                        </button>
+                    </TemplateColumn>
+                 
+                    <PropertyColumn Property="@(s => s.JoinedDate)" Title="First PO" Sortable="true" />
+                    <PropertyColumn Property="@(s => s.RecentDate)" Title="Recent PO" Sortable="true"  />
+                    <PropertyColumn Property="@(s => s.TotalPcs)" Title="Total Pcs" Sortable="true"  />
+                    
+                </QuickGrid>
+                <div class="mt-4">
+                    <Paginator State="@absentPagination" />
+                </div>
+            </div>
+        </div>
+    </div>
+</DataModal>
+
+<DataModal @bind-IsVisible="showHistoryModal" Title="@($"Order History - {SelectedBuyerName}")" IsLoading="@IsHistoryLoading">
+    <div class="p-1">
+       <div class="max-w-4xl mx-auto p-1">
+        @if (SelectedBuyerProfile == null)
+{
+    <p>Loading profile...</p>
+}
+else
+{
+  <div class="bg-white rounded-lg overflow-hidden shadow-sm">
+  <div class="flex flex-col sm:flex-row">
+    <!-- Buyer Name - wider column -->
+    <div class="flex-[2] sm:flex-[4_0_0%] px-2 py-2 min-w-0">
+      <div class="text-[12px] font-medium text-gray-500 tracking-wide flex items-center gap-1.5">
+        BuyerName :
+        <span class="bg-gray-100 px-2 py-1 rounded text-gray-800 font-normal">
+          @SelectedBuyerProfile.CustomerName
+        </span>
+        <a href="mailto:@SelectedBuyerProfile.CustomerEmail" class="ml-2 text-gray-400 hover:text-gray-600">
+        <svg
+          class="w-4 h-4 text-gray-500 flex-shrink-0"
+          aria-hidden="true"
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="m3.5 5.5 7.893 6.036a1 1 0 0 0 1.214 0L20.5 5.5M4 19h16a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1Z"
+          />
+        </svg></a>
+      </div>
+    </div>
+
+    <!-- 1st P.O Received - narrower -->
+    <div class="flex-2 px-2 py-2 min-w-0">
+      <div class="text-[12px] font-medium text-gray-500 tracking-wide">
+        1st P.O:
+        <span class="bg-gray-100 px-2 py-1 rounded text-gray-800 font-normal ml-1.5">
+          @SelectedBuyerProfile.JoinedDate
+        </span>
+      </div>
+    </div>
+
+    <!-- Recent P.O Date - narrower -->
+    <div class="flex-2 px-2 py-2 min-w-0">
+      <div class="text-[12px] font-medium text-gray-500 tracking-wide">
+        Recent P.O:
+        <span class="bg-gray-100 px-2 py-1 rounded text-gray-800 font-normal ml-1.5">
+          @SelectedBuyerProfile.RecentDate
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+  }
+</div>
+    </div>  
+    <div class="p-1">
+
+        <QuickGrid Items="@SelectedBuyerHistory" class="quick-grid">
+            
+            <TemplateColumn Title="Year">
+                    <button type="button" class="text-blue-600 hover:text-blue-800 hover:underline text-left text-xs" @onclick="() => ShowYearlyHistory(context)">
+                        @context.Year
+                    </button>
+                </TemplateColumn>
+
+            <PropertyColumn Property="@(h => h.Knit)" Title="knit" Sortable="true" Align="Align.Right" />
+            <PropertyColumn Property="@(h => h.Weave)" Title="Weave" Sortable="true" Align="Align.Right" />
+            <PropertyColumn Property="@(h => h.Silk)" Title="Silk" Sortable="true" Align="Align.Right" />
+            <PropertyColumn Property="@(h => h.Linen)" Title="Linen" Sortable="true" Align="Align.Right" />
+            <PropertyColumn Property="@(h => h.Other)" Title="Other" Sortable="true" Align="Align.Right" />
+             <PropertyColumn Property="@(h => h.NoofPos)" Title="No of POs" Sortable="true"  Align="Align.Right"/>
+            <PropertyColumn Property="@(h => h.TotalWeight)" Title="Total Weight" Sortable="true" Align="Align.Right" />
+            <PropertyColumn Property="@(h => h.TotalPcs)" Title="Total Qty" Sortable="true" Align="Align.Right" />
+           
+        </QuickGrid>
+
+        @if (!SelectedBuyerHistory.Any() && !IsHistoryLoading)
+        {
+            <div class="py-12 text-center text-gray-400">
+                <span class="oi oi-inbox text-3xl block mb-2 opacity-10"></span>
+                <p class="text-xs font-medium">No history found for this buyer</p>
+            </div>
+        }
+    </div>
+</DataModal>
+<DataModal @bind-IsVisible="showHYearistoryModal" Title="@($"Year History - {SelectedYear}")" IsLoading="@IsYearHistoryLoading">
+    <div class="p-1">
+         <div class="max-w-4xl mx-auto p-1">
+        @if (SelectedBuyerProfile == null)
+{
+    <p>Loading profile...</p>
+}
+else
+{
+  <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+  <div class="flex flex-col sm:flex-row">
+    <!-- Buyer Name - slightly wider, with email icon -->
+    <div class="flex-[2] px-2 py-2 min-w-0">
+      <div class="text-xs font-medium text-gray-600 tracking-wide flex items-center gap-2">
+        Buyer Name:
+        <span class="bg-gray-100 px-2.5 py-1 rounded text-gray-800 font-normal">
+          @SelectedBuyerProfile.CustomerName
+        </span>
+        <!-- Clean envelope email icon (Heroicons style) -->
+        <a href="mailto:@SelectedBuyerProfile.CustomerEmail" class="ml-2 text-gray-400 hover:text-gray-600">
+        <svg
+          class="w-4 h-4 text-gray-500 flex-shrink-0"
+          aria-hidden="true"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+          />
+        </svg></a>
+      </div>
+    </div>
+
+    <!-- Year -->
+    <div class="flex-2 px-2 py-2 min-w-0">
+      <div class="text-xs font-medium text-gray-600 tracking-wide">
+        Year:
+        <span class="bg-gray-100 px-2.5 py-1 rounded text-gray-800 font-normal ml-2">
+          @SelectedBuyerProfile.OrderYear
+        </span>
+      </div>
+    </div>
+
+    <!-- Total Quantity -->
+    <div class="flex-2 px-2 py-2 min-w-0">
+      <div class="text-xs font-medium text-gray-600 tracking-wide">
+        Total Qty:
+        <span class="bg-gray-100 px-2.5 py-1 rounded text-gray-800 font-normal ml-2">
+          @SelectedBuyerProfile.TotalPcs
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+  }
+</div>
+        </div>
+    <div class="p-1">
+        <QuickGrid Items="@SelectedYearHistory" class="quick-grid">
+            
+            <PropertyColumn Property="@(h => h.MonthName)" Title="MonthName" Sortable="true" />
+
+            <PropertyColumn Property="@(h => h.Knit)" Title="knit" Sortable="true" />
+            <PropertyColumn Property="@(h => h.Weave)" Title="Weave" Sortable="true" />
+            <PropertyColumn Property="@(h => h.Silk)" Title="Silk" Sortable="true" Align="Align.Right" />
+            <PropertyColumn Property="@(h => h.Linen)" Title="Linen" Sortable="true" />
+            <PropertyColumn Property="@(h => h.Other)" Title="Other" Sortable="true" />
+             <PropertyColumn Property="@(h => h.NoofPos)" Title="No of POs" Sortable="true" />
+            <PropertyColumn Property="@(h => h.TotalWeight)" Title="Weight(Kg)" Sortable="true" />
+            <PropertyColumn Property="@(h => h.TotalPcs)" Title="Quantity" Sortable="true" Align="Align.Right" />
+           
+        </QuickGrid>
+
+        @if (!SelectedYearHistory.Any() && !IsHistoryLoading)
+        {
+            <div class="py-12 text-center text-gray-400">
+                <span class="oi oi-inbox text-3xl block mb-2 opacity-10"></span>
+                <p class="text-xs font-medium">No Year history found for this buyer</p>
+            </div>
+        }
+    </div>
+</DataModal>
+<DataModal
+    @bind-IsVisible="showProductionFlowModal"
+    Title="Production Flow"
+    IsLoading="false" FullScreen="true">
+    <div class="max-w mx-auto p-2">
+
+        <div class="flex flex-col lg:flex-row gap-4">
+
+            <!-- Left sidebar: running orders list (always visible) -->
+            <div class="w-full lg:w-[18%] bg-white shadow rounded p-2 shrink-0">
+                <h2 class="text-sm font-bold text-[#002d54] mb-2 px-1">Running Orders</h2>
+                <ul class="space-y-1">
+                    @foreach (var order in OrderStatusDetailList)
+                    {
+                        <li class="p-1.5 bg-gray-50 border border-gray-100 rounded cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition text-xs text-gray-700 truncate"
+                            @onclick="() => ShowProductionFlowByBuyer(order.CustomerId)">
+                            <span class="font-medium text-indigo-700">@order.CustomerName</span>
+                            <br />
+                            <span class="text-gray-500">@order.OrderNo</span>
+                        </li>
+                    }
+                </ul>
+            </div>
+
+            <!-- Right: Production Flow cards (loading only here) -->
+            <div class="flex-1 overflow-auto relative">
+                @if (IsProductionFlowLoading)
+                {
+                    <div class="absolute inset-0 flex flex-col items-center justify-center bg-white/80 z-10 rounded-lg">
+                        <div class="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-3"></div>
+                        <p class="text-xs text-gray-500 font-medium">Loading production flow...</p>
+                    </div>
+                }
+                <ProductionFlow Items="@ProductionFlowList" />
+            </div>
+
+        </div>
+    </div>
+</DataModal>
+

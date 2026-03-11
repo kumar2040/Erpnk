@@ -11,4 +11,5 @@ public interface IIdentityService
     Task<AuthResponse> VerifyMfaAsync(string email, string code);
     Task<string> EnableMfaAsync(string email);
     Task<AuthResponse> RegisterAsync(string email, string password, string firstName, string lastName);
+    Task<UserInfoDto?> GetUserByEmailAsync(string email);
 }

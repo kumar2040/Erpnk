@@ -45,7 +45,7 @@ public partial class OrdersDashboard : ComponentBase
         {
             try 
             {
-                var data = await BuyerOrderSummaryService.GetBuyerOrderSummaryAsync(2026, "All");
+                var data = await BuyerOrderSummaryService.GetBuyerOrderSummaryAsync(2026, "All", 0);
                 OrderStatusData = data.Select((d, index) => new OrderStatus(
                     (index + 1).ToString("D2"), 
                     d.CustomerName, 

@@ -74,7 +74,7 @@
                     </div>
                 </TemplateColumn>
 
-                <TemplateColumn Title="Status" Sortable="true" Property="@((UserListItemDto u) => u.IsActive)" class="px-4 py-4 border-b border-gray-100">
+                <TemplateColumn Title="Status" SortableBy="@(GridSort<UserListItemDto>.ByAscending(u => u.IsActive))" class="px-4 py-4 border-b border-gray-100">
                     @if (context.IsActive)
                     {
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">

@@ -60,6 +60,19 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = builder.Configuration["Jwt:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
     };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var cookieToken = context.Request.Cookies["X-Auth-Token"];
+            if (!string.IsNullOrEmpty(cookieToken))
+            {
+                context.Token = cookieToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 
 // 4. Custom Services
@@ -77,6 +90,7 @@ builder.Services.AddScoped<IDeviceService, DeviceService>();
 builder.Services.AddScoped<IWebAuthnService, WebAuthnService>();
 builder.Services.AddScoped<NkplmErp.Application.Interfaces.IUserService, NkplmErp.Application.Services.UserService>();
 builder.Services.AddScoped<IBuyerOrderSummaryService, NkplmErp.Infrastructure.Services.BuyerOrderSummaryService>();
+builder.Services.AddScoped<ILookupService, NkplmErp.Infrastructure.Services.LookupService>();
 
 builder.Services.AddMemoryCache();
 builder.Services.AddFido2(options =>
@@ -97,7 +111,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("BlazorPolicy", builder =>
     {
-        builder.WithOrigins("http://localhost:5075")
+        builder.WithOrigins("http://localhost:5075", "http://127.0.0.1:5075")
                .AllowAnyMethod()
                .AllowAnyHeader()
                .AllowCredentials();
@@ -158,13 +172,29 @@ builder.Services.AddScoped<NkplmErp.Infrastructure.Persistence.Seeders.DataSeede
 
 var app = builder.Build();
 
-// Run Seeder
+// Run Migrations and Seeder
 if (app.Environment.IsDevelopment())
 {
     using (var scope = app.Services.CreateScope())
     {
-        var seeder = scope.ServiceProvider.GetRequiredService<NkplmErp.Infrastructure.Persistence.Seeders.DataSeeder>();
-        await seeder.SeedAsync();
+        try
+        {
+            var securityContext = scope.ServiceProvider.GetRequiredService<SecurityDbContext>();
+            var appContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            
+            Console.WriteLine("Applying Migrations...");
+            await securityContext.Database.MigrateAsync();
+            await appContext.Database.MigrateAsync();
+            
+            Console.WriteLine("Seeding Data...");
+            var seeder = scope.ServiceProvider.GetRequiredService<NkplmErp.Infrastructure.Persistence.Seeders.DataSeeder>();
+            await seeder.SeedAsync();
+        }
+        catch (Exception ex)
+        {
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "An error occurred while seeding the database.");
+        }
     }
 }
 
