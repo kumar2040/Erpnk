@@ -69,6 +69,19 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
+    [Microsoft.AspNetCore.Authorization.Authorize]
+    [HttpPost("mfa-disable")]
+    public async Task<IActionResult> DisableMfa()
+    {
+        var email = GetUserEmail();
+        if (string.IsNullOrEmpty(email)) return Unauthorized("User email not found in claims");
+
+        var result = await _identityService.DisableMfaAsync(email);
+        if (!result.IsSuccess) return BadRequest(result);
+
+        return Ok(result);
+    }
+
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
@@ -103,19 +116,31 @@ public class AuthController : ControllerBase
     }
 
     [HttpGet("biometric-login-options")]
-    public async Task<IActionResult> GetBiometricLoginOptions([FromQuery] string email)
+    public async Task<IActionResult> GetBiometricLoginOptions()
     {
-        if (string.IsNullOrEmpty(email)) return BadRequest("Email is required");
-
-        var options = await _webAuthnService.GetLoginOptionsAsync(email);
+        var email = Request.Query["email"].ToString();
+        var options = await _webAuthnService.GetLoginOptionsAsync(string.IsNullOrEmpty(email) ? null : email);
         return Ok(options);
     }
 
     [HttpPost("biometric-login")]
     public async Task<IActionResult> VerifyBiometricLogin([FromBody] BiometricVerifyLoginRequest request)
     {
-        var result = await _webAuthnService.VerifyLoginAsync(request.Email, request.AssertionResponse);
+        var result = await _webAuthnService.VerifyLoginAsync(request.Email, request.SessionId, request.AssertionResponse);
         if (result.IsSuccess) SetAuthCookies(result);
+        return Ok(result);
+    }
+
+    [Microsoft.AspNetCore.Authorization.Authorize]
+    [HttpDelete("biometric-device/{deviceId}")]
+    public async Task<IActionResult> DeleteBiometricDevice(Guid deviceId)
+    {
+        var email = GetUserEmail();
+        if (string.IsNullOrEmpty(email)) return Unauthorized();
+
+        var result = await _identityService.RemoveBiometricAsync(email, deviceId);
+        if (!result.IsSuccess) return BadRequest(result);
+
         return Ok(result);
     }
 

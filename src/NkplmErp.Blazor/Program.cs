@@ -51,6 +51,13 @@ builder.Services.AddHttpClient<NkplmErp.Blazor.Services.Lookup.ILookupClient, Nk
 })
 .AddHttpMessageHandler<AuthenticationDelegatingHandler>();
 
+builder.Services.AddHttpClient<NkplmErp.Blazor.Services.Users.UsersApiClient>(client => 
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddHttpMessageHandler<AuthenticationDelegatingHandler>();
+
 Console.WriteLine("DEBUG: Program.cs - Typed HttpClient registrations complete.");
 
 
@@ -87,6 +94,12 @@ app.MapPost("/auth/set-token", async (HttpContext context) =>
     }
     await Task.CompletedTask;
     return Results.Redirect("/main-dashboard");
+});
+
+app.MapGet("/auth/logout", (HttpContext context) => 
+{
+    context.Response.Cookies.Delete("X-Auth-Token");
+    return Results.Redirect("/login");
 });
 
 app.MapBlazorHub();

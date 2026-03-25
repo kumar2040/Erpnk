@@ -1,3 +1,4 @@
+using System;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Components.Authorization;
 using NkplmErp.Shared.DTOs;
@@ -11,8 +12,10 @@ public interface IAuthService
     Task Logout();
     Task<AuthResponse> VerifyMfa(MfaVerifyRequest mfaRequest);
     Task<AuthResponse> ConfirmMfa(string code);
+    Task<AuthResponse> DisableMfa();
     Task<AuthResponse> RegisterBiometric(string deviceName);
-    Task<AuthResponse> LoginBiometric(string email);
+    Task<AuthResponse> LoginBiometric(string? email = null);
+    Task<AuthResponse> RemoveBiometric(Guid deviceId);
     Task<MfaSetupResponse> GetMfaSetup();
     Task<UserInfoDto?> GetUserInfo(CancellationToken cancellationToken = default);
 }
@@ -132,12 +135,24 @@ public class AuthService : IAuthService, IDisposable
         return await response.Content.ReadFromJsonAsync<AuthResponse>() ?? new AuthResponse { IsSuccess = false, Message = "Failed to confirm MFA." };
     }
 
+    public async Task<AuthResponse> DisableMfa()
+    {
+        var response = await _httpClient.PostAsync("api/v1/auth/mfa-disable", null);
+        return await response.Content.ReadFromJsonAsync<AuthResponse>() ?? new AuthResponse { IsSuccess = false, Message = "Failed to disable MFA." };
+    }
+
     public async Task Logout()
     {
         _refreshTimer?.Stop();
         _refreshTimer = null;
         await _httpClient.PostAsync("api/v1/auth/logout", null);
         _tokenProvider.Token = null;
+    }
+
+    public async Task<AuthResponse> RemoveBiometric(Guid deviceId)
+    {
+        var response = await _httpClient.DeleteAsync($"api/v1/auth/biometric-device/{deviceId}");
+        return await response.Content.ReadFromJsonAsync<AuthResponse>() ?? new AuthResponse { IsSuccess = false };
     }
 
     public async Task<AuthResponse> RegisterBiometric(string deviceName)
@@ -173,19 +188,28 @@ public class AuthService : IAuthService, IDisposable
         }
     }
 
-    public async Task<AuthResponse> LoginBiometric(string email)
+    public async Task<AuthResponse> LoginBiometric(string? email = null)
     {
         try
         {
-            var optionsResponse = await _httpClient.GetAsync($"api/v1/auth/biometric-login-options?email={email}");
+            var url = string.IsNullOrEmpty(email) ? "api/v1/auth/biometric-login-options" : $"api/v1/auth/biometric-login-options?email={email}";
+            var optionsResponse = await _httpClient.GetAsync(url);
             if (!optionsResponse.IsSuccessStatusCode) return new AuthResponse { IsSuccess = false, Message = "Failed to get login options" };
 
             var optionsJson = await optionsResponse.Content.ReadAsStringAsync();
+            var optionsDoc = System.Text.Json.JsonDocument.Parse(optionsJson);
+            var challengeBase64Url = optionsDoc.RootElement.GetProperty("challenge").GetString() ?? "";
+            
+            // Fido2NetLib represents challenge as a Base64Url string in its JSON serialization
+            var challengeBytes = DecodeBase64Url(challengeBase64Url);
+            var sessionId = Convert.ToBase64String(challengeBytes);
+
             var assertionResponse = await _jsRuntime.InvokeAsync<AuthenticatorAssertionRawResponse>("webAuthnInterop.login", new object[] { optionsJson });
 
             var verifyRequest = new BiometricVerifyLoginRequest
             {
-                Email = email,
+                Email = email ?? "",
+                SessionId = sessionId,
                 AssertionResponse = assertionResponse
             };
 
@@ -237,5 +261,16 @@ public class AuthService : IAuthService, IDisposable
     public void Dispose()
     {
         _refreshTimer?.Dispose();
+    }
+
+    private static byte[] DecodeBase64Url(string input)
+    {
+        string s = input.Replace('-', '+').Replace('_', '/');
+        switch (s.Length % 4)
+        {
+            case 2: s += "=="; break;
+            case 3: s += "="; break;
+        }
+        return Convert.FromBase64String(s);
     }
 }

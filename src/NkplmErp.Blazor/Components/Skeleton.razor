@@ -1,0 +1,89 @@
+@namespace NkplmErp.Blazor.Components
+
+@if (Type == SkeletonType.Text)
+{
+    var styles = $"width: {Width}; height: {Height};";
+    if (!string.IsNullOrEmpty(Style)) { styles += " " + Style; }
+    <div class="skeleton-base skeleton-text @Class" style="@styles"></div>
+}
+else if (Type == SkeletonType.Circle)
+{
+    var styles = $"width: {Width}; height: {Height};"; // Usually Width and Height should be equal for Circle
+    if (!string.IsNullOrEmpty(Style)) { styles += " " + Style; }
+    <div class="skeleton-base skeleton-circle @Class" style="@styles"></div>
+}
+else if (Type == SkeletonType.Rectangle)
+{
+    var styles = $"width: {Width}; height: {Height};";
+    if (!string.IsNullOrEmpty(Style)) { styles += " " + Style; }
+    <div class="skeleton-base skeleton-rectangle @Class" style="@styles"></div>
+}
+else if (Type == SkeletonType.Table)
+{
+    <div class="skeleton-wrapper @Class" style="@Style">
+        <div class="skeleton-table">
+            <div class="skeleton-table-header">
+                @for (int i = 0; i < Columns; i++)
+                {
+                    <div class="skeleton-base skeleton-text"></div>
+                }
+            </div>
+            @for (int r = 0; r < Rows; r++)
+            {
+                <div class="skeleton-table-row">
+                    @for (int i = 0; i < Columns; i++)
+                    {
+                        <div class="skeleton-base skeleton-text"></div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}
+else if (Type == SkeletonType.Card)
+{
+    <div class="skeleton-card @Class" style="@Style">
+        <div class="skeleton-base skeleton-rectangle skeleton-card-img"></div>
+        <div class="skeleton-card-body">
+            <div class="skeleton-base skeleton-text" style="width: 70%"></div>
+            <div class="skeleton-base skeleton-text" style="width: 100%"></div>
+            <div class="skeleton-base skeleton-text" style="width: 40%"></div>
+        </div>
+    </div>
+}
+else if (Type == SkeletonType.Profile)
+{
+    <div class="skeleton-profile @Class" style="@Style">
+        <div class="skeleton-base skeleton-circle skeleton-profile-avatar"></div>
+        <div class="skeleton-profile-info">
+            <div class="skeleton-base skeleton-text" style="width: 120px; height: 1.25rem;"></div>
+            <div class="skeleton-base skeleton-text" style="width: 80px; height: 0.875rem;"></div>
+        </div>
+    </div>
+}
+
+@code {
+    public enum SkeletonType
+    {
+        Text,
+        Circle,
+        Rectangle,
+        Table,
+        Card,
+        Profile
+    }
+
+    [Parameter] public SkeletonType Type { get; set; } = SkeletonType.Text;
+    
+    // Used for Text, Circle, and Rectangle
+    [Parameter] public string Width { get; set; } = "100%";
+    [Parameter] public string Height { get; set; } = "1rem";
+    
+    // Used for Table
+    [Parameter] public int Rows { get; set; } = 3;
+    [Parameter] public int Columns { get; set; } = 4;
+    
+    // General styling
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string Style { get; set; } = "";
+}

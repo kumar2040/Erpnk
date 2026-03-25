@@ -68,4 +68,30 @@ public class BuyerOrderSummaryController(IBuyerOrderSummaryService buyerOrderSum
         var result = await _buyerOrderSummaryService.GetProductionFlowAsync(buyerId,orderNo);
         return Ok(result);
     }
+    [HttpGet("departmentstock/{Department}")]
+    public async Task<IActionResult> GetdepartmentStock([FromQuery] string? OrderNo, string Department)
+    {
+        var result = await _buyerOrderSummaryService.GetdepartmentStockAsync(OrderNo,Department);
+        return Ok(result);
+    }
+    [HttpGet("order-view/{orderNo}")]
+    public async Task<IActionResult> GetOrderViewDataAsync(string orderNo)
+    {
+        var result = await _buyerOrderSummaryService.GetOrderViewDataAsync(orderNo);
+        return Ok(result);
+    }
+
+    [HttpGet("style-details/{styleNo}")]
+    public async Task<IActionResult> GetStyleDetails(string styleNo)
+    {
+        var result = await _buyerOrderSummaryService.GetStyleDetailsAsync(styleNo);
+        return Ok(result);
+    }
+
+    [HttpGet("buyers-orders/{buyerId}")]
+    public async Task<IActionResult> GetBuyersOrders(int buyerId, [FromQuery] int flag)
+    {
+        var result = await _buyerOrderSummaryService.GetBuyersOrdersAsync(buyerId, flag);
+        return Ok(result);
+    }
 }

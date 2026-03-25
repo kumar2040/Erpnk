@@ -1,0 +1,60 @@
+.line-graph-wrapper {
+    transition: all 0.3s ease;
+}
+
+.preserve-aspect {
+    overflow: visible !important;
+}
+
+.draw-line {
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+    animation: dash-draw 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes dash-draw {
+    from {
+        stroke-dashoffset: 1000;
+    }
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+.axis-label {
+    font-size: 10px;
+    font-weight: 700;
+    fill: #64748b;
+    text-transform: uppercase;
+}
+
+.point-group {
+    cursor: pointer;
+}
+
+.point-circle {
+    transition: all 0.2s ease;
+}
+
+.point-group:hover .point-circle {
+    r: 6;
+    stroke-width: 3;
+}
+
+.tooltip {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.point-group:hover .tooltip {
+    opacity: 1;
+}
+
+.axis-title {
+    font-size: 9px;
+    font-weight: 800;
+    fill: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}

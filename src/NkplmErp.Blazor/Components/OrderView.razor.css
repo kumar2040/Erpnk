@@ -1,0 +1,109 @@
+.order-view-container {
+    width: 100%;
+}
+
+/* QuickGrid Container Resets */
+::deep .quick-grid-container {
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border-radius: 0;
+}
+
+::deep .quick-grid-container > div.overflow-y-auto {
+    flex: 1;
+    min-height: 0;
+    scrollbar-width: thin;
+}
+
+/* QuickGrid specific resets */
+::deep .quick-grid {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+::deep .quick-grid th {
+    background-color: #002D54 !important; /* Dark blue matching standard theme */
+    color: #ffffff !important;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 0.35rem 0.2rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: none;
+    position: sticky;
+    top: 0;
+    z-index: 20; /* High enough to stay above data cells */
+    text-transform: capitalize;
+}
+
+::deep .quick-grid td {
+    font-size: 11px;
+    padding: 0.35rem 0.2rem;
+    border-right: 1px solid rgba(203, 213, 225, 0.4);
+    border-bottom: 1px solid rgba(203, 213, 225, 0.4);
+    vertical-align: middle;
+}
+
+/* Column Widths (Shared between Header/Body and Footer) */
+::deep .col-sn      { width: 3rem   !important; }
+::deep .col-style   { width: 14rem  !important; }
+::deep .col-product { width: 12rem  !important; }
+::deep .col-color   { width: 8rem   !important; }
+::deep .col-size    { width: 3.5rem !important; }
+::deep .col-pieces  { width: 4.5rem !important; }
+::deep .col-guage   { width: 4rem   !important; }
+::deep .col-ply     { width: 3rem   !important; }
+::deep .col-yarn    { width: 12rem  !important; }
+::deep .col-print   { width: 6rem   !important; }
+::deep .col-knsl    { width: 6rem   !important; }
+::deep .col-daysreq { width: 5rem   !important; }
+
+::deep .truncate-text {
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+}
+
+/* Sticky Footer Definitions */
+::deep .footer-container {
+    background-color: #f8fafc;
+    border-top: 2px solid #cbd5e1;
+    z-index: 30; /* Higher than header to overlap scrolling content if they meet */
+    padding: 0;
+    position: sticky;
+    bottom: 0;
+}
+
+::deep .grand-total-table {
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    margin-bottom: 0 !important;
+}
+
+::deep .grand-total-table td {
+    padding: 0.35rem 0.2rem;
+    border-right: 1px solid rgba(203, 213, 225, 0.4);
+    font-size: 12px;
+    vertical-align: middle;
+}
+
+::deep .footer-label {
+    background-color: #f8fafc;
+    /* Calculated width based on leading columns: StyleNo + ProductName + Color + Guage + Ply + Yarn */
+    /* 10 + 12 + 8 + 4 + 3 + 12 = 49rem */
+    width: 49rem;
+}
+
+::deep .footer-val-size { 
+    font-weight: 800; 
+    color: #1e293b; 
+    background-color: #f1f5f9; 
+}

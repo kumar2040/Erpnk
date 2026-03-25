@@ -21,6 +21,7 @@ public class BiometricVerifyRegistrationRequest
 
 public class BiometricVerifyLoginRequest
 {
-    public string Email { get; set; } = string.Empty;
+    public string? Email { get; set; } = string.Empty;
+    public string SessionId { get; set; } = string.Empty;
     public AuthenticatorAssertionRawResponse AssertionResponse { get; set; } = null!;
 }

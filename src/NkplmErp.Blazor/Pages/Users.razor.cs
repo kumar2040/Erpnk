@@ -6,7 +6,7 @@ namespace NkplmErp.Blazor.Pages;
 
 public partial class Users
 {
-    [Inject] private HttpClient Http { get; set; } = default!;
+    [Inject] private NkplmErp.Blazor.Services.Users.UsersApiClient Api { get; set; } = default!;
     [Inject] private NavigationManager Navigation { get; set; } = default!;
 
     private List<UserListItemDto> users = new();
@@ -47,7 +47,7 @@ public partial class Users
 
         try
         {
-            var response = await Http.GetAsync("api/v1/users");
+            var response = await Api.Client.GetAsync("api/v1/users");
             
             if (response.IsSuccessStatusCode)
             {
@@ -77,8 +77,8 @@ public partial class Users
         {
             var term = searchTerm.ToLower();
             filtered = filtered.Where(u => 
-                u.FullName.ToLower().Contains(term) || 
-                u.Email.ToLower().Contains(term));
+                (u.FullName != null && u.FullName.ToLower().Contains(term)) || 
+                (u.Email != null && u.Email.ToLower().Contains(term)));
         }
 
         // Filter by status
@@ -117,7 +117,7 @@ public partial class Users
 
         try
         {
-            var user = await Http.GetFromJsonAsync<UserResponseDto>($"api/v1/users/{userId}");
+            var user = await Api.Client.GetFromJsonAsync<UserResponseDto>($"api/v1/users/{userId}");
             if (user != null)
             {
                 formData = new UserFormData
@@ -165,7 +165,7 @@ public partial class Users
                     Roles = formData.Roles
                 };
 
-                response = await Http.PutAsJsonAsync($"api/v1/users/{editingUserId}", updateDto);
+                response = await Api.Client.PutAsJsonAsync($"api/v1/users/{editingUserId}", updateDto);
             }
             else
             {
@@ -180,7 +180,7 @@ public partial class Users
                     Roles = formData.Roles
                 };
 
-                response = await Http.PostAsJsonAsync("api/v1/users", createDto);
+                response = await Api.Client.PostAsJsonAsync("api/v1/users", createDto);
             }
 
             if (response.IsSuccessStatusCode)
@@ -241,7 +241,7 @@ public partial class Users
 
         try
         {
-            var response = await Http.DeleteAsync($"api/v1/users/{deleteUserId}");
+            var response = await Api.Client.DeleteAsync($"api/v1/users/{deleteUserId}");
 
             if (response.IsSuccessStatusCode)
             {

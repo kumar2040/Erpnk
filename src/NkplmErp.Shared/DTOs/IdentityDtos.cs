@@ -21,11 +21,19 @@ public class TokenRefreshRequest
     public string RefreshToken { get; set; } = string.Empty;
 }
 
+public class BiometricDeviceDto
+{
+    public Guid Id { get; set; }
+    public string DeviceFriendlyName { get; set; } = string.Empty;
+    public DateTime RegDate { get; set; }
+}
+
 public class MfaSetupResponse
 {
     public bool IsMfaEnabled { get; set; }
     public string? SharedKey { get; set; }
     public string? AuthenticatorUri { get; set; }
+    public List<BiometricDeviceDto> BiometricDevices { get; set; } = new();
 }
 
 public class MfaVerifyRequest

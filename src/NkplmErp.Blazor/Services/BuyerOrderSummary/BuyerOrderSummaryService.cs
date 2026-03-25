@@ -246,4 +246,114 @@ public class BuyerOrderSummaryService : IBuyerOrderSummaryService
             return Enumerable.Empty<ProductionFlowDto>();
         }
     }
+
+    public async Task<IEnumerable<DepartmentStockDto>> GetdepartmentStockAsync(string? OrderNo, string Department)
+    {
+        var url = $"api/v1/BuyerOrderSummary/departmentstock/{Uri.EscapeDataString(Department)}";
+        if (!string.IsNullOrEmpty(OrderNo))
+        {
+            url += $"?OrderNo={Uri.EscapeDataString(OrderNo)}";
+        }
+
+        try
+        {
+            _logger.LogInformation("DEBUG: GetdepartmentStockAsync - Requesting URL: {Url}", url);
+            var response = await _httpClient.GetAsync(url);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var data = await response.Content.ReadFromJsonAsync<IEnumerable<DepartmentStockDto>>() ?? Enumerable.Empty<DepartmentStockDto>();
+                _logger.LogInformation("DEBUG: GetdepartmentStockAsync - Received {Count} records", data.Count());
+                return data;
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            _logger.LogError("DEBUG: GetdepartmentStockAsync - API Error {StatusCode}: {Content}", response.StatusCode, errorContent);
+            return Enumerable.Empty<DepartmentStockDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "DEBUG: GetdepartmentStockAsync - Unexpected error");
+            return Enumerable.Empty<DepartmentStockDto>();
+        }
+    }
+    public async Task<IEnumerable<OrderViewHeaderDto>> GetOrderViewDataAsync(string orderNo)
+    {
+        var url = $"api/v1/BuyerOrderSummary/order-view/{Uri.EscapeDataString(orderNo)}";
+        
+        try
+        {
+            _logger.LogInformation("DEBUG: GetOrderViewDataAsync - Requesting URL: {Url}", url);
+            var response = await _httpClient.GetAsync(url);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var data = await response.Content.ReadFromJsonAsync<IEnumerable<OrderViewHeaderDto>>() ?? Enumerable.Empty<OrderViewHeaderDto>();
+                _logger.LogInformation("DEBUG: GetOrderViewDataAsync - Received {Count} records", data.Count());
+                return data;
+            }
+            
+            var errorContent = await response.Content.ReadAsStringAsync();
+            _logger.LogError("DEBUG: GetOrderViewDataAsync - API Error {StatusCode}: {Content}", response.StatusCode, errorContent);
+            return Enumerable.Empty<OrderViewHeaderDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "DEBUG: GetOrderViewDataAsync - Unexpected error");
+            return Enumerable.Empty<OrderViewHeaderDto>();
+        }
+    }
+    public async Task<StyleDetailsDto> GetStyleDetailsAsync(string styleNo)
+    {
+        var url = $"api/v1/BuyerOrderSummary/style-details/{Uri.EscapeDataString(styleNo)}";
+        
+        try
+        {
+            _logger.LogInformation("DEBUG: GetStyleDetailsAsync - Requesting URL: {Url}", url);
+            var response = await _httpClient.GetAsync(url);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var data = await response.Content.ReadFromJsonAsync<StyleDetailsDto>() ?? new StyleDetailsDto();
+                _logger.LogInformation("DEBUG: GetStyleDetailsAsync - Success");
+                return data;
+            }
+            
+            var errorContent = await response.Content.ReadAsStringAsync();
+            _logger.LogError("DEBUG: GetStyleDetailsAsync - API Error {StatusCode}: {Content}", response.StatusCode, errorContent);
+            return new StyleDetailsDto();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "DEBUG: GetStyleDetailsAsync - Unexpected error");
+            return new StyleDetailsDto();
+        }
+    }
+
+    public async Task<IEnumerable<BuyerOrderDto>> GetBuyersOrdersAsync(int buyerId, int flag)
+    {
+        var url = $"api/v1/BuyerOrderSummary/buyers-orders/{buyerId}?flag={flag}";
+
+        try
+        {
+            _logger.LogInformation("DEBUG: GetBuyersOrdersAsync - Requesting URL: {Url}", url);
+            var response = await _httpClient.GetAsync(url);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var data = await response.Content.ReadFromJsonAsync<IEnumerable<BuyerOrderDto>>() ?? Enumerable.Empty<BuyerOrderDto>();
+                _logger.LogInformation("DEBUG: GetBuyersOrdersAsync - Received {Count} records", data.Count());
+                return data;
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            _logger.LogError("DEBUG: GetBuyersOrdersAsync - API Error {StatusCode}: {Content}", response.StatusCode, errorContent);
+            return Enumerable.Empty<BuyerOrderDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "DEBUG: GetBuyersOrdersAsync - Unexpected error");
+            return Enumerable.Empty<BuyerOrderDto>();
+        }
+    }
 }

@@ -16,6 +16,7 @@ public class IdentityService(
     IMfaService mfaService,
     IDeviceService deviceService,
     ICurrentUserService currentUserService,
+    IWebAuthnService webAuthnService,
     SecurityDbContext context) : IIdentityService
 {
     private readonly UserManager<User> _userManager = userManager;
@@ -24,6 +25,7 @@ public class IdentityService(
     private readonly IMfaService _mfaService = mfaService;
     private readonly IDeviceService _deviceService = deviceService;
     private readonly ICurrentUserService _currentUserService = currentUserService;
+    private readonly IWebAuthnService _webAuthnService = webAuthnService;
     private readonly SecurityDbContext _context = context;
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
@@ -182,8 +184,10 @@ public class IdentityService(
         var user = await _userManager.FindByEmailAsync(email);
         if (user == null) return new MfaSetupResponse { IsMfaEnabled = false };
 
+        var biometricDevices = await _webAuthnService.ListCredentialsAsync(email);
+
         if (user.MfaEnabled)
-            return new MfaSetupResponse { IsMfaEnabled = true };
+            return new MfaSetupResponse { IsMfaEnabled = true, BiometricDevices = biometricDevices };
 
         var secret = _mfaService.GenerateSecret();
         user.MfaSecret = secret;
@@ -193,8 +197,14 @@ public class IdentityService(
         {
             IsMfaEnabled = false,
             SharedKey = secret,
-            AuthenticatorUri = _mfaService.GetQrCodeUri(email, secret)
+            AuthenticatorUri = _mfaService.GetQrCodeUri(email, secret),
+            BiometricDevices = biometricDevices
         };
+    }
+
+    public async Task<AuthResponse> RemoveBiometricAsync(string email, Guid deviceId)
+    {
+        return await _webAuthnService.RemoveCredentialAsync(email, deviceId);
     }
 
     public async Task<AuthResponse> ConfirmMfaRegistrationAsync(string email, string code)
@@ -223,6 +233,29 @@ public class IdentityService(
         // Legacy method, keeping for compatibility if needed, but redirects to setup
         var setup = await GetMfaSetupAsync(email);
         return setup.AuthenticatorUri ?? "";
+    }
+
+    public async Task<AuthResponse> DisableMfaAsync(string email)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user == null) return new AuthResponse { IsSuccess = false, Message = "User not found." };
+
+        user.MfaEnabled = false;
+        user.MfaSecret = null;
+        var result = await _userManager.UpdateAsync(user);
+
+        if (!result.Succeeded)
+        {
+            return new AuthResponse 
+            { 
+                IsSuccess = false, 
+                Message = string.Join(", ", result.Errors.Select(e => e.Description)) 
+            };
+        }
+
+        await _auditService.LogAsync(user.Id, "MfaDisabled", "User", user.Id, "", "MFA Disabled by User");
+
+        return new AuthResponse { IsSuccess = true, Message = "MFA disabled successfully." };
     }
 
     public async Task<AuthResponse> RegisterAsync(string email, string password, string firstName, string lastName)

@@ -1,0 +1,33 @@
+ 
+
+<div class="space-y-4">
+    @if (ShowProfile)
+    {
+        <div class="flex flex-col sm:flex-row bg-blue-50/20 rounded-xl border-l-4 border-l-gray-200 border border-blue-50 p-3 mb-4 shadow-sm overflow-hidden">
+            <div class="flex-[2] sm:flex-[4_0_0%] px-2 py-1">
+                <Skeleton Width="5rem" Height="0.75rem" Class="mb-2 opacity-50" />
+                <Skeleton Width="12rem" Height="2rem" />
+            </div>
+            <div class="flex-2 px-2 py-1 border-l border-blue-50 ml-2">
+                <Skeleton Width="6rem" Height="0.75rem" Class="mb-2 opacity-50" />
+                <Skeleton Width="7rem" Height="1.5rem" />
+            </div>
+            <div class="flex-2 px-2 py-1 border-l border-blue-50 ml-2">
+                <Skeleton Width="6rem" Height="0.75rem" Class="mb-2 opacity-50" />
+                <Skeleton Width="7rem" Height="1.5rem" />
+            </div>
+        </div>
+    }
+
+    <div class="space-y-2 mt-4">
+        @for (int i = 0; i < RowCount; i++)
+        {
+            <Skeleton Height="2.5rem" Class="opacity-30" />
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public int RowCount { get; set; } = 5;
+    [Parameter] public bool ShowProfile { get; set; } = true;
+}

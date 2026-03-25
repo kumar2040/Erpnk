@@ -1,0 +1,237 @@
+@namespace NkplmErp.Blazor.Components
+@using NkplmErp.Shared.DTOs
+
+@{
+    var info = Details?.GeneralInfo;
+}
+
+<div class="style-component grid grid-cols-1 lg:grid-cols-2 gap-4 p-2">
+    <!-- Left Column: Information Cards -->
+    <div class="flex flex-col gap-4">
+        <!-- General Information Card -->
+        <div class="bg-white rounded-none shadow-sm border border-slate-200 overflow-hidden">
+            <div class="border-b border-slate-100 bg-white px-4 py-3.5 flex justify-between items-center">
+                <h3 class="text-[14px] font-[900] text-[#2e2b8e] uppercase tracking-wide">General Information</h3>
+                @if (IsLoading)
+                {
+                    <div class="w-16 h-5 bg-slate-100 rounded-none animate-pulse"></div>
+                }
+                else
+                {
+                    <span class="text-[11px] font-bold text-slate-500 bg-slate-100/80 px-3 py-1 rounded-none border border-slate-200/50">ID: @(info?.StyleId.ToString() ?? "-")</span>
+                }
+            </div>
+            <div class="p-3 flex flex-col gap-3">
+                @if (IsLoading)
+                {
+                    <!-- Description Skeleton -->
+                    <div class="flex flex-col gap-1 pb-1.5 border-b border-slate-50">
+                        <div class="w-10 h-2 bg-slate-100 rounded animate-pulse"></div>
+                        <div class="w-full h-3 bg-slate-100 rounded animate-pulse"></div>
+                    </div>
+                    
+                    <!-- Yarn/Print Skeleton -->
+                    <div class="grid grid-cols-2 gap-3 border-b border-slate-50 pb-1.5">
+                        <div class="flex flex-col gap-1">
+                            <div class="w-8 h-2 bg-slate-100 rounded animate-pulse"></div>
+                            <div class="w-16 h-3 bg-slate-100 rounded animate-pulse"></div>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <div class="w-8 h-2 bg-slate-100 rounded animate-pulse"></div>
+                            <div class="w-16 h-3 bg-slate-100 rounded animate-pulse"></div>
+                        </div>
+                    </div>
+
+                    <!-- Stats Skeleton -->
+                    <div class="grid grid-cols-3 gap-2 border-b border-slate-50 pb-1.5">
+                        <div class="flex flex-col gap-1">
+                            <div class="w-6 h-2 bg-slate-100 rounded animate-pulse"></div>
+                            <div class="w-10 h-3 bg-slate-100 rounded animate-pulse"></div>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <div class="w-6 h-2 bg-slate-100 rounded animate-pulse"></div>
+                            <div class="w-10 h-3 bg-slate-100 rounded animate-pulse"></div>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <div class="w-6 h-2 bg-slate-100 rounded animate-pulse"></div>
+                            <div class="w-10 h-3 bg-slate-100 rounded animate-pulse"></div>
+                        </div>
+                    </div>
+
+                    <!-- Silks Skeleton -->
+                    <div class="flex flex-col gap-1 border-b border-slate-50 pb-1.5">
+                        <div class="w-8 h-2 bg-slate-100 rounded animate-pulse"></div>
+                        <div class="w-24 h-2.5 bg-slate-100 rounded animate-pulse"></div>
+                    </div>
+
+                    <!-- Warp/Weft Skeleton -->
+                    <div class="flex flex-col gap-1">
+                        <div class="w-12 h-2 bg-slate-100 rounded animate-pulse"></div>
+                        <div class="w-24 h-2.5 bg-slate-100 rounded animate-pulse"></div>
+                    </div>
+                }
+                else
+                {
+                    @if (!string.IsNullOrEmpty(info?.StyleDesc))
+                    {
+                        <div class="flex flex-col gap-0.5 pb-1.5 border-b border-slate-50">
+                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Description</span>
+                            <span class="text-[12px] font-medium text-slate-800 leading-tight">@info.StyleDesc</span>
+                        </div>
+                    }
+                    
+                    <div class="grid grid-cols-2 gap-3 border-b border-slate-50 pb-1.5">
+                        <div class="flex flex-col gap-0.5">
+                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Yarn</span>
+                            <span class="text-[12px] font-black text-slate-800">@(info?.Yarn ?? "-")</span>
+                        </div>
+                        <div class="flex flex-col gap-0.5">
+                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Print</span>
+                            <span class="text-[12px] font-black text-slate-800">@(info?.StylePrint ?? "-")</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 border-b border-slate-50 pb-1.5">
+                        <div class="flex flex-col gap-0.5">
+                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Gauge</span>
+                            <span class="text-[12px] font-black text-slate-800">@(info?.StyleGuage ?? "-")</span>
+                        </div>
+                        <div class="flex flex-col gap-0.5">
+                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Ply</span>
+                            <span class="text-[12px] font-black text-slate-800">@(info?.StylePly ?? "-")</span>
+                        </div>
+                        <div class="flex flex-col gap-0.5">
+                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Net Wt</span>
+                            <span class="text-[12px] font-black text-slate-800">@(info?.NetWet?.ToString("N2") ?? "-")g</span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-0.5 border-b border-slate-50 pb-1.5">
+                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Silks</span>
+                        <span class="text-[10px] font-medium text-slate-600 leading-tight italic">@(info?.Silks ?? "-")</span>
+                    </div>
+
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Warp/Weft Yarns</span>
+                        <span class="text-[10px] font-medium text-slate-600 leading-tight italic">@(info?.WarpWeftYarns ?? "-")</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="bg-white rounded-none shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+            <div class="border-b border-slate-100 bg-white px-4 py-3 flex justify-between items-center">
+                <h3 class="text-[13px] font-[900] text-[#2e2b8e] uppercase tracking-wide">Timeline</h3>
+                @if (IsLoading)
+                {
+                    <div class="w-10 h-3 bg-slate-100 rounded animate-pulse"></div>
+                }
+                else if (Details?.DeliveryTimeline != null)
+                {
+                    <span class="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-none border border-slate-100">@Details.DeliveryTimeline.Count entries</span>
+                }
+            </div>
+            <div class="px-3 py-1 overflow-auto max-h-[250px]">
+                <table class="w-full text-left">
+                    <thead class="sticky top-0 bg-white z-10">
+                        <tr class="text-[9px] font-black text-slate-400 uppercase border-b border-slate-100 bg-white">
+                            <th class="py-1.5">Year</th>
+                            <th class="py-1.5 text-right">Qty</th>
+                            <th class="py-1.5 text-right">Total</th>
+                            <th class="py-1.5 text-center">NoOfColors</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        @if (IsLoading)
+                        {
+                            @for (int i = 0; i < 5; i++)
+                            {
+                                <tr>
+                                    <td class="py-2"><div class="w-16 h-2.5 bg-slate-100 rounded animate-pulse"></div></td>
+                                    <td class="py-2"><div class="w-10 h-2.5 bg-slate-100 rounded ml-auto animate-pulse"></div></td>
+                                    <td class="py-2"><div class="w-10 h-2.5 bg-slate-100 rounded ml-auto animate-pulse"></div></td>
+                                    <td class="py-2"><div class="w-4 h-2.5 bg-slate-100 rounded mx-auto animate-pulse"></div></td>
+                                </tr>
+                            }
+                        }
+                        else if (Details?.DeliveryTimeline != null && Details.DeliveryTimeline.Any())
+                        {
+                            @foreach (var entry in Details.DeliveryTimeline)
+                            {
+                                <tr class="hover:bg-slate-50/50 transition-colors">
+                                    <td class="py-1.5 text-[11px] font-bold text-slate-700">@entry.DeliveryYear</td>
+                                    <td class="py-1.5 text-[11px] font-black text-slate-900 text-right">@entry.QtyDeliveredThisYear.ToString("N0")</td>
+                                    <td class="py-1.5 text-[11px] font-black text-indigo-600 text-right">@entry.CumulativeQtyDelivered.ToString("N0")</td>
+                                    <td class="py-1.5 text-[11px] font-bold text-slate-400 text-center">@entry.NumOrderLines</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="4" class="py-8 text-center text-[10px] text-slate-400 font-medium">No history</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Visual Asset & Stats -->
+    <div class="flex flex-col gap-4">
+        @if (IsLoading)
+        {
+            <div class="rounded-none overflow-hidden shadow-md border border-slate-100 bg-slate-50 aspect-[16/10] relative">
+                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skeleton-shimmer"></div>
+                <div class="absolute bottom-3 left-4 flex flex-col gap-1.5">
+                    <div class="w-16 h-2 bg-slate-200 rounded animate-pulse"></div>
+                    <div class="w-32 h-4 bg-slate-200 rounded animate-pulse"></div>
+                </div>
+            </div>
+
+            <div class="bg-indigo-900/10 rounded-none p-4 border border-indigo-100 shadow-sm flex flex-col justify-center items-center text-center">
+                <div class="w-8 h-8 bg-indigo-100 rounded-none animate-pulse mb-2"></div>
+                <div class="w-12 h-2 bg-indigo-100 rounded animate-pulse mb-1"></div>
+                <div class="w-20 h-5 bg-indigo-100 rounded animate-pulse"></div>
+            </div>
+        }
+        else
+        {
+            <div class="relative rounded-none overflow-hidden shadow-md border border-slate-200 bg-slate-100 group aspect-[16/10]">
+                <img src="images/silk_cocoons_macro.png" alt="Silk Production" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-900/50 to-transparent pointer-events-none"></div>
+                <div class="absolute bottom-3 left-4">
+                    <span class="text-white text-[9px] font-black uppercase tracking-widest opacity-80">Process Excellence</span>
+                    <h4 class="text-white text-sm font-black leading-tight">Pure Silk Manufacturing</h4>
+                </div>
+            </div>
+
+            <div class="bg-indigo-900 rounded-none p-4 text-white shadow-lg flex flex-col justify-center items-center text-center">
+                <div class="w-8 h-8 bg-white/10 rounded-none flex items-center justify-center mb-2">
+                    <i class="fa-solid fa-bullseye text-indigo-300 text-sm"></i>
+                </div>
+                <h5 class="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-0.5">Production Target</h5>
+                <div class="text-xl font-black mb-0.5">@(info?.StyleTarget?.ToString("N0") ?? "-")</div>
+                <p class="text-[9px] opacity-60 italic max-w-[150px] leading-tight">Standard units per cycle</p>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .style-component {
+        background-color: transparent;
+    }
+
+    .skeleton-shimmer {
+        background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
+        background-size: 200% 100%;
+        animation: shimmer-anim 1.5s infinite;
+    }
+
+    @@keyframes shimmer-anim {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+    }
+</style>

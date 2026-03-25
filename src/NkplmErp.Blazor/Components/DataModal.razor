@@ -8,52 +8,59 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background-color: rgba(0, 0, 0, 0.5);
+    
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: center;
+        padding-top: 2.5rem;
         z-index: 1000;
+        animation: fade-in 0.3s ease-out;
     }
 
     .modal-content {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        
+        
         max-width: 800px;
-        width: 90%;
+        width: 99%;
         max-height: 80vh;
         overflow: hidden;
         display: flex;
         flex-direction: column;
+        transform: scale(1);
+        animation: retina-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+     
     }
 
     .modal-header {
-        padding: 0.5rem;
-        border-bottom: 1px solid #e5e7eb;
+       
+        padding:0rem;
+        border-bottom: 1px solid #f9f9f9;
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
 
     .modal-body {
-        padding: 0.4rem;
+        padding:0rem;
         overflow-y: auto;
         flex: 1;
+        background: transparent;
     }
 
     .modal-footer {
         padding: 1rem 1.5rem;
-        border-top: 1px solid #e5e7eb;
+        background: rgba(255, 255, 255, 0.4);
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
         display: flex;
         justify-content: flex-end;
-        gap: 0.5rem;
+        gap: 0.75rem;
     }
 
     .close-btn {
         background: none;
         border: none;
         font-size: 1.5rem;
-        color: #6b7280;
+        color: #991b1b;
         cursor: pointer;
         padding: 0;
         width: 32px;
@@ -64,10 +71,23 @@
         border-radius: 6px;
         transition: all 0.2s;
     }
+     /* compact modal */
+    .modal-backdrop {
+      background: rgba(239, 237, 237, 0.4);
+      backdrop-filter: blur(5px);
+    }
+    .hidden-modal { display: none; }
+    .modal-liquid-compact {
+      
+      border: 1px solid rgba(246, 241, 241, 0.8);
+      border-radius: 0;
+      box-shadow: 0 20px 35px -12px #0b1e30, inset 0 1px 4px white;
+      
+    }
 
     .close-btn:hover {
-        background-color: #f3f4f6;
-        color: #002d54;
+        background-color: #fee2e2;
+        color: #7f1d1d;
     }
 
     .loading-spinner {
@@ -92,11 +112,21 @@
     }
 
     .modal-content.full-screen {
-        width: 100vw;
-        max-width: 100vw;
-        height: 100vh;
-        max-height: 100vh;
+        width: calc(100vw - 80px);
+        max-width: calc(100vw - 80px);
+        height: calc(100vh - 80px);
+        max-height: calc(100vh - 80px);
         border-radius: 0;
+    }
+
+    @@keyframes retina-pop {
+        from { opacity: 0; transform: scale(0.95) translateY(10px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    @@keyframes fade-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
     }
     .modal-body table{
         width  :100%;
@@ -118,22 +148,34 @@
 
 @if (IsVisible)
 {
-    <div class="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300" @onclick="CloseModal">
+    <div class="modal-overlay fixed inset-0 flex items-center justify-center modal-backdrop duration-300" 
+         style="z-index: @_currentZIndex;"
+         @onmousedown="HandleClick"
+         @ontouchstart="HandleClick">
         @{
             var style = string.IsNullOrEmpty(MaxWidth) ? "" : $"max-width: {MaxWidth};";
         }
-        <div class="modal-content @(FullScreen ? "full-screen" : "") relative h-full sm:h-[90vh] sm:w-[90vw] bg-white sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200" 
+        <div class="modal-content @(FullScreen ? "full-screen" : "h-full sm:h-[90vh] sm:w-[90vw]") relative shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 modal-liquid-compact" 
              style="@style"
+             @onmousedown="HandleClick"
+             @ontouchstart="HandleClick"
              @onclick:stopPropagation="true"
              @attributes="AdditionalAttributes">
-            <div class="modal-header">
-                <h3 class="font-bold text-[#002d54] text-lg">@Title</h3>
-                <button class="close-btn" @onclick="CloseModal">
-                    <span>&times;</span>
+            <div class="modal-header px-3 py-2 border-b border-slate-200 bg-slate-50/80 backdrop-blur-sm">
+                <div class="flex items-center gap-2.5">
+                    <h3 class="font-[900] text-[#2e2b8e] text-base uppercase tracking-wider">@Title</h3>
+                    @if (!string.IsNullOrEmpty(BadgeText))
+                    {
+                        <span class="text-[10px] font-bold text-slate-500 bg-white/80 px-2.5 py-0.5 rounded-full border border-slate-200/60 shadow-sm">ID: @BadgeText</span>
+                    }
+                    @HeaderExtra
+                </div>
+                <button class="close-btn w-7 h-7 text-lg opacity-70 hover:opacity-100 transition-opacity" @onclick="CloseModal">
+                    <span class="leading-none">&times;</span>
                 </button>
             </div>
             
-            <div class="modal-body">
+            <div class="modal-body p-1">
                 @if (IsLoading)
                 {
                     <div class="loading-spinner">
@@ -147,12 +189,7 @@
                 }
             </div>
 
-            <div class="modal-footer">
-                <button class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium" 
-                        @onclick="CloseModal">
-                    Close
-                </button>
-            </div>
+            
         </div>
     </div>
 }

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("NkplmErp.Shared")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e6f1d028737ea43f2b6cf21da0a3e60dd79168f0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+24e879155c37196264b24ce47ea8b6f9ecdc18e3")]
 [assembly: System.Reflection.AssemblyProductAttribute("NkplmErp.Shared")]
 [assembly: System.Reflection.AssemblyTitleAttribute("NkplmErp.Shared")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

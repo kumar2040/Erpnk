@@ -7,6 +7,8 @@ public interface IWebAuthnService
 {
     Task<CredentialCreateOptions> GetRegistrationOptionsAsync(string email, string deviceName);
     Task<AuthResponse> VerifyRegistrationAsync(string email, string deviceName, AuthenticatorAttestationRawResponse attestationResponse);
-    Task<AssertionOptions> GetLoginOptionsAsync(string email);
-    Task<AuthResponse> VerifyLoginAsync(string email, AuthenticatorAssertionRawResponse assertionResponse);
+    Task<AssertionOptions> GetLoginOptionsAsync(string? email);
+    Task<AuthResponse> VerifyLoginAsync(string? email, string sessionId, AuthenticatorAssertionRawResponse assertionResponse);
+    Task<List<BiometricDeviceDto>> ListCredentialsAsync(string email);
+    Task<AuthResponse> RemoveCredentialAsync(string email, Guid credentialId);
 }

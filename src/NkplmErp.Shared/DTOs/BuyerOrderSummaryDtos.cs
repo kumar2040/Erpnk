@@ -16,6 +16,7 @@ public class BuyerOrderSummaryDto
 
 public class BuyerOrderHistoryDto
 {
+    public long SN { get; set; }
     public int CustomerId { get; set; }
     public int Year { get; set; }
     public int Silk { get; set; } 
@@ -58,6 +59,7 @@ public class AbsentBuyer()
 }
 public class OrderStatusDetailDto
 {
+    public long SN { get; set; }
     public int CustomerId { get; set; }
     public string CustomerName { get; set; } = string.Empty;
     public string OrderNo { get; set; } = string.Empty;
@@ -72,6 +74,7 @@ public class OrderStatusDetailDto
     public int? DaysRemaining { get; set; }
     public string DecisionRemark { get; set; } = string.Empty;
     public string RiskFlag { get; set; } = string.Empty;
+    public string? Message { get; set; } // Capture procedure messages
 }
 
 /// <summary>
@@ -129,6 +132,15 @@ public class ProductionFlowDto
     // ── Max delivery / shipment dates ──────────────────────────────────────
     /// <summary>Knitting max date</summary>
     public DateOnly? KNT_maxDate { get; set; }
+    public DateOnly? KCH_maxDate { get; set; }
+    public DateOnly? DYE_maxDate { get; set; }
+    public DateOnly? HUB_maxDate { get; set; }
+    public DateOnly? LNK_maxDate { get; set; }
+    public DateOnly? MND_maxDate { get; set; }
+    public DateOnly? PRN_maxDate { get; set; }
+    
+    public DateOnly? WSH_maxDate { get; set; }
+    
     /// <summary>Production max date</summary>
     public DateOnly? PRS_maxDate { get; set; }
     /// <summary>Packing max date</summary>
@@ -138,4 +150,82 @@ public class ProductionFlowDto
     /// <summary>Shipment max date</summary>
     public DateOnly? SHP_maxDate { get; set; }
     public int  BuyerId { get; set; }
+    public string? Message { get; set; } // Capture procedure messages
+}
+public class DepartmentStockDto
+{
+    public string? OrderId  { get; set; }
+    public string StyleNo   { get; set; } = string.Empty;
+    public string Color     { get; set; } = string.Empty;
+    public string? Message  { get; set; } // Capture procedure messages
+
+    // ← dynamic sizes go here
+    public Dictionary<string, int> Sizes { get; set; } 
+            = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+}
+
+public class OrderViewHeaderDto
+{
+    public DateOnly? ShippingDate { get; set; }
+    public string? Guage { get; set; }
+    public string? Ply { get; set; }
+    public int? StyleTarget { get; set; }
+    public string StyleNo { get; set; } = string.Empty;
+    public string Color { get; set; } = string.Empty;
+    public int Qty { get; set; }
+    public string? Yarn { get; set; }
+    public string? ProductName { get; set; }
+    public string? StylePrint { get; set; }
+    public string? KnSl { get; set; }
+    public int? DaysRequired { get; set; }
+    public int BuyerId { get; set; }
+    
+    public Dictionary<string, int> Sizes { get; set; } = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+}
+
+public class StyleGeneralInfoDto
+{
+    public double? NetWet { get; set; }
+    public string StyleNo { get; set; } = string.Empty;
+    public string? StylePrint { get; set; }
+    public string? StyleDesc { get; set; }
+    public int StyleId { get; set; }
+    public string? StylePly { get; set; }
+    public string? StyleGuage { get; set; }
+    public int? StyleTarget { get; set; }
+    public string? Yarn { get; set; }
+    public string? Silks { get; set; }
+    public string? WarpWeftYarns { get; set; }
+}
+
+public class StyleDeliveryTimelineDto
+{
+    public string? DeliveryYear { get; set; }
+    public int QtyDeliveredThisYear { get; set; }
+    public int CumulativeQtyDelivered { get; set; }
+    public int NumOrderLines { get; set; }
+}
+
+
+public class BuyerOrderDto
+{
+    public long SN { get; set; }
+    public string OrderNo { get; set; } = string.Empty;
+    public string Collection { get; set; } = string.Empty;
+    public string? PoNo { get; set; }
+    public DateTime ShippingDate { get; set; }
+    
+    // Dynamic categories (Knit, Silk, Linen, Weave, Other, etc.)
+    public Dictionary<string, int> Categories { get; set; } 
+        = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+    public int TotalKnitterItems { get; set; }
+    public int TotalOrderPics { get; set; } 
+    public int Difference { get; set; }
+}
+
+public class StyleDetailsDto
+{
+    public StyleGeneralInfoDto? GeneralInfo { get; set; }
+    public List<StyleDeliveryTimelineDto> DeliveryTimeline { get; set; } = new();
 }

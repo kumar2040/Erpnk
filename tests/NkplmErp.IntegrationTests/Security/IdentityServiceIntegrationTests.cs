@@ -74,8 +74,9 @@ public class IdentityServiceIntegrationTests : IDisposable
         var httpContextAccessorMock = new Mock<Microsoft.AspNetCore.Http.IHttpContextAccessor>();
         var deviceService = new DeviceService(httpContextAccessorMock.Object);
         var currentUserServiceMock = new Mock<ICurrentUserService>();
+        var webAuthnServiceMock = new Mock<IWebAuthnService>();
 
-        _sut = new IdentityService(_userManager, jwtTokenService, auditService, mfaService, deviceService, currentUserServiceMock.Object, _context);
+        _sut = new IdentityService(_userManager, jwtTokenService, auditService, mfaService, deviceService, currentUserServiceMock.Object, webAuthnServiceMock.Object, _context);
     }
 
     public void Dispose()

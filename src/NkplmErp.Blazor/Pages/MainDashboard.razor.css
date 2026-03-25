@@ -1,0 +1,137 @@
+.quick-grid-container {
+    max-height: 500px;
+    overflow: auto;
+    position: relative;
+    border: 1px solid #e2e8f0;
+    border-radius: 0;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+/* Base table styles for sticky behavior */
+.quick-grid-container ::deep table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+
+/* Sticky Header Cells - Compact & Dark Blue */
+.quick-grid-container ::deep th {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background-color: #002D54 !important;
+    color: #ffffff !important;
+    padding: 0.2rem 0.3rem !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    font-size: 0.6rem !important;
+    letter-spacing: 0.05em !important;
+    border-bottom: none !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    white-space: nowrap;
+}
+
+/* Ensure background stays solid on scroll */
+.quick-grid-container ::deep thead {
+    position: sticky;
+    top: 0;
+    z-index: 35;
+}
+
+/* Row hover effects and cell padding - Compact Styles */
+.quick-grid-container ::deep td {
+    padding: 0.12rem 0.3rem !important;
+    font-size: 0.75rem !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    background-color: white;
+    white-space: nowrap;
+}
+
+.quick-grid-container ::deep tr:hover td {
+    background-color: #f8fafc !important;
+}
+
+/* Column Widths (Alignment) */
+.col-sn { width: 40px; min-width: 40px; text-align: center; }
+.col-customer { width: auto; min-width: 150px; text-align: left; }
+.col-totalpo { width: 70px; min-width: 70px; text-align: center; }
+.col-runningpo { width: 70px; min-width: 70px; text-align: center; }
+.col-waitingpo { width: 70px; min-width: 70px; text-align: center; }
+.col-year { width: 60px; min-width: 60px; text-align: center; }
+.col-month { width: 80px; min-width: 80px; text-align: left; }
+.col-knit { width: 60px; min-width: 60px; text-align: center; }
+.col-weave { width: 60px; min-width: 60px; text-align: center; }
+.col-silk { width: 60px; min-width: 60px; text-align: center; }
+.col-linen { width: 60px; min-width: 60px; text-align: center; }
+.col-other { width: 60px; min-width: 60px; text-align: center; }
+.col-noofpos { width: 80px; min-width: 80px; text-align: center; }
+.col-weight { width: 90px; min-width: 90px; text-align: center; }
+.col-qty { width: 90px; min-width: 90px; text-align: center; }
+.col-order-no { width: 120px; min-width: 120px; text-align: left; }
+.col-coll { width: 60px; min-width: 60px; text-align: center; }
+.col-po-no { width: 100px; min-width: 100px; text-align: left; }
+.col-ship-date { width: 90px; min-width: 90px; text-align: center; }
+.col-recv { width: 70px; min-width: 70px; text-align: center; }
+.col-order-pics { width: 70px; min-width: 70px; text-align: center; }
+.col-diff { width: 70px; min-width: 70px; text-align: center; }
+
+/* Grand Total Footer Styles - Attached and Aligned */
+.footer-container {
+    position: sticky;
+    bottom: 0;
+    z-index: 35;
+    background: white;
+    box-shadow: 0 -4px 6px -1px rgb(0 0 0 / 0.05);
+}
+
+.grand-total-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border-top: 2px solid #e2e8f0;
+}
+
+.grand-total-table td {
+    padding: 0.2rem 0.3rem !important;
+    font-size: 0.75rem;
+    background: #f8fafc; /* bg-slate-50 */
+    font-weight: 800;
+}
+
+.footer-label {
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    color: #64748b; /* text-slate-500 */
+    text-align: right;
+    padding-right: 0.6rem !important;
+}
+
+.footer-val {
+    color: #0f172a; /* text-slate-900 */
+    text-align: center;
+}
+
+/* Pagination Footer Styles */
+.pagination-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 35;
+    background: white;
+    box-shadow: 0 -4px 6px -1px rgb(0 0 0 / 0.05);
+    border-top: 2px solid #e2e8f0;
+    padding: 0.5rem 1rem;
+    display: flex;
+    justify-content: flex-end; /* Align right */
+    align-items: center;
+}
+
+/* Optional target for Blazor's default paginator to make it more compact/styled */
+.pagination-footer ::deep nav {
+    margin: 0;
+    font-size: 0.75rem; 
+}
+.pagination-footer ::deep nav button {
+    padding: 0.2rem 0.6rem;
+    margin-left: 0.25rem;
+    border-radius: 0.25rem;
+}

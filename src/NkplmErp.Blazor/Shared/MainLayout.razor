@@ -1,4 +1,7 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
+@using NkplmErp.Blazor.Services.Auth
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
 
 <PageTitle>NkplmErp.Blazor</PageTitle>
 
@@ -31,10 +34,17 @@
                 <AuthorizeView>
                     <Authorized>
                         <div class="flex items-center gap-3">
-                <div class="text-right">
-                    <p class="text-xs font-bold text-gray-800">Admin</p>
-                    <p class="text-[10px] text-gray-400">Administrator</p>
-                </div>
+                        @{
+                            var firstName = context.User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.GivenName)?.Value 
+                                         ?? context.User.Claims.FirstOrDefault(c => c.Type == "given_name")?.Value
+                                         ?? context.User.Claims.FirstOrDefault(c => c.Type.Equals("firstName", StringComparison.OrdinalIgnoreCase))?.Value
+                                         ?? context.User.Identity?.Name?.Split('@')[0]
+                                         ?? "User";
+                        }
+                <a href="/profile" class="text-right block hover:opacity-80 transition-opacity" title="View Profile">
+                    <p class="text-xs font-bold text-gray-800">@firstName</p>
+                    <p class="text-[10px] text-gray-400">@(context.User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value ?? "Staff")</p>
+                </a>
                             <!-- Notifications -->
                             <button
                                 class="relative flex h-10 w-10 items-center justify-center rounded-full text-amber-500 hover:bg-gray-50 transition-colors">
@@ -43,9 +53,13 @@
                                 class="absolute top-2 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">1</span>
                             </button>
                 <div class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-xs ring-2 ring-emerald-50 ring-offset-2">
-                     <img src="https://ui-avatars.com/api/?name=@(context.User.Identity?.Name ?? "User")&background=random" alt="Avatar" class="h-full w-full object-cover" />
+                     <img src="https://ui-avatars.com/api/?name=@firstName&background=random" alt="Avatar" class="h-full w-full object-cover" />
                 </div>
-                <span class="oi oi-chevron-bottom text-[10px] text-gray-400"></span>
+                <span class="oi oi-chevron-bottom text-[10px] text-gray-400 mr-2"></span>
+                <button class="h-8 px-3 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-all font-black text-[10px] border border-red-100 flex items-center gap-1.5 shadow-sm group" @onclick="HandleLogout">
+                    <span class="oi oi-account-logout transition-transform group-hover:translate-x-0.5" style="font-size: 10px;"></span>
+                    LOGOUT
+                </button>
             </div>
                          
                     </Authorized>
@@ -70,7 +84,11 @@
 </div>
 
 @code {
-
+    private async Task HandleLogout()
+    {
+        await AuthService.Logout();
+        Navigation.NavigateTo("/auth/logout", forceLoad: true);
+    }
 }
 
 <NkplmErp.Blazor.Shared.Components.ToastContainer />

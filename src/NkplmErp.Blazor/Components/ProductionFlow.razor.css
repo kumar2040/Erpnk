@@ -1,0 +1,191 @@
+/* QuickGrid Container */
+::deep .quick-grid-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 0;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+/* Scrollable body area inside QuickGrid */
+::deep .quick-grid-container>div.overflow-y-auto {
+    flex: 1;
+    min-height: 0;
+    scrollbar-width: thin;
+    overflow-y: auto;
+}
+
+/* QuickGrid table — MUST be fixed so col widths propagate to footer */
+::deep .quick-grid {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+/* Sticky header */
+::deep .quick-grid thead {
+    position: sticky;
+    top: 0;
+    z-index: 35;
+}
+
+/* Header cells */
+::deep .quick-grid th {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background-color: #002D54 !important;
+    color: #ffffff !important;
+    padding: 0.4rem 0.6rem !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    font-size: 0.6rem !important;
+    letter-spacing: 0.05em !important;
+    border-bottom: none !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    white-space: nowrap;
+}
+
+/* Data cells */
+::deep .quick-grid td {
+    padding: 0.4rem 0.6rem !important;
+    font-size: 0.75rem !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    border-right: 1px solid rgba(203, 213, 225, 0.4);
+    background-color: white;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+::deep .quick-grid tr:hover td {
+    background-color: #f8fafc !important;
+}
+
+/* ── Column Widths (shared by QuickGrid th AND footer td via class names) ── */
+::deep .col-order {
+    width: 100px;
+    min-width: 100px;
+}
+
+::deep .col-style {
+    width: 120px;
+    min-width: 120px;
+}
+
+::deep .col-color {
+    width: 100px;
+    min-width: 100px;
+}
+
+::deep .col-size {
+    width: 60px;
+    min-width: 60px;
+    text-align: center;
+}
+
+::deep .col-total {
+    width: 80px;
+    min-width: 80px;
+    text-align: right;
+    padding-right: 1.1rem !important;
+    /* Matches Tailwind pr-6 */
+}
+
+/* ── Sticky Grand-Total Footer ── */
+::deep .footer-container {
+    position: sticky;
+    bottom: 0;
+    z-index: 35;
+    background: #f8fafc;
+    /* Matches .grand-total-table td background */
+    box-shadow: 0 -4px 6px -1px rgb(0 0 0 / 0.05);
+}
+
+::deep .grand-total-table {
+    width: 100%;
+    table-layout: fixed;
+    /* mirrors .quick-grid — ensures column alignment */
+    border-collapse: separate;
+    border-spacing: 0;
+    border-top: 2px solid #e2e8f0;
+    margin-bottom: 0 !important;
+}
+
+::deep .grand-total-table td {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.75rem;
+    background: #f8fafc;
+    font-weight: 800;
+    border-right: 1px solid rgba(203, 213, 225, 0.4);
+    vertical-align: middle;
+}
+
+::deep .footer-label {
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    color: #64748b;
+    text-align: right;
+    padding-right: 1.5rem !important;
+}
+
+::deep .footer-val-size {
+    color: #4f46e5;
+    text-align: center;
+}
+
+::deep .footer-val-total {
+    color: #0f172a;
+    text-align: right;
+    border-left: 1px solid #e2e8f0;
+}
+
+/* ── Responsive Timeline Container ── */
+.timeline-scroll-container {
+    width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    position: relative;
+    background: white;
+}
+
+/* On Desktop, we prevent horizontal scroll and let the chart scale to fit */
+@media (min-width: 1024px) {
+    .timeline-scroll-container {
+        overflow-x: hidden !important;
+    }
+}
+
+.timeline-inner {
+    min-width: 1300px;
+    position: relative;
+    height: 650px;
+}
+
+@media (min-width: 1024px) {
+    .timeline-inner {
+        min-width: 100%;
+        max-width: 100%;
+    }
+}
+
+/* Custom Scrollbar for Timeline */
+.timeline-scroll-container::-webkit-scrollbar {
+    height: 6px;
+}
+
+.timeline-scroll-container::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.timeline-scroll-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+.timeline-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}

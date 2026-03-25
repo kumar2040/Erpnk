@@ -51,7 +51,7 @@ public class WebAuthnService(
             AuthenticatorSelection = new AuthenticatorSelection
             {
                 UserVerification = UserVerificationRequirement.Required,
-                ResidentKey = ResidentKeyRequirement.Discouraged
+                ResidentKey = ResidentKeyRequirement.Required
             },
             AttestationPreference = AttestationConveyancePreference.None
         });
@@ -109,14 +109,21 @@ public class WebAuthnService(
         }
     }
 
-    public async Task<AssertionOptions> GetLoginOptionsAsync(string email)
+    public async Task<AssertionOptions> GetLoginOptionsAsync(string? email)
     {
-        var user = await _userManager.FindByEmailAsync(email) ?? throw new Exception("User not found");
+        List<PublicKeyCredentialDescriptor> existingCredentials = new();
 
-        var existingCredentials = await _context.BiometricCredentials
-            .Where(c => c.UserId == user.Id)
-            .Select(c => new PublicKeyCredentialDescriptor(c.DescriptorId))
-            .ToListAsync();
+        if (!string.IsNullOrEmpty(email))
+        {
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user != null)
+            {
+                existingCredentials = await _context.BiometricCredentials
+                    .Where(c => c.UserId == user.Id)
+                    .Select(c => new PublicKeyCredentialDescriptor(c.DescriptorId))
+                    .ToListAsync();
+            }
+        }
 
         var options = _fido2.GetAssertionOptions(new GetAssertionOptionsParams
         {
@@ -124,23 +131,26 @@ public class WebAuthnService(
             UserVerification = UserVerificationRequirement.Required
         });
 
-        _cache.Set($"webauthn_login_{user.Id}", options, TimeSpan.FromMinutes(5));
+        var sessionId = Convert.ToBase64String(options.Challenge);
+        _cache.Set($"webauthn_login_{sessionId}", options, TimeSpan.FromMinutes(5));
 
         return options;
     }
 
-    public async Task<AuthResponse> VerifyLoginAsync(string email, AuthenticatorAssertionRawResponse assertionResponse)
+    public async Task<AuthResponse> VerifyLoginAsync(string? email, string sessionId, AuthenticatorAssertionRawResponse assertionResponse)
     {
-        var user = await _userManager.FindByEmailAsync(email);
-        if (user is null) return new AuthResponse { IsSuccess = false, Message = "User not found" };
-
-        if (!_cache.TryGetValue($"webauthn_login_{user.Id}", out AssertionOptions? options) || options is null)
+        if (!_cache.TryGetValue($"webauthn_login_{sessionId}", out AssertionOptions? options) || options is null)
         {
             return new AuthResponse { IsSuccess = false, Message = "Login session expired" };
         }
 
-        var cred = await _context.BiometricCredentials.FirstOrDefaultAsync(c => c.UserId == user.Id);
+        var credIdBytes = assertionResponse.RawId;
+        var cred = await _context.BiometricCredentials.FirstOrDefaultAsync(c => c.DescriptorId == credIdBytes);
+        
         if (cred is null) return new AuthResponse { IsSuccess = false, Message = "No biometric device found" };
+
+        var user = await _userManager.FindByIdAsync(cred.UserId);
+        if (user is null) return new AuthResponse { IsSuccess = false, Message = "User not found" };
 
         VerifyAssertionResult success;
         try
@@ -191,5 +201,39 @@ public class WebAuthnService(
             RefreshToken = refreshToken,
             Message = "Login successful"
         };
+    }
+    
+    public async Task<List<BiometricDeviceDto>> ListCredentialsAsync(string email)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user == null) return new List<BiometricDeviceDto>();
+
+        return await _context.BiometricCredentials
+            .Where(c => c.UserId == user.Id)
+            .Select(c => new BiometricDeviceDto
+            {
+                Id = c.Id,
+                DeviceFriendlyName = c.DeviceFriendlyName,
+                RegDate = c.RegDate
+            })
+            .ToListAsync();
+    }
+
+    public async Task<AuthResponse> RemoveCredentialAsync(string email, Guid credentialId)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user == null) return new AuthResponse { IsSuccess = false, Message = "User not found" };
+
+        var credential = await _context.BiometricCredentials
+            .FirstOrDefaultAsync(c => c.Id == credentialId && c.UserId == user.Id);
+
+        if (credential == null) return new AuthResponse { IsSuccess = false, Message = "Credential not found" };
+
+        _context.BiometricCredentials.Remove(credential);
+        await _context.SaveChangesAsync();
+
+        await _auditService.LogAsync(user.Id, "BiometricRemoved", "Device", credentialId.ToString(), "", $"Removed device: {credential.DeviceFriendlyName}");
+
+        return new AuthResponse { IsSuccess = true, Message = "Device removed successfully" };
     }
 }

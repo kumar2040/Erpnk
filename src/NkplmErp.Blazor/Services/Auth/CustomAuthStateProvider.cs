@@ -12,8 +12,6 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
     public string? AuthToken => _tokenProvider.Token;
     public Guid InstanceId { get; } = Guid.NewGuid();
 
-    private Task<AuthenticationState>? _cachedStateTask;
-
     public CustomAuthStateProvider(
         TokenProvider tokenProvider,
         ILogger<CustomAuthStateProvider> logger)
