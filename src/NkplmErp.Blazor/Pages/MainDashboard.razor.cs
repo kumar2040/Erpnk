@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.QuickGrid;
 using NkplmErp.Application.Interfaces;
 using NkplmErp.Shared.DTOs;
+using NkplmErp.Blazor.Services.Auth;
 
 namespace NkplmErp.Blazor.Pages;
 
@@ -113,13 +114,16 @@ public partial class MainDashboard : ComponentBase
 
                 if (user?.Identity?.IsAuthenticated == true)
                 {
-                    Console.WriteLine(">>>> [DEBUG] MainDashboard - User IS authenticated. Starting LoadData.");
-                    Logger.LogInformation("DEBUG: MainDashboard - User IS authenticated. Starting LoadData.");
-                    await LoadData();
-                    Console.WriteLine(">>>> [DEBUG] MainDashboard - LoadData complete. Starting LoadBuyerYears.");
+                    Console.WriteLine(">>>> [DEBUG] MainDashboard - User IS authenticated. Starting LoadBuyerYears.");
+                    Logger.LogInformation("DEBUG: MainDashboard - User IS authenticated. Starting initialization sequence.");
+                    
+                    // Load available years FIRST so we have a valid CurrentYear from the database
                     await LoadBuyerYears();
-                    await LoadOrderStatusDetail(2026, "Running");
-                    Console.WriteLine(">>>> [DEBUG] MainDashboard - LoadBuyerYears complete. Calling StateHasChanged.");
+                    Console.WriteLine($">>>> [DEBUG] MainDashboard - Years loaded. CurrentYear is now: {CurrentYear}. Starting LoadData.");
+                    
+                    await LoadData();
+                    await LoadOrderStatusDetail(CurrentYear, "Running");
+                    Console.WriteLine(">>>> [DEBUG] MainDashboard - LoadData complete.");
                     StateHasChanged();
                 }
                 else
@@ -138,6 +142,8 @@ public partial class MainDashboard : ComponentBase
             }
         }
     }
+
+
 
     private async Task LoadData(int count = 10)   
     {

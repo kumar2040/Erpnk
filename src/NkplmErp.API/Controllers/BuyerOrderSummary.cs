@@ -74,15 +74,15 @@ public class BuyerOrderSummaryController(IBuyerOrderSummaryService buyerOrderSum
         var result = await _buyerOrderSummaryService.GetdepartmentStockAsync(OrderNo,Department);
         return Ok(result);
     }
-    [HttpGet("order-view/{orderNo}")]
-    public async Task<IActionResult> GetOrderViewDataAsync(string orderNo)
+    [HttpGet("order-view")]
+    public async Task<IActionResult> GetOrderViewDataAsync([FromQuery] string orderNo)
     {
         var result = await _buyerOrderSummaryService.GetOrderViewDataAsync(orderNo);
         return Ok(result);
     }
 
-    [HttpGet("style-details/{styleNo}")]
-    public async Task<IActionResult> GetStyleDetails(string styleNo)
+    [HttpGet("style-details")]
+    public async Task<IActionResult> GetStyleDetails([FromQuery] string styleNo)
     {
         var result = await _buyerOrderSummaryService.GetStyleDetailsAsync(styleNo);
         return Ok(result);

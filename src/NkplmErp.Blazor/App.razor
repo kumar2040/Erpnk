@@ -1,4 +1,4 @@
-﻿@using NkplmErp.Blazor.Services.Auth
+@using NkplmErp.Blazor.Services.Auth
 @inject TokenProvider TokenProvider
 
 <CascadingAuthenticationState>
@@ -37,8 +37,19 @@
         {
             if (!string.IsNullOrEmpty(InitialToken))
             {
+                // Fresh page load: apply the token from the HTTP cookie.
                 TokenProvider.Token = InitialToken;
                 Console.WriteLine(">>>> [DEBUG] InitialToken applied to TokenProvider.");
+            }
+            else if (!string.IsNullOrEmpty(TokenProvider.Token))
+            {
+                // Circuit reconnect after idle: InitialToken is null (no HTTP request).
+                // Do NOT wipe the existing in-memory token — keep it alive.
+                Console.WriteLine(">>>> [DEBUG] Circuit reconnect detected. Preserving existing TokenProvider token.");
+            }
+            else
+            {
+                Console.WriteLine(">>>> [DEBUG] No token available (InitialToken null and TokenProvider empty).");
             }
         }
         catch (Exception ex)

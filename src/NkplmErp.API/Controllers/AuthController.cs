@@ -70,6 +70,19 @@ public class AuthController : ControllerBase
     }
 
     [Microsoft.AspNetCore.Authorization.Authorize]
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        var email = GetUserEmail();
+        if (string.IsNullOrEmpty(email)) return Unauthorized("User email not found in claims");
+
+        var result = await _identityService.ChangePasswordAsync(email, request);
+        if (!result.IsSuccess) return BadRequest(result);
+
+        return Ok(result);
+    }
+
+    [Microsoft.AspNetCore.Authorization.Authorize]
     [HttpPost("mfa-disable")]
     public async Task<IActionResult> DisableMfa()
     {

@@ -299,4 +299,27 @@ public class IdentityService(
             Roles = roles.ToList()
         };
     }
+
+    public async Task<AuthResponse> ChangePasswordAsync(string email, ChangePasswordRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user == null)
+        {
+            return new AuthResponse { IsSuccess = false, Message = "User not found." };
+        }
+
+        var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+        if (!result.Succeeded)
+        {
+            return new AuthResponse
+            {
+                IsSuccess = false,
+                Message = string.Join(", ", result.Errors.Select(e => e.Description))
+            };
+        }
+
+        await _auditService.LogAsync(user.Id, "PasswordChanged", "User", user.Id, "", "User changed their own password");
+
+        return new AuthResponse { IsSuccess = true, Message = "Password changed successfully." };
+    }
 }
