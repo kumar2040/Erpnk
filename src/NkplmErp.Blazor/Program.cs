@@ -87,7 +87,7 @@ app.MapPost("/auth/set-token", async (HttpContext context) =>
             HttpOnly = true,
             Secure = false, // Set to false for local dev
             SameSite = SameSiteMode.Lax,
-            Expires = DateTime.UtcNow.AddHours(1),
+            Expires = DateTime.UtcNow.AddHours(8), // Extended: covers a full working day idle
             Path = "/"
         };
         context.Response.Cookies.Append("X-Auth-Token", token, cookieOptions);

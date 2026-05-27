@@ -14,4 +14,5 @@ public interface IIdentityService
     Task<AuthResponse> RegisterAsync(string email, string password, string firstName, string lastName);
     Task<UserInfoDto?> GetUserByEmailAsync(string email);
     Task<AuthResponse> RemoveBiometricAsync(string email, Guid deviceId);
+    Task<AuthResponse> ChangePasswordAsync(string email, ChangePasswordRequest request);
 }

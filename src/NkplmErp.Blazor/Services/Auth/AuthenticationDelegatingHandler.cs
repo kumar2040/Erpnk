@@ -17,11 +17,11 @@ public class AuthenticationDelegatingHandler : DelegatingHandler
     public AuthenticationDelegatingHandler(
         IHttpContextAccessor httpContextAccessor,
         TokenProvider tokenProvider,
-        ILogger<AuthenticationDelegatingHandler> logger)
+        ILogger<AuthenticationDelegatingHandler> _logger)
     {
         _httpContextAccessor = httpContextAccessor;
         _tokenProvider = tokenProvider;
-        _logger = logger;
+        this._logger = _logger;
         _logger.LogInformation("DEBUG: AuthHandler Created: InstanceId={InstanceId}", InstanceId);
     }
 
@@ -61,6 +61,13 @@ public class AuthenticationDelegatingHandler : DelegatingHandler
             _logger.LogInformation("DEBUG: AuthHandler[{InstanceId}] - Calling base.SendAsync...", InstanceId);
             var response = await base.SendAsync(request, cancellationToken);
             _logger.LogInformation("DEBUG: AuthHandler[{InstanceId}] - base.SendAsync returned with status: {StatusCode}", InstanceId, response.StatusCode);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                _logger.LogWarning(">>>> [DEBUG] 401 Unauthorized detected! Clearing token.");
+                _tokenProvider.Token = null;
+            }
+
             return response;
         }
         catch (HttpRequestException httpEx)
@@ -75,8 +82,7 @@ public class AuthenticationDelegatingHandler : DelegatingHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "DEBUG: AuthHandler[{InstanceId}] - Unexpected CRITICAL error on {Url}: {Message}", 
-                InstanceId, requestUrl, ex.Message);
+            _logger.LogError(ex, "DEBUG: AuthHandler[{InstanceId}] - Unexpected CRITICAL error: {Message}", InstanceId, ex.Message);
             
             // Return a safe 500 error instead of throwing to avoid crashing the Blazor circuit
             return new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError)

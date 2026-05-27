@@ -48,17 +48,17 @@ public class BuyerOrderSummaryService : IBuyerOrderSummaryService
             
             var errorContent = await response.Content.ReadAsStringAsync();
             _logger.LogError("DEBUG: API Error {StatusCode}: {Content}", response.StatusCode, errorContent);
-            return Enumerable.Empty<BuyerOrderSummaryDto>();
+            throw new HttpRequestException($"API Error {response.StatusCode}: {errorContent}", null, response.StatusCode);
         }
         catch (HttpRequestException httpEx)
         {
             _logger.LogError(httpEx, "DEBUG: HttpRequestException - Cannot reach API at {Url}", url);
-            return Enumerable.Empty<BuyerOrderSummaryDto>();
+            throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "DEBUG: Unexpected error in GetBuyerOrderSummaryAsync");
-            return Enumerable.Empty<BuyerOrderSummaryDto>();
+            throw;
         }
     }
 
@@ -84,12 +84,12 @@ public class BuyerOrderSummaryService : IBuyerOrderSummaryService
             
             var errorContent = await response.Content.ReadAsStringAsync();
             _logger.LogError("DEBUG: GetBuyerOrderYearsAsync - API Error {StatusCode}: {Content}", response.StatusCode, errorContent);
-            return Enumerable.Empty<int>();
+            throw new HttpRequestException($"API Error {response.StatusCode}: {errorContent}", null, response.StatusCode);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "DEBUG: GetBuyerOrderYearsAsync - Unexpected error");
-            return Enumerable.Empty<int>();
+            throw;
         }
     }
 
@@ -115,12 +115,12 @@ public class BuyerOrderSummaryService : IBuyerOrderSummaryService
             
             var errorContent = await response.Content.ReadAsStringAsync();
             _logger.LogError("DEBUG: GetBuyerOrderHistoryAsync - API Error {StatusCode}: {Content}", response.StatusCode, errorContent);
-            return Enumerable.Empty<BuyerOrderHistoryDto>();
+            throw new HttpRequestException($"API Error {response.StatusCode}: {errorContent}", null, response.StatusCode);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "DEBUG: GetBuyerOrderHistoryAsync - Unexpected error");
-            return Enumerable.Empty<BuyerOrderHistoryDto>();
+            throw;
         }
     }
 
@@ -147,12 +147,12 @@ public class BuyerOrderSummaryService : IBuyerOrderSummaryService
             
             var errorContent = await response.Content.ReadAsStringAsync();
             _logger.LogError("DEBUG: GetBuyerProfileAsync - API Error {StatusCode}: {Content}", response.StatusCode, errorContent);
-            return Enumerable.Empty<BuyerProfile>();
+            throw new HttpRequestException($"API Error {response.StatusCode}: {errorContent}", null, response.StatusCode);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "DEBUG: GetBuyerProfileAsync - Unexpected error");
-            return Enumerable.Empty<BuyerProfile>();
+            throw;
         }
     }
 
@@ -174,12 +174,12 @@ public class BuyerOrderSummaryService : IBuyerOrderSummaryService
             
             var errorContent = await response.Content.ReadAsStringAsync();
             _logger.LogError("DEBUG: GetAbsentBuyer - API Error {StatusCode}: {Content}", response.StatusCode, errorContent);
-            return Enumerable.Empty<AbsentBuyer>();
+            throw new HttpRequestException($"API Error {response.StatusCode}: {errorContent}", null, response.StatusCode);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "DEBUG: GetAbsentBuyer - Unexpected error");
-            return Enumerable.Empty<AbsentBuyer>();
+            throw;
         }
     }
 
@@ -207,12 +207,12 @@ public class BuyerOrderSummaryService : IBuyerOrderSummaryService
             
             var errorContent = await response.Content.ReadAsStringAsync();
             _logger.LogError("DEBUG: GetOrderStatusDetailAsync - API Error {StatusCode}: {Content}", response.StatusCode, errorContent);
-            return Enumerable.Empty<OrderStatusDetailDto>();
+            throw new HttpRequestException($"API Error {response.StatusCode}: {errorContent}", null, response.StatusCode);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "DEBUG: GetOrderStatusDetailAsync - Unexpected error");
-            return Enumerable.Empty<OrderStatusDetailDto>();
+            throw;
         }
     }
 
@@ -238,12 +238,12 @@ public class BuyerOrderSummaryService : IBuyerOrderSummaryService
 
             var errorContent = await response.Content.ReadAsStringAsync();
             _logger.LogError("DEBUG: GetProductionFlowAsync - API Error {StatusCode}: {Content}", response.StatusCode, errorContent);
-            return Enumerable.Empty<ProductionFlowDto>();
+            throw new HttpRequestException($"API Error {response.StatusCode}: {errorContent}", null, response.StatusCode);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "DEBUG: GetProductionFlowAsync - Unexpected error");
-            return Enumerable.Empty<ProductionFlowDto>();
+            throw;
         }
     }
 
@@ -269,17 +269,17 @@ public class BuyerOrderSummaryService : IBuyerOrderSummaryService
 
             var errorContent = await response.Content.ReadAsStringAsync();
             _logger.LogError("DEBUG: GetdepartmentStockAsync - API Error {StatusCode}: {Content}", response.StatusCode, errorContent);
-            return Enumerable.Empty<DepartmentStockDto>();
+            throw new HttpRequestException($"API Error {response.StatusCode}: {errorContent}", null, response.StatusCode);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "DEBUG: GetdepartmentStockAsync - Unexpected error");
-            return Enumerable.Empty<DepartmentStockDto>();
+            throw;
         }
     }
     public async Task<IEnumerable<OrderViewHeaderDto>> GetOrderViewDataAsync(string orderNo)
     {
-        var url = $"api/v1/BuyerOrderSummary/order-view/{Uri.EscapeDataString(orderNo)}";
+        var url = $"api/v1/BuyerOrderSummary/order-view?orderNo={Uri.EscapeDataString(orderNo)}";
         
         try
         {
@@ -295,17 +295,17 @@ public class BuyerOrderSummaryService : IBuyerOrderSummaryService
             
             var errorContent = await response.Content.ReadAsStringAsync();
             _logger.LogError("DEBUG: GetOrderViewDataAsync - API Error {StatusCode}: {Content}", response.StatusCode, errorContent);
-            return Enumerable.Empty<OrderViewHeaderDto>();
+            throw new HttpRequestException($"API Error {response.StatusCode}: {errorContent}", null, response.StatusCode);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "DEBUG: GetOrderViewDataAsync - Unexpected error");
-            return Enumerable.Empty<OrderViewHeaderDto>();
+            throw;
         }
     }
     public async Task<StyleDetailsDto> GetStyleDetailsAsync(string styleNo)
     {
-        var url = $"api/v1/BuyerOrderSummary/style-details/{Uri.EscapeDataString(styleNo)}";
+        var url = $"api/v1/BuyerOrderSummary/style-details?styleNo={Uri.EscapeDataString(styleNo)}";
         
         try
         {
@@ -321,12 +321,12 @@ public class BuyerOrderSummaryService : IBuyerOrderSummaryService
             
             var errorContent = await response.Content.ReadAsStringAsync();
             _logger.LogError("DEBUG: GetStyleDetailsAsync - API Error {StatusCode}: {Content}", response.StatusCode, errorContent);
-            return new StyleDetailsDto();
+            throw new HttpRequestException($"API Error {response.StatusCode}: {errorContent}", null, response.StatusCode);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "DEBUG: GetStyleDetailsAsync - Unexpected error");
-            return new StyleDetailsDto();
+            throw;
         }
     }
 
@@ -348,12 +348,12 @@ public class BuyerOrderSummaryService : IBuyerOrderSummaryService
 
             var errorContent = await response.Content.ReadAsStringAsync();
             _logger.LogError("DEBUG: GetBuyersOrdersAsync - API Error {StatusCode}: {Content}", response.StatusCode, errorContent);
-            return Enumerable.Empty<BuyerOrderDto>();
+            throw new HttpRequestException($"API Error {response.StatusCode}: {errorContent}", null, response.StatusCode);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "DEBUG: GetBuyersOrdersAsync - Unexpected error");
-            return Enumerable.Empty<BuyerOrderDto>();
+            throw;
         }
     }
 }

@@ -1,4 +1,5 @@
 @page "/main-dashboard"
+@page "/"
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using NkplmErp.Shared.DTOs
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
@@ -199,6 +200,11 @@
     .col-recv { width: 70px !important; }
     .col-order-pics { width: 80px !important; }
     .col-diff { width: 80px !important; }
+    
+    .col-customer { width: auto !important; min-width: 150px !important; text-align: left !important; }
+    .col-totalpo { width: 70px !important; min-width: 70px !important; max-width: 70px !important; text-align: center !important; }
+    .col-runningpo { width: 80px !important; min-width: 80px !important; max-width: 80px !important; text-align: center !important; }
+    .col-waitingpo { width: 80px !important; min-width: 80px !important; max-width: 80px !important; text-align: center !important; }
 
     /* History Grid Column Widths */
     .col-year { width: 60px !important; }
@@ -536,14 +542,14 @@
 <DataModal
     @bind-IsVisible="showProductionFlowModal"
     Title="Production Flow"
-    IsLoading="false" FullScreen="true" ZIndex="2200">
+    IsLoading="false" FullScreen="false" MaxWidth="95vw" ZIndex="2200">
     <ChildContent>
         <div class="max-w mx-auto">
     
             <div class="flex flex-col md:flex-row gap-4 p-2">
     
                 <!-- Left sidebar: running orders list (always visible) -->
-                <div class="w-full md:w-[25%] lg:w-[18%] bg-white shadow rounded p-2 shrink-0 overflow-hidden flex flex-col" style="height: calc(100vh - 180px);">
+                <div class="w-full md:w-[25%] lg:w-[18%] bg-white shadow rounded p-2 shrink-0 overflow-hidden flex flex-col" style="height: calc(100vh - 230px);">
                     <h2 class="text-xs font-bold text-[#002d54] mb-2 px-1 flex items-center gap-2">
                         <i class="fa-solid fa-clock-rotate-left text-indigo-500"></i>
                         Running Orders
@@ -595,7 +601,7 @@
                 </div>
     
                 <!-- Right: Production Flow cards (loading only here) -->
-                <div class="flex-1 shadow rounded flex flex-col relative bg-slate-50/50 overflow-y-auto lg:overflow-y-hidden" style="height: calc(100vh - 180px);">
+                <div class="flex-1 shadow rounded flex flex-col relative bg-slate-50/50 overflow-y-auto lg:overflow-y-hidden" style="height: calc(100vh - 230px);">
                     <!-- Order Selection Tabs -->
                     <div class="bg-white border-b border-slate-200 flex-shrink-0">
                         <div class="flex items-center border-l border-slate-200">

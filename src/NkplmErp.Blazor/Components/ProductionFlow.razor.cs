@@ -216,4 +216,5 @@ public partial class ProductionFlow : ComponentBase
         >= 25 => "bg-amber-500",
         _      => "bg-rose-500"
     };
+
 }

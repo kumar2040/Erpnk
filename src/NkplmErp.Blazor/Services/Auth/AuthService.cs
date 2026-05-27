@@ -18,6 +18,7 @@ public interface IAuthService
     Task<AuthResponse> RemoveBiometric(Guid deviceId);
     Task<MfaSetupResponse> GetMfaSetup();
     Task<UserInfoDto?> GetUserInfo(CancellationToken cancellationToken = default);
+    Task<AuthResponse> ChangePassword(ChangePasswordRequest request);
 }
 
 public class AuthService : IAuthService, IDisposable
@@ -139,6 +140,41 @@ public class AuthService : IAuthService, IDisposable
     {
         var response = await _httpClient.PostAsync("api/v1/auth/mfa-disable", null);
         return await response.Content.ReadFromJsonAsync<AuthResponse>() ?? new AuthResponse { IsSuccess = false, Message = "Failed to disable MFA." };
+    }
+
+    public async Task<AuthResponse> ChangePassword(ChangePasswordRequest request)
+    {
+        try 
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/v1/auth/change-password", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<AuthResponse>() 
+                    ?? new AuthResponse { IsSuccess = false, Message = "Empty response from server." };
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($">>>> [DEBUG] Password Change API Error ({response.StatusCode}): {errorContent}");
+                
+                try 
+                {
+                    // Try to parse as AuthResponse anyway
+                    return System.Text.Json.JsonSerializer.Deserialize<AuthResponse>(errorContent, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }) 
+                        ?? new AuthResponse { IsSuccess = false, Message = $"Error {response.StatusCode}" };
+                }
+                catch 
+                {
+                    return new AuthResponse { IsSuccess = false, Message = $"Server Error ({response.StatusCode}): {errorContent}" };
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($">>>> [DEBUG] Exception in AuthService.ChangePassword: {ex.Message}");
+            throw;
+        }
     }
 
     public async Task Logout()
