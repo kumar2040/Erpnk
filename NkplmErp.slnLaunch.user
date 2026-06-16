@@ -1,0 +1,42 @@
+[
+  {
+    "Name": "FullStack",
+    "Projects": [
+      {
+        "Path": "src\\NkplmErp.API\\NkplmErp.API.csproj",
+        "Action": "Start",
+        "DebugTarget": "http"
+      },
+      {
+        "Path": "src\\NkplmErp.Blazor\\NkplmErp.Blazor.csproj",
+        "Action": "Start",
+        "DebugTarget": "http"
+      }
+    ]
+  },
+  {
+    "Name": "Mobile",
+    "Projects": [
+      {
+        "Path": "src\\NkplmErp.API\\NkplmErp.API.csproj",
+        "Action": "Start",
+        "DebugTarget": "http"
+      },
+      {
+        "Path": "src\\NkplmErp.Maui\\NkplmErp.Maui.csproj",
+        "Action": "Start",
+        "DebugTarget": "Windows Machine"
+      }
+    ]
+  },
+  {
+    "Name": "API Only",
+    "Projects": [
+      {
+        "Path": "src\\NkplmErp.API\\NkplmErp.API.csproj",
+        "Action": "Start",
+        "DebugTarget": "http"
+      }
+    ]
+  }
+]

@@ -45,6 +45,7 @@ public class UserService : IUserService
                 IsActive = user.IsActive,
                 CreatedAt = user.CreatedAt,
                 LastLoginAt = user.LastLoginAt,
+                AssignedGauge = user.AssignedGauge,
                 Roles = roles
             });
         }
@@ -70,6 +71,7 @@ public class UserService : IUserService
             MfaEnabled = user.MfaEnabled,
             CreatedAt = user.CreatedAt,
             LastLoginAt = user.LastLoginAt,
+            AssignedGauge = user.AssignedGauge,
             Roles = roles
         };
     }
@@ -101,6 +103,7 @@ public class UserService : IUserService
             LastName = dto.LastName,
             BranchId = dto.BranchId,
             IsActive = dto.IsActive,
+            AssignedGauge = dto.AssignedGauge,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -168,6 +171,7 @@ public class UserService : IUserService
         user.UserName = dto.Email;
         user.BranchId = dto.BranchId;
         user.IsActive = dto.IsActive;
+        user.AssignedGauge = dto.AssignedGauge;
 
         var result = await _userManager.UpdateAsync(user);
         if (!result.Succeeded)

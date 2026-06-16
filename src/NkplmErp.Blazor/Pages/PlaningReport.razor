@@ -1,0 +1,264 @@
+@page "/planing-report"
+@using NkplmErp.Shared.DTOs
+@using NkplmErp.Blazor.Services.ProductionPlanning
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@namespace NkplmErp.Blazor.Pages
+
+<style>
+    :root {
+        --navy:   #1a3353;
+        --teal:   #2ab3b1;
+        --sky:    #e8f4fb;
+        --bg:     #f4f6f9;
+        --border: #dde3ec;
+        --muted:  #7a8fa6;
+    }
+
+    .pr-page {
+        background-color: var(--bg) !important;
+        color: #222 !important;
+        font-family: 'Inter', system-ui, sans-serif !important;
+        min-height: 100%;
+    }
+
+    .pr-panel { background: #fff; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+
+    .pr-header {
+        background: linear-gradient(120deg, #16294a 0%, #1f3c63 48%, #2a7e80 100%);
+        color: #fff; padding: 18px 22px;
+        display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;
+        position: relative; overflow: hidden;
+    }
+    .pr-header::before {
+        content: ""; position: absolute; right: -50px; top: -70px; width: 230px; height: 230px;
+        background: radial-gradient(circle, rgba(42,179,177,.45), transparent 70%); pointer-events: none;
+    }
+    .pr-header::after {
+        content: ""; position: absolute; left: 30%; bottom: -90px; width: 200px; height: 200px;
+        background: radial-gradient(circle, rgba(255,255,255,.08), transparent 70%); pointer-events: none;
+    }
+    .pr-header > * { position: relative; z-index: 1; }
+
+    .pr-badge {
+        width: 44px; height: 44px; border-radius: 13px;
+        background: rgba(255,255,255,.13); border: 1px solid rgba(255,255,255,.22);
+        display: flex; align-items: center; justify-content: center; font-size: 19px;
+        box-shadow: 0 4px 14px rgba(0,0,0,.18); backdrop-filter: blur(6px);
+    }
+    .pr-title { font-size: 17px; font-weight: 800; letter-spacing: .02em; line-height: 1.05; }
+    .pr-subtitle { font-size: 11px; opacity: .82; margin-top: 3px; font-weight: 500; }
+
+    .pr-monthnav {
+        display: flex; align-items: center; gap: 2px;
+        background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.20);
+        border-radius: 11px; padding: 3px; backdrop-filter: blur(6px);
+    }
+    .pr-monthnav .navbtn {
+        width: 30px; height: 30px; border: none; background: transparent; color: #fff;
+        border-radius: 8px; cursor: pointer; font-size: 12px; transition: background .12s ease;
+    }
+    .pr-monthnav .navbtn:hover { background: rgba(255,255,255,.20); }
+    .pr-monthnav .mlabel { font-weight: 800; font-size: 13px; min-width: 132px; text-align: center; letter-spacing: .02em; }
+
+    .pr-today {
+        border: none; background: #fff; color: var(--navy); border-radius: 10px;
+        padding: 8px 16px; font-size: 12px; font-weight: 800; cursor: pointer;
+        box-shadow: 0 3px 10px rgba(0,0,0,.15); transition: transform .12s ease;
+    }
+    .pr-today:hover { transform: translateY(-1px); }
+
+    .pr-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    @@media (max-width: 820px) { .pr-kpis { grid-template-columns: repeat(2, 1fr); } }
+    @@media (max-width: 460px) { .pr-kpis { grid-template-columns: 1fr; } }
+
+    .pr-kpi { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+    .pr-kpi .lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: .03em; }
+    .pr-kpi .val { font-size: 26px; font-weight: 800; color: var(--navy); line-height: 1.1; margin-top: 4px; }
+    .pr-kpi .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .pr-cal { width: 100%; border-collapse: separate; border-spacing: 8px; table-layout: fixed; }
+    .pr-cal th {
+        font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em;
+        padding: 10px 4px; text-align: center; color: #fff;
+        background: linear-gradient(135deg, #20406a, #2a6f74);
+        border-radius: 10px; box-shadow: 0 2px 8px rgba(26,51,83,.14);
+    }
+    .pr-cal th.sat { background: linear-gradient(135deg, #c2410c, #ea7a3c); }
+    .pr-cal th.sun { background: linear-gradient(135deg, #3a4f6b, #5a7390); }
+    .pr-cal th .abbr { display: none; }
+    @@media (max-width: 620px) {
+        .pr-cal th .full { display: none; }
+        .pr-cal th .abbr { display: inline; }
+        .pr-cal { border-spacing: 4px; }
+    }
+
+    .pr-cell {
+        border-radius: 12px; height: 96px; vertical-align: top; padding: 8px 10px 10px;
+        position: relative; overflow: hidden;
+        box-shadow: inset 0 0 0 1px rgba(26,51,83,.06), 0 1px 2px rgba(26,51,83,.05);
+        transition: transform .12s ease, box-shadow .12s ease;
+    }
+    .pr-cell:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1px rgba(26,51,83,.10), 0 8px 18px rgba(26,51,83,.14); z-index: 2; }
+
+    .pr-cell .dnum {
+        position: absolute; top: 7px; right: 9px;
+        font-size: 12px; font-weight: 800; color: rgba(26,51,83,.55);
+    }
+    .pr-cell .util { font-size: 24px; font-weight: 800; line-height: 1; margin-top: 16px; letter-spacing: -.5px; }
+    .pr-cell .busy { font-size: 10px; font-weight: 600; color: rgba(26,51,83,.6); margin-top: 4px; }
+
+    /* utilisation bar at the bottom of the cell */
+    .pr-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: rgba(26,51,83,.08); }
+    .pr-bar > span { display: block; height: 100%; border-radius: 0 3px 3px 0; }
+
+    .pr-cell.today { box-shadow: inset 0 0 0 2px var(--teal), 0 4px 12px rgba(42,179,177,.25); }
+    .pr-cell.today .dnum { color: var(--teal); }
+
+    .pr-cell.empty { background: transparent; box-shadow: none; }
+    .pr-cell.empty:hover { transform: none; box-shadow: none; }
+
+    .pr-cell.sat-holiday { background: repeating-linear-gradient(135deg, #fff6f0, #fff6f0 8px, #fdeee3 8px, #fdeee3 16px) !important; }
+    .pr-cell.sat-holiday .holtag {
+        position: absolute; bottom: 8px; left: 10px; font-size: 8px; font-weight: 800; color: #c2410c; letter-spacing: .08em;
+    }
+
+    .pr-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 11px; color: #334; align-items: center; }
+    .pr-legend .sw { width: 14px; height: 14px; border-radius: 4px; display: inline-block; border: 1px solid rgba(0,0,0,.06); margin-right: 5px; vertical-align: -2px; }
+
+    .pr-toggle {
+        display: flex; gap: 3px; padding: 3px;
+        background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.20);
+        border-radius: 11px; backdrop-filter: blur(6px);
+    }
+    .pr-toggle button {
+        border: none; background: transparent; color: rgba(255,255,255,.85);
+        font-size: 11px; font-weight: 800; padding: 6px 13px; border-radius: 8px; cursor: pointer;
+        transition: background .12s ease, color .12s ease;
+    }
+    .pr-toggle button:hover { color: #fff; }
+    .pr-toggle button.active { background: #fff; color: var(--navy); box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+</style>
+
+<div class="pr-page p-3 flex flex-col gap-3">
+
+    <div class="pr-panel" style="border:none;">
+        <div class="pr-header">
+            <div class="flex items-center gap-3">
+                <div class="pr-badge"><i class="fa-solid fa-chart-area"></i></div>
+                <div>
+                    <div class="pr-title">Planing Report</div>
+                    <div class="pr-subtitle">Factory load &middot; capacity by @(UseKnitterCapacity ? "knitters" : "machines")</div>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 flex-wrap">
+                <div class="pr-toggle" title="Capacity is limited by knitters (fewer than machines)">
+                    <button class="@(UseKnitterCapacity ? "active" : "")" @onclick="@(() => { UseKnitterCapacity = true; })">By Knitters</button>
+                    <button class="@(!UseKnitterCapacity ? "active" : "")" @onclick="@(() => { UseKnitterCapacity = false; })">By Machines</button>
+                </div>
+                <div class="pr-monthnav">
+                    <button class="navbtn" title="Previous month" @onclick="PrevMonth"><i class="fa-solid fa-chevron-left"></i></button>
+                    <span class="mlabel">@Month.ToString("MMMM yyyy")</span>
+                    <button class="navbtn" title="Next month" @onclick="NextMonth"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+                <button class="pr-today" @onclick="ThisMonth">Today</button>
+            </div>
+        </div>
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="pr-panel flex items-center justify-center py-12" style="color:var(--muted);">
+            <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading...
+        </div>
+    }
+    else
+    {
+        <!-- KPI tiles -->
+        <div class="pr-kpis">
+            <div class="pr-kpi">
+                <div class="lbl">Avg Utilization</div>
+                <div class="val">@AvgUtilization.ToString("N0")%</div>
+                <div class="sub">working days, vs @(UseKnitterCapacity ? "knitters" : "machines")</div>
+            </div>
+            <div class="pr-kpi">
+                <div class="lbl">Over-Capacity Days</div>
+                <div class="val" style="@(OverCapacityDays > 0 ? "color:#c2410c;" : "")">@OverCapacityDays</div>
+                <div class="sub">days demand &gt; @(UseKnitterCapacity ? "knitters" : "machines")</div>
+            </div>
+            <div class="pr-kpi">
+                <div class="lbl">Idle Capacity</div>
+                <div class="val">@IdleCapacityDays</div>
+                <div class="sub">unused @(UseKnitterCapacity ? "knitter" : "machine")-days</div>
+            </div>
+            <div class="pr-kpi">
+                <div class="lbl">Stranded Machines</div>
+                <div class="val">@MachineKnitterGap</div>
+                <div class="sub">@TotalMachines machines &minus; @TotalKnitters knitters</div>
+            </div>
+        </div>
+
+        <!-- Calendar heatmap -->
+        <div class="pr-panel p-3">
+            <table class="pr-cal">
+                <thead>
+                    <tr>
+                        @foreach (var h in WeekdayHeaders)
+                        {
+                            <th class="@(h == "Sat" ? "sat" : (h == "Sun" ? "sun" : ""))">
+                                <span class="full">@h</span>
+                                <span class="abbr">@h.Substring(0, 1)</span>
+                            </th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var week in CalendarWeeks)
+                    {
+                        <tr>
+                            @foreach (var slot in week)
+                            {
+                                @if (slot is null)
+                                {
+                                    <td class="pr-cell empty"></td>
+                                }
+                                else
+                                {
+                                    var day = GetDay(slot.Value);
+                                    var isSat = slot.Value.DayOfWeek == DayOfWeek.Saturday;
+                                    var isToday = slot.Value.Date == DateTime.Today;
+                                    var util = day != null ? Utilization(day) : 0;
+                                    var barW = Math.Min(util, 100);
+                                    var cellTitle = slot.Value.ToString("dd-MMM-yyyy") + (day != null && !isSat ? $" — {util:N0}% ({day.BusyMachines}/{Capacity})" : "");
+                                    <td class="pr-cell @(isSat ? "sat-holiday" : "") @(isToday ? "today" : "")"
+                                        style="background:@(isSat ? "" : UtilColor(util));"
+                                        title="@cellTitle">
+                                        <div class="dnum">@slot.Value.Day</div>
+                                        @if (isSat)
+                                        {
+                                            <span class="holtag">HOLIDAY</span>
+                                        }
+                                        else if (day != null)
+                                        {
+                                            <div class="util" style="color:@UtilTextColor(util);">@util.ToString("N0")%</div>
+                                            <div class="busy">@day.BusyMachines / @Capacity @(UseKnitterCapacity ? "knitters" : "mc")</div>
+                                            <div class="pr-bar"><span style="width:@barW.ToString("N0")%; background:@UtilBarColor(util);"></span></div>
+                                        }
+                                    </td>
+                                }
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <div class="pr-legend mt-2">
+                <span><span class="sw" style="background:#d7f5e6;"></span>&lt;60%</span>
+                <span><span class="sw" style="background:#bfe9f5;"></span>60&ndash;85%</span>
+                <span><span class="sw" style="background:#fde9b8;"></span>85&ndash;100%</span>
+                <span><span class="sw" style="background:#f9c9c4;"></span>&gt;100% over capacity</span>
+                <span><span class="sw" style="background:#fff5ef; border-color:#f1c4a8;"></span>Saturday (holiday)</span>
+                <span class="ml-auto" style="color:var(--muted);">Capacity = @Capacity @(UseKnitterCapacity ? "knitters" : "machines")</span>
+            </div>
+        </div>
+    }
+</div>

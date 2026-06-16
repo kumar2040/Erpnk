@@ -10,6 +10,7 @@ public class User : IdentityUser
     public bool IsActive { get; set; } = true;
     public string? MfaSecret { get; set; }
     public bool MfaEnabled { get; set; }
+    public string? AssignedGauge { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? LastLoginAt { get; set; }
 }

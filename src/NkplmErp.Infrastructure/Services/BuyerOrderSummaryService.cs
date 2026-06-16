@@ -498,4 +498,57 @@ public class BuyerOrderSummaryService(ApplicationDbContext context) : IBuyerOrde
             throw;
         }
     }
+
+    public async Task<IEnumerable<OrderPriceAnalysisDto>> GetOrderPriceAnalysisAsync(string orderNo, decimal usdRate)
+    {
+        var results = new List<OrderPriceAnalysisDto>();
+        try
+        {
+            var dbContext = _context;
+            var connection = dbContext.Database.GetDbConnection();
+
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = "dbo.order_price_analysis";
+                command.CommandType = CommandType.StoredProcedure;
+                command.Parameters.Add(new SqlParameter("@orderno", orderNo));
+                command.Parameters.Add(new SqlParameter("@usdrate", usdRate));
+
+                if (connection.State != ConnectionState.Open)
+                    await connection.OpenAsync();
+
+                using (var reader = await command.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        var dto = new OrderPriceAnalysisDto();
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            string col = reader.GetName(i);
+                            if (reader.IsDBNull(i)) continue;
+
+                            if (col.Equals("SN", StringComparison.OrdinalIgnoreCase)) dto.SN = Convert.ToInt64(reader[i]);
+                            else if (col.Equals("product_name", StringComparison.OrdinalIgnoreCase)) dto.ProductName = reader[i]?.ToString() ?? string.Empty;
+                            else if (col.Equals("total_quantity", StringComparison.OrdinalIgnoreCase)) dto.TotalQuantity = Convert.ToDecimal(reader[i]);
+                            else if (col.Equals("style_guage", StringComparison.OrdinalIgnoreCase)) dto.StyleGuage = reader[i].ToString();
+                            else if (col.Equals("style_ply", StringComparison.OrdinalIgnoreCase)) dto.StylePly = reader[i].ToString();
+                            else if (col.Equals("yarn_info", StringComparison.OrdinalIgnoreCase)) dto.YarnInfo = reader[i].ToString();
+                            else if (col.Equals("net_wet", StringComparison.OrdinalIgnoreCase)) dto.NetWet = Convert.ToDecimal(reader[i]);
+                            else if (col.Equals("overrate_per_pc_usd", StringComparison.OrdinalIgnoreCase)) dto.OverratePerPcUsd = Convert.ToDecimal(reader[i]);
+                            else if (col.Equals("final_cost_per_pc_usd", StringComparison.OrdinalIgnoreCase)) dto.FinalCostPerPcUsd = Convert.ToDecimal(reader[i]);
+                            else if (col.Equals("grand_total_production_cost_usd", StringComparison.OrdinalIgnoreCase)) dto.GrandTotalProductionCostUsd = Convert.ToDecimal(reader[i]);
+                            else if (col.Equals("total_revenue_usd", StringComparison.OrdinalIgnoreCase)) dto.TotalRevenueUsd = Convert.ToDecimal(reader[i]);
+                        }
+                        results.Add(dto);
+                    }
+                }
+            }
+            return results;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"DEBUG: Infrastructure - Error in GetOrderPriceAnalysisAsync: {ex.Message}");
+            throw;
+        }
+    }
 }

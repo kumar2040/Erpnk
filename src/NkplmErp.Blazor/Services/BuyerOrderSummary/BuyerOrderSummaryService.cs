@@ -356,4 +356,32 @@ public class BuyerOrderSummaryService : IBuyerOrderSummaryService
             throw;
         }
     }
+
+    // Implementation added to satisfy IBuyerOrderSummaryService
+    public async Task<IEnumerable<OrderPriceAnalysisDto>> GetOrderPriceAnalysisAsync(string orderNo, decimal usdRate)
+    {
+        var url = $"api/v1/BuyerOrderSummary/orderPriceAnalyse?orderNo={Uri.EscapeDataString(orderNo)}&usdRate={usdRate}";
+
+        try
+        {
+            _logger.LogInformation("DEBUG: GetOrderPriceAnalysisAsync - Requesting URL: {Url}", url);
+            var response = await _httpClient.GetAsync(url);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var data = await response.Content.ReadFromJsonAsync<IEnumerable<OrderPriceAnalysisDto>>() ?? Enumerable.Empty<OrderPriceAnalysisDto>();
+                _logger.LogInformation("DEBUG: GetOrderPriceAnalysisAsync - Received {Count} records", data.Count());
+                return data;
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            _logger.LogError("DEBUG: GetOrderPriceAnalysisAsync - API Error {StatusCode}: {Content}", response.StatusCode, errorContent);
+            throw new HttpRequestException($"API Error {response.StatusCode}: {errorContent}", null, response.StatusCode);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "DEBUG: GetOrderPriceAnalysisAsync - Unexpected error");
+            throw;
+        }
+    }
 }

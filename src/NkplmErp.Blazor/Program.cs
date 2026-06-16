@@ -5,6 +5,7 @@ using Blazored.LocalStorage;
 using NkplmErp.Blazor.Data;
 using NkplmErp.Blazor.Services.Auth;
 using NkplmErp.Blazor.Services.Lookup;
+using NkplmErp.Blazor.Services.RoleManagement;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,6 +59,25 @@ builder.Services.AddHttpClient<NkplmErp.Blazor.Services.Users.UsersApiClient>(cl
 })
 .AddHttpMessageHandler<AuthenticationDelegatingHandler>();
 
+builder.Services.AddHttpClient<NkplmErp.Application.Interfaces.IProductionPlanningService, NkplmErp.Blazor.Services.ProductionPlanning.ProductionPlanningService>(client => 
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddHttpMessageHandler<AuthenticationDelegatingHandler>();
+
+// Zero Trust Role Management
+builder.Services.AddHttpClient<RoleManagementApiClient>(client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddHttpMessageHandler<AuthenticationDelegatingHandler>();
+
+// PermissionService: scoped so it lives per circuit (Blazor Server)
+// Loads on login, cleared on logout
+builder.Services.AddScoped<PermissionService>();
+
 Console.WriteLine("DEBUG: Program.cs - Typed HttpClient registrations complete.");
 
 
@@ -76,8 +96,20 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Only allow internal, non-auth paths as a post-login redirect target (prevents open-redirect / loops).
+static bool IsSafeReturnUrl(string? url)
+{
+    if (string.IsNullOrEmpty(url)) return false;
+    if (!url.StartsWith("/")) return false;                 // must be a relative app path
+    if (url.StartsWith("//") || url.StartsWith("/\\")) return false; // protocol-relative
+    if (url.StartsWith("/login", StringComparison.OrdinalIgnoreCase)) return false;
+    if (url.StartsWith("/auth", StringComparison.OrdinalIgnoreCase)) return false;
+    return true;
+}
+
 // Local Auth Bridge Endpoint
-app.MapPost("/auth/set-token", async (HttpContext context) => 
+var isDevelopment = app.Environment.IsDevelopment();
+app.MapPost("/auth/set-token", async (HttpContext context) =>
 {
     var token = context.Request.Form["token"].ToString();
     if (!string.IsNullOrEmpty(token))
@@ -85,7 +117,7 @@ app.MapPost("/auth/set-token", async (HttpContext context) =>
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = false, // Set to false for local dev
+            Secure = !isDevelopment, // HTTPS-only outside local dev
             SameSite = SameSiteMode.Lax,
             Expires = DateTime.UtcNow.AddHours(8), // Extended: covers a full working day idle
             Path = "/"
@@ -93,13 +125,21 @@ app.MapPost("/auth/set-token", async (HttpContext context) =>
         context.Response.Cookies.Append("X-Auth-Token", token, cookieOptions);
     }
     await Task.CompletedTask;
-    return Results.Redirect("/main-dashboard");
+
+    // After login, return the user to where they were (session-expiry deep link), else dashboard.
+    var returnUrl = context.Request.Form["returnUrl"].ToString();
+    return Results.Redirect(IsSafeReturnUrl(returnUrl) ? returnUrl : "/main-dashboard");
 });
 
-app.MapGet("/auth/logout", (HttpContext context) => 
+app.MapGet("/auth/logout", (HttpContext context) =>
 {
     context.Response.Cookies.Delete("X-Auth-Token");
-    return Results.Redirect("/login");
+
+    // Carry the page the user was on through to the login screen.
+    var returnUrl = context.Request.Query["returnUrl"].ToString();
+    return Results.Redirect(IsSafeReturnUrl(returnUrl)
+        ? "/login?returnUrl=" + Uri.EscapeDataString(returnUrl)
+        : "/login");
 });
 
 app.MapBlazorHub();

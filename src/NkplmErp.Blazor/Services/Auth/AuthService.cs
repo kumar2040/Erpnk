@@ -105,6 +105,7 @@ public class AuthService : IAuthService, IDisposable
 
             if (!response.IsSuccessStatusCode)
             {
+                _tokenProvider.NotifySessionExpired();
                 await Logout();
                 return string.Empty;
             }
@@ -112,6 +113,7 @@ public class AuthService : IAuthService, IDisposable
             var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
             if (result == null || !result.IsSuccess)
             {
+                _tokenProvider.NotifySessionExpired();
                 await Logout();
                 return string.Empty;
             }

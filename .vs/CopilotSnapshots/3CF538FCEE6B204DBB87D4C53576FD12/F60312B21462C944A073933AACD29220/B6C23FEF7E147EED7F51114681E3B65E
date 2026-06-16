@@ -1,0 +1,1364 @@
+﻿@page "/main-dashboard"
+@page "/"
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using NkplmErp.Shared.DTOs
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+
+<style>
+    /* Premium Midnight Blue Theme Matching Mockup */
+    :root {
+        --midnight-blue: #002d54;
+        --card-bg: #ffffff;
+        --grid-header-bg: #002d54;
+        --header-bg: #e5f1fd !important; /* Slightly more saturated light blue */
+    }
+    .col-proj-prod div,.col-qty-prod div,.col-ship-prod div{
+        float:right;
+    }
+
+    /* Styling for QuickGrid specifically */
+    .quick-grid {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .quick-grid thead th {
+        background-color: var(--grid-header-bg) !important;
+        color: white !important;
+        font-size: 0.7rem !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+        padding: 0.2rem 0.3rem !important;
+        border: none !important;
+        white-space: nowrap !important;
+        border-radius: 0 !important;
+    }
+
+    .quick-grid tbody td, 
+    .quick-grid tbody td *,
+    table td,
+    table td * {
+        padding: 0.12rem 0.3rem !important;
+        font-size: 0.75rem !important;
+        color: #374151 !important;
+        border-bottom: 1px solid #f3f4f6 !important;
+        vertical-align: middle !important;
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+        overflow-wrap: normal !important;
+    }
+
+    /* Alternating row colors */
+    .quick-grid tr:nth-child(even) td {
+        background-color: #f8fafc !important;
+    }
+
+    .quick-grid tr:hover td {
+        background-color: #eef2ff !important;
+    }
+
+    /* Column Alignment Fixes for Right-Aligned Sortable Columns */
+    ::deep .col-dashboard-right {
+        text-align: right !important;
+        padding-right: 1.15rem !important; /* Synchronizes data cells with sortable header title */
+    }
+
+    /* Ensure specific horizontal padding for headers to match */
+    .quick-grid thead th.col-dashboard-right {
+        padding-right: 0.4rem !important; /* Header uses padding to contain the sort button */
+    }
+
+    /* Production Status Specific Column Widths & Alignment */
+    ::deep .col-sn-prod { width: 30px; text-align: center; }
+    ::deep .col-customer-prod { width: auto; min-width: 150px; }
+    ::deep .col-order-prod { width: auto; min-width: 100px; }
+    
+    ::deep .text-right {
+        text-align: right !important;
+    }
+
+    /* Force QuickGrid headers to align right when text-right is used */
+    ::deep th.text-right .col-header-content,
+    ::deep th.text-right .col-title {
+        display: flex !important;
+        justify-content: flex-end !important;
+        text-align: right !important;
+        width: 100% !important;
+        padding-right: 0.5rem !important;
+    }
+
+    ::deep th.text-right .col-title-text {
+        text-align: right !important;
+        flex-grow: 1 !important;
+    }
+
+    /* Progress Bar Styles */
+    .pg-bar-container {
+        width: 100%;
+        max-width: 60px;
+        height: 4px;
+        background-color: #e2e8f0;
+        border-radius: 999px;
+        overflow: hidden;
+        display: inline-block;
+        vertical-align: middle;
+        margin-left: 8px;
+    }
+    .pg-bar-fill {
+        height: 100%;
+        background-color: #3b82f6;
+        border-radius: 999px;
+    }
+
+    .text-center th, .text-center td {
+        text-align: center !important;
+    }
+
+    .expand-btn {
+        width: 18px;
+        height: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #9ca3af;
+        border: none;
+        background: transparent;
+        font-size: 10px;
+        transition: all 0.2s;
+    }
+
+    .expand-btn:hover {
+        color: var(--midnight-blue);
+        transform: scale(1.1);
+    }
+
+    .card-header-compact {
+        background-color: #e5f1fd !important;
+        border-top-left-radius: 4px !important;
+        border-top-right-radius: 4px !important;
+        padding: 0.4rem 0.6rem !important;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #d1e5f8;
+    }
+
+    .card-title-compact {
+        font-weight: 800;
+        color: var(--midnight-blue);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .quick-grid table {
+        table-layout: fixed !important;
+    }
+
+    .col-header-content {
+        padding-right: 0px !important;
+    }
+
+    .col-sort-button::before {
+        filter: brightness(0) invert(1);
+    }
+
+    .col-sort-direction {
+        border-top-color: white !important;
+        border-bottom-color: white !important;
+    }
+
+    .col-sort-button {
+        color: white;
+    }
+
+    .modal-body table td {
+        font-size: 0.8rem;
+        padding: 0.25rem !important;
+        white-space: nowrap !important;
+    }
+
+    .quickgrid[theme=default] .col-title {
+        gap: 0.2rem !important;
+    }
+
+    .skeleton-text { height: 1rem; margin-bottom: 0.5rem; }
+    .skeleton-title { height: 1.5rem; width: 60%; margin-bottom: 1rem; }
+    .skeleton-row { height: 2.5rem; width: 100%; margin-bottom: 0.5rem; }
+    .skeleton-profile { height: 4rem; width: 100%; margin-bottom: 1rem; }
+
+    /* Column Widths for alignment */
+    .col-sn { width: 40px !important; }
+    .col-order-no { width: 120px !important; }
+    .col-coll { width: 60px !important; }
+    .col-ship-date { width: 100px !important; }
+    .col-category { width: 60px !important; }
+    .col-recv { width: 70px !important; }
+    .col-order-pics { width: 80px !important; }
+    .col-diff { width: 80px !important; }
+    
+    .col-customer { width: auto !important; min-width: 150px !important; text-align: left !important; }
+    .col-totalpo { width: 70px !important; min-width: 70px !important; max-width: 70px !important; text-align: center !important; }
+    .col-runningpo { width: 80px !important; min-width: 80px !important; max-width: 80px !important; text-align: center !important; }
+    .col-waitingpo { width: 80px !important; min-width: 80px !important; max-width: 80px !important; text-align: center !important; }
+
+    /* History Grid Column Widths */
+    .col-year { width: 60px !important; }
+    .col-month { width: 100px !important; }
+    .col-knit { width: 60px !important; }
+    .col-weave { width: 70px !important; }
+    .col-silk { width: 60px !important; }
+    .col-linen { width: 70px !important; }
+    .col-other { width: 70px !important; }
+    .col-noofpos { width: 80px !important; }
+    .col-weight { width: 100px !important; }
+    .col-qty { width: 100px !important; }
+
+    .footer-label {
+        font-weight: 800;
+        color: #64748b;
+        text-transform: uppercase;
+        font-size: 10px;
+    }
+    
+    .footer-val {
+        font-weight: 700;
+        text-align: center;
+    }
+</style>
+<div class="min-h-screen bg-[#f8fafc] p-0 font-sans">
+    @if (LastErrorMessage != null)
+    {
+        <div class="m-4 p-4 bg-red-50 border border-red-200 rounded-none text-red-700 text-sm">
+            <h4 class="font-bold mb-1">System Error</h4>
+            <p>@LastErrorMessage</p>
+        </div>
+    }
+
+    <!-- 3-Column Layout -->
+    <!-- NEW: Line Graph Section -->
+     
+
+   <div class="grid grid-cols-1 md:grid-cols-[35fr_45fr_20fr] gap-2 md:gap-2">
+        
+        <!-- Left Column: Order Status -->
+        <div class="flex flex-col rounded-none border border-blue-100 bg-white shadow-md overflow-hidden h-[380px]">
+            <div class="card-header-compact">
+                <h3 class="card-title-compact">
+                    <span>📋 Order Status</span>
+                </h3>
+                <button class="expand-btn" @onclick="OpenMainModal">
+                    <span class="oi oi-fullscreen-enter"></span>
+                </button>
+            </div>
+            
+            <div class="flex-1 overflow-auto px-1 pb-1">
+                @if (IsLoading)
+                {
+                    <div class="px-1 py-1">
+                        <Skeleton Type="Skeleton.SkeletonType.Table" Rows="10" Columns="5" />
+                    </div>
+                }
+                else
+                {
+                    <div class="quick-grid-container">
+                        <QuickGrid Items="@OrderSummaries.Take(10)" class="quick-grid">
+                            <PropertyColumn Property="@(s => s.SN)" Title="SN" Align="Align.Center" Class="col-sn" />
+                            <TemplateColumn Title="Customer Name" Class="col-customer">
+                                <button type="button" class="text-blue-600 hover:text-blue-800 hover:underline text-left text-xs whitespace-nowrap font-medium" @onclick="() => ShowHistory(context)">
+                                    @context.CustomerName
+                                </button>
+                            </TemplateColumn>
+                            <PropertyColumn Property="@(s => s.TotalOrder)" Title="Total" Sortable="true" Align="Align.Center" Class="col-totalpo" />
+                            <TemplateColumn Title="Running" Sortable="true" Align="Align.Center" Class="col-runningpo">
+                                <button type="button" class="text-blue-600 hover:text-blue-800 hover:underline font-bold" @onclick="() => ShowRunningOrders(context)">
+                                    @context.RunningOrder
+                                </button>
+                            </TemplateColumn>
+                            <TemplateColumn Title="Waiting" Sortable="true" Align="Align.Center" Class="col-waitingpo">
+                                <button type="button" class="text-blue-600 hover:text-blue-800 hover:underline font-bold" @onclick="() => ShowRunningOrders(context, 1)">
+                                    @context.NotStartedOrder
+                                </button>
+                            </TemplateColumn>
+                        </QuickGrid>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Middle Column: Production Status -->
+        <div class="flex flex-col rounded-none border border-blue-100 bg-white shadow-md overflow-hidden h-[380px]">
+            <div class="card-header-compact">
+                <h3 class="card-title-compact">
+                    <span>🧵 Production Status · @(OrderStatusDetailList.Count()) Orders</span>
+                </h3>
+                <button class="expand-btn">
+                    <span class="oi oi-fullscreen-enter"></span>
+                </button>
+            </div>
+            <div class="flex-1 overflow-auto px-1 pb-1">
+                @if (IsOrderDetailLoading)
+                {
+                    <div class="px-1 py-1">
+                        <Skeleton Type="Skeleton.SkeletonType.Table" Rows="10" Columns="7" />
+                    </div>
+                }
+                else
+                {
+                    <div class="quick-grid-container">
+                        <QuickGrid TGridItem="OrderStatusDetailDto" Items="@OrderStatusDetailList.Take(10)" class="quick-grid">
+                            <PropertyColumn Property="@(s => s.SN)" Title="SN" Align="Align.Center" Class="col-sn" />
+                            <TemplateColumn Title="Customer Name" Class="col-customer">
+                                <button type="button" class="text-blue-600 hover:text-blue-800 hover:underline text-left   whitespace-nowrap font-medium" @onclick="() => ShowHistory((OrderStatusDetailDto)context)">
+                                    @context.CustomerName
+                                </button>
+                            </TemplateColumn>
+                            <TemplateColumn Title="Order No" Class="col-order-no">
+                                <button type="button" class="text-blue-600 hover:text-blue-800 hover:underline text-left  whitespace-nowrap font-bold" @onclick="() => ShowProductionFlow((OrderStatusDetailDto)context)">
+                                    @context.OrderNo
+                                </button>
+                            </TemplateColumn>
+                            <PropertyColumn Property="@(s => s.OrderQty)" Title="QTY" Class="col-qty text-right" />
+                            <PropertyColumn Property="@(s => s.LatestShippingDate)" Title="SHIPPING" Class="col-ship-date text-right" />
+                            <PropertyColumn Property="@(s => s.Packingdate)" Title="PROJECTED" Class="col-ship-date text-right" />
+                        </QuickGrid>
+                    </div>
+
+                    @if (!IsOrderDetailLoading && !OrderStatusDetailList.Any())
+                    {
+                        <div class="py-8 text-center text-gray-400">
+                            <span class="oi oi-inbox text-2xl block mb-2 opacity-10"></span>
+                            <p class="text-[10px] font-medium">No records found</p>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+
+        <!-- Right Column: Setting Piece -->
+        <div class="flex flex-col rounded-none border border-blue-100 bg-white shadow-md overflow-hidden h-[380px]">
+            <div class="card-header-compact">
+                <h3 class="card-title-compact">
+                    <span>⚙️ Setting Piece</span>
+                </h3>
+                <button class="expand-btn">
+                    <span class="oi oi-fullscreen-enter"></span>
+                </button>
+            </div>
+            <div class="flex-1 overflow-auto px-1 pb-1">
+                 
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<DataModal @bind-IsVisible="showModal" Title="Order Status Details" IsLoading="false" FullScreen="true">
+    <ChildContent>
+        <div class="max-h-[85vh] overflow-y-auto">
+            <!-- Header if needed -->
+     
+    
+            <!-- The responsive two-column container -->
+            <div class="flex flex-col lg:flex-row gap-6 lg:gap-8">
+                @if (IsLoading)
+                {
+                    <div class="flex-1 bg-white rounded-none shadow border border-gray-200 p-2">
+                        <div class="h-8 w-48 bg-slate-100 rounded mb-4 animate-pulse"></div>
+                        <Skeleton Type="Skeleton.SkeletonType.Table" Rows="10" Columns="5" />
+                    </div>
+                    <div class="flex-1 bg-white rounded-none shadow border border-gray-200 p-2">
+                        <div class="h-8 w-48 bg-slate-100 rounded mb-4 animate-pulse"></div>
+                        <Skeleton Type="Skeleton.SkeletonType.Table" Rows="10" Columns="5" />
+                    </div>
+                }
+                else
+                {
+    
+                <!-- Left Grid Card -->
+                <div class="flex-1 min-w-0 bg-white rounded-none shadow border border-gray-200 p-2">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-2">
+                        <h3 class="text-lg font-semibold text-gray-800 tracking-tight">Performing Buyer Orders Summary</h3>
+                        <div class="relative flex justify-end">
+                            @if (showOrderSearch)
+                            {
+                                <div class="w-full sm:w-64 relative flex items-center">
+                                    <i class="fa-solid fa-search absolute left-3 text-gray-400"></i>
+                                    <input type="text" 
+                                           class="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-none bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 text-black" 
+                                           placeholder="Search customer..." 
+                                           @bind="orderSearchTerm" 
+                                           @bind:event="oninput" 
+                                           autofocus />
+                                    <button type="button" class="absolute right-2 text-gray-400 hover:text-gray-600" @onclick="() => { showOrderSearch = false; orderSearchTerm = string.Empty; }">
+                                        <i class="fa-solid fa-times"></i>
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <button class="p-2 text-gray-500 hover:text-blue-600 transition-colors bg-gray-50 border border-gray-200 rounded-none w-9 h-9 flex items-center justify-center" @onclick="() => showOrderSearch = true">
+                                    <i class="fa-solid fa-search"></i>
+                                </button>
+                            }
+                        </div>
+                    </div>
+    
+                    
+                    @if (OrderStatusDetailList != null && OrderStatusDetailList.Any() && !string.IsNullOrEmpty(OrderStatusDetailList.First().Message))
+                    {
+                        <div class="py-16 text-center">
+                            <div class="bg-blue-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-100">
+                                <i class="fa-solid fa-circle-info text-3xl text-blue-400"></i>
+                            </div>
+                            <h4 class="text-lg font-black text-slate-900 mb-1">System Message</h4>
+                            <p class="text-sm font-bold text-slate-400 px-8">@OrderStatusDetailList.First().Message</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="bg-white rounded-none shadow-sm border border-slate-200 quick-grid-container">
+                            <QuickGrid Items="@FilteredOrderSummariesPop" class="quick-grid w-full text-sm" style="table-layout: fixed;">
+                                <PropertyColumn Property="@(s => s.SN)" Title="SN" Sortable="true" Class="text-center col-sn" />
+    
+                                <TemplateColumn Title="Customer Name" Class="col-customer">
+                                    <button type="button"
+                                            class="text-blue-600 hover:text-blue-800 hover:underline text-left text-xs font-medium"
+                                            @onclick="() => ShowHistory(context)">
+                                        @context.CustomerName
+                                    </button>
+                                </TemplateColumn>
+    
+                                 <PropertyColumn Property="@(s => s.TotalOrder)" Title="TotalPO" Sortable="true" Align="Align.Center" Class="col-totalpo" />
+                                <TemplateColumn Title="RunningPO" Sortable="true" Align="Align.Center" Class="col-runningpo">
+                                    <button type="button" class="text-blue-600 hover:text-blue-800 hover:underline font-bold" @onclick="() => ShowRunningOrders(context)">
+                                        @context.RunningOrder
+                                    </button>
+                                </TemplateColumn>
+                                <TemplateColumn Title="WaitingPO" Sortable="true" Align="Align.Center" Class="col-waitingpo">
+                                    <button type="button" class="text-blue-600 hover:text-blue-800 hover:underline font-bold" @onclick="() => ShowRunningOrders(context, 1)">
+                                        @context.NotStartedOrder
+                                    </button>
+                                </TemplateColumn>
+                            </QuickGrid>
+    
+                            <div class="footer-container">
+                                <table class="grand-total-table" style="table-layout: fixed; width: 100%;">
+                                    <tr>
+                                        <!-- Use exact column classes to match header alignment precisely -->
+                                        <td class="col-sn" style="background: transparent;"></td>
+                                        <td class="footer-label col-customer">Total</td>
+                                        
+                                        @{
+                                            // Calculate sums over the filtered items
+                                            var items = FilteredOrderSummariesPop;
+                                            var totalPoSum = items.Sum(x => x.TotalOrder);
+                                            var runningPoSum = items.Sum(x => x.RunningOrder);
+                                            var waitingPoSum = items.Sum(x => x.NotStartedOrder);
+                                        }
+                                        
+                                        <td class="footer-val col-totalpo font-bold text-indigo-700 text-center">@totalPoSum</td>
+                                        <td class="footer-val col-runningpo font-bold text-indigo-700 text-center">@runningPoSum</td>
+                                        <td class="footer-val col-waitingpo font-bold text-indigo-700 text-center">@waitingPoSum</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    }
+                     
+                </div>
+    
+                <!-- Right Grid Card -->
+                <div class="flex-1 min-w-0 bg-white rounded-none shadow border border-gray-200 p-2">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-2">
+                        <h3 class="text-lg font-semibold text-gray-800 tracking-tight">Passive Buyer List</h3>
+                        <div class="relative flex justify-end">
+                            @if (showAbsentSearch)
+                            {
+                                <div class="w-full sm:w-64 relative flex items-center">
+                                    <i class="fa-solid fa-search absolute left-3 text-gray-400"></i>
+                                    <input type="text" 
+                                           class="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-none bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 text-black" 
+                                           placeholder="Search customer..." 
+                                           @bind="absentSearchTerm" 
+                                           @bind:event="oninput" 
+                                           autofocus />
+                                    <button type="button" class="absolute right-2 text-gray-400 hover:text-gray-600" @onclick="() => { showAbsentSearch = false; absentSearchTerm = string.Empty; }">
+                                        <i class="fa-solid fa-times"></i>
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <button class="p-2 text-gray-500 hover:text-blue-600 transition-colors bg-gray-50 border border-gray-200 rounded-none w-9 h-9 flex items-center justify-center" @onclick="() => showAbsentSearch = true">
+                                    <i class="fa-solid fa-search"></i>
+                                </button>
+                            }
+                        </div>
+                    </div>
+    
+                    <div class="bg-white rounded-none shadow-sm border border-slate-200 quick-grid-container">
+                        <QuickGrid Items="@FilteredAbsentBuyerList" Pagination="@absentPagination" class="quick-grid w-full text-sm">
+                            <PropertyColumn Property="@(s => s.SN)" Title="SN" Sortable="true" Class="col-sn" />
+    
+                            <TemplateColumn Title="Customer Name">
+                                <button type="button"
+                                        class="text-blue-600 hover:text-blue-800 hover:underline text-left text-xs font-medium"
+                                        @onclick="() => ShowHistory(context)">
+                                    @context.CustomerName
+                                </button>
+                            </TemplateColumn>
+                        
+                            <PropertyColumn Property="@(s => s.JoinedDate)" Title="First PO" Sortable="true" Align="Align.Center" />
+                            <PropertyColumn Property="@(s => s.RecentDate)" Title="Recent PO" Sortable="true" Align="Align.Center" />
+                            <PropertyColumn Property="@(s => s.TotalPcs)" Title="Total Pcs" Sortable="true" Align="Align.Right" Class="col-dashboard-right" />
+                        </QuickGrid>
+                        
+                        <div class="pagination-footer">
+                            <Paginator State="@absentPagination" />
+                        </div>
+                    </div>
+                </div>
+                }
+            </div>
+        </div>
+    </ChildContent>
+</DataModal>
+
+<DataModal
+    @bind-IsVisible="showProductionFlowModal"
+    Title="Production Flow"
+    IsLoading="false" FullScreen="false" MaxWidth="95vw" ZIndex="2200">
+    <ChildContent>
+        <div class="w-full h-full min-w-0">
+    
+            <div class="flex flex-col md:flex-row gap-4 p-2">
+    
+                <!-- Left sidebar: running orders list (always visible) -->
+                <div class="w-full md:w-[25%] lg:w-[18%] bg-white shadow rounded p-2 shrink-0 overflow-hidden flex flex-col" style="height: calc(100vh - 230px);">
+                    <h2 class="text-xs font-bold text-[#002d54] mb-2 px-1 flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-indigo-500"></i>
+                        Running Orders
+                    </h2>
+                    <div class="flex-1 overflow-y-auto pr-1 custom-scrollbar" style="height: calc(100vh - 220px);">
+                        <ul class="space-y-1.5">
+                            @foreach (var group in OrderStatusDetailList.GroupBy(x => x.CustomerId).OrderBy(g => g.First().CustomerName))
+                            {
+                                var buyer = group.First();
+                                var customerId = buyer.CustomerId;
+                                var orderCount = group.Count();
+                                var isActive = customerId == ActiveFlowBuyerId;
+                                
+                                <li @onclick="() => ShowProductionFlowByBuyer(customerId)" 
+                                    class="@(isActive ? "bg-indigo-100 border-indigo-300 ring-2 ring-indigo-500/20" : "bg-slate-50 border-slate-100") group flex items-center justify-between p-2 rounded-none transition-all hover:bg-white hover:shadow-sm hover:border-indigo-200 cursor-pointer mb-1 shadow-sm">
+                                    <div class="min-w-0 flex-1 pr-2">
+                                        <h4 class="text-[11px] font-bold @(isActive ? "text-indigo-900" : "text-slate-800") truncate leading-tight">@buyer.CustomerName</h4>
+                                        <div class="flex items-center gap-2 mt-1">
+                                             
+                                            @if (isActive)
+                                            {
+                                                <span class="text-[8px] font-black text-indigo-500 uppercase tracking-widest flex items-center gap-1">
+                                                    <span class="w-1 h-1 bg-indigo-500 rounded-full animate-pulse"></span>
+                                                    Active
+                                                </span>
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-1.5 shrink-0">
+                                        <button @onclick:stopPropagation="true" @onclick="() => ShowHistory(buyer)" 
+                                                class="w-7 h-7 flex items-center justify-center rounded-none @(isActive ? "bg-white text-indigo-600 shadow-sm border border-indigo-200" : "bg-white text-slate-400 border border-slate-200 hover:text-indigo-600 hover:border-indigo-200") transition-all"
+                                                title="View Buyer Info">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </button>
+                                        <button @onclick:stopPropagation="true" @onclick="() => ShowProductionFlowByBuyer(customerId)"
+                                                class="w-7 h-7 flex items-center justify-center rounded-none @(isActive ? "bg-grey-600 text-white shadow-md shadow-indigo-200" : "bg-white text-slate-400 border border-slate-200 hover:text-indigo-600 hover:border-indigo-200") transition-all"
+                                                title="View Flow Chart">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+    
+                <!-- Right: Production Flow cards (loading only here) -->
+                <div class="flex-1 w-full md:w-auto min-w-0 shadow rounded flex flex-col relative bg-slate-50/50 overflow-hidden" style="height: calc(100vh - 230px);">
+                    <!-- Order Selection Tabs -->
+                    <div class="bg-white border-b border-slate-200 flex-shrink-0">
+                        <div class="flex items-center border-l border-slate-200">
+                            @{
+                                var visibleOrders = FlowOrderNoList.Take(10).ToList();
+                                // More menu includes everything from index 6 onwards for tablet responsiveness
+                                var overflowOrders = FlowOrderNoList.Skip(6).ToList();
+                                var isAnyOverflowSelected = SelectedFlowOrderNo != null && FlowOrderNoList.IndexOf(SelectedFlowOrderNo) >= 6;
+                                var tabIndex = 0;
+                            }
+                            @foreach (var orderNo in visibleOrders)
+                            {
+                                var isSelected = orderNo == SelectedFlowOrderNo;
+                                var orderSummary = OrderStatusDetailList.FirstOrDefault(x => x.OrderNo == orderNo);
+                                var isUrgent = orderSummary != null && 
+                                               (orderSummary.LatestShippingDate < DateOnly.FromDateTime(DateTime.Now) || 
+                                                orderSummary.RiskFlag == "High" || 
+                                                orderSummary.RiskFlag == "Critical");
+
+                                <button @onclick="() => SelectFlowOrder(orderNo)"
+                                        class="relative py-3 px-2 lg:px-2.5 text-[11px] font-bold uppercase tracking-widest transition-all whitespace-nowrap flex items-center justify-center gap-1.5 border-r border-slate-200 @(isSelected ? "text-indigo-600 bg-indigo-50/50" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50") @(tabIndex >= 6 ? "hidden lg:flex" : "flex")">
+                                    @{ tabIndex++; }
+                                    @orderNo
+                                    @if (isUrgent)
+                                    {
+                                        <span class="flex h-2 w-2 rounded-full bg-red-500 shadow-sm animate-pulse"></span>
+                                    }
+                                    @if (isSelected)
+                                    {
+                                        <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600"></div>
+                                    }
+                                </button>
+                            }
+
+                            @if (FlowOrderNoList.Count > 6)
+                            {
+                                <div class="relative flex items-center @(FlowOrderNoList.Count <= 10 ? "lg:hidden" : "")">
+                                    <button @onclick="() => showMoreOrdersMenu = !showMoreOrdersMenu"
+                                            class="py-3 px-4 text-[11px] font-black text-indigo-600 hover:bg-indigo-50 transition-colors flex items-center gap-2 @(isAnyOverflowSelected ? "bg-indigo-50" : "")">
+                                        More+
+                                        <i class="fa-solid fa-chevron-down text-[9px] @(showMoreOrdersMenu ? "rotate-180" : "") transition-transform"></i>
+                                        @if (isAnyOverflowSelected)
+                                        {
+                                            <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600"></div>
+                                        }
+                                    </button>
+                                    @if (showMoreOrdersMenu)
+                                    {
+                                        <div class="absolute top-full right-0 bg-white shadow-xl border border-slate-200 z-[100] min-w-[180px] py-1.5 mt-0.5 rounded-sm overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+                                            @foreach (var order in overflowOrders)
+                                            {
+                                                var isItemVisibleOnDesktop = FlowOrderNoList.IndexOf(order) < 10;
+                                                <button @onclick="() => SelectFlowOrder(order)"
+                                                        class="w-full text-left px-4 py-2.5 text-[11px] font-bold hover:bg-slate-50 flex items-center justify-between group @(order == SelectedFlowOrderNo ? "text-indigo-600 bg-indigo-50/30" : "text-slate-600") @(isItemVisibleOnDesktop ? "lg:hidden" : "")">
+                                                    <span>@order</span>
+                                                    @if (order == SelectedFlowOrderNo)
+                                                    {
+                                                        <i class="fa-solid fa-check text-[10px]"></i>
+                                                    }
+                                                </button>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="flex-1 overflow-y-scroll w-full min-w-0 max-w-full relative custom-scrollbar pr-1">
+                    @if (IsProductionFlowLoading)
+                    {
+                        <div class="absolute inset-0 bg-white/50 backdrop-blur-[2px] z-10 p-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                @for (int i = 0; i < 6; i++)
+                                {
+                                    <Skeleton Type="Skeleton.SkeletonType.Card" Class="w-full h-48 border-white bg-slate-50/50 shadow-sm" />
+                                }
+                            </div>
+                        </div>
+                    }
+                    <ProductionFlow Items="@ProductionFlowList" 
+                                    OnStyleSelected="ShowStyleDetails" 
+                                    OnShowOrderDetails="ShowOrderDetails" 
+                                    OnShowOrderAnalysis="ShowOrderAnalysis" />
+                </div>
+            </div>
+    
+            </div>
+        </div>
+    </ChildContent>
+</DataModal>
+
+<DataModal @bind-IsVisible="showHistoryModal" Title="@($"Order History - {SelectedBuyerName}")" IsLoading="false" ZIndex="2400">
+    <ChildContent>
+        <div class="bg-white flex-1 min-w-0 bg-white rounded-none shadow border border-gray-200">  
+            <div class="p-1">
+               <div class="max-w-4xl mx-auto p-1">
+                @if (IsHistoryLoading)
+                {
+                    <Skeleton Type="Skeleton.SkeletonType.Profile" Class="mb-0 p-3 bg-blue-50/20 rounded-none border border-blue-50 shadow-sm" />
+                }
+                else
+                {
+         
+                  <div class="flex flex-row bg-blue-50/40 rounded-none border-l-4 border-l-blue-500 border border-blue-100 px-4 py-2 mb-0 shadow-sm items-center gap-3 relative z-[50]">
+                    <div class="text-right mb-1">
+                        <button @onclick="() => isHistoryGridView = !isHistoryGridView" 
+                                class="inline-flex items-center px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-none border border-blue-200 bg-white shadow-sm hover:bg-blue-50 transition-all text-blue-700"
+                                title="@(isHistoryGridView ? "Switch to Graph View" : "Switch to Table View")">
+                            @if (isHistoryGridView)
+                            {
+                                 <i class="fa-solid fa-chart-column text-red-700"></i>
+                            }
+                            else
+                            {
+                                <i class="fa-solid fa-table-list text-red-700"></i>
+                            }
+                            <span>@(isHistoryGridView ? "" : "")</span>
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-6">
+                        <div class="flex items-center gap-2">
+                             <div class="flex items-center gap-0.5 h-4 border-l border-slate-300 pl-1.5">
+                                <span class="text-[13px] font-black text-slate-900 border-b-2 border-blue-400 leading-none">1</span>
+                                <sup class="text-[8px] font-bold text-slate-500 -mt-2">st</sup>
+                             </div>
+                            <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">P.O :</span>
+                            <span class="text-[10px] font-black text-slate-900">@SelectedBuyerProfile?.JoinedDate</span>
+                        </div>
+                        <div class="w-px h-4 bg-blue-200"></div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Recent P.O :</span>
+                            <span class="text-[10px] font-black text-slate-900">@SelectedBuyerProfile?.RecentDate</span>
+                        </div>
+                    </div>
+                
+                    <div class="flex items-center gap-1">
+                      <a href="mailto:@SelectedBuyerProfile?.CustomerEmail" 
+                         class="w-7 h-7 flex items-center justify-center bg-white text-blue-600 text-xs hover:bg-blue-600 hover:text-blue-500 hover:border-grey-500 transition-all shadow-sm border border-blue-200" 
+                         title="Send Email">
+                        <i class="fa-solid fa-envelope"></i>
+                      </a>
+                      
+                      @if (!isHistoryGridView)
+                      {
+                        <div class="relative inline-block">
+                            <button @onclick="() => showHistoryFilterDropdown = !showHistoryFilterDropdown" 
+                                    class="w-7 h-7 flex items-center justify-center bg-white text-slate-600 text-xs hover:bg-slate-50 transition-all shadow-sm border border-slate-200" 
+                                    title="Filter Categories">
+                                <i class="fa-solid fa-filter"></i>
+                            </button>
+                            @if (showHistoryFilterDropdown)
+                            {
+                                <div class="absolute right-0 mt-1 w-32 bg-white border border-slate-200 shadow-xl rounded-none z-[3000] p-2 flex flex-col gap-1" style='z-index: 3000;'>
+                                    <label class="flex items-center gap-2 px-2 py-1 hover:bg-slate-50 cursor-pointer rounded-sm">
+                                        <input type="checkbox" @bind="showHistoryAll" class="w-3 h-3" /> <span class="text-[10px] font-bold" style="color:#2e2b8e;">All</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 px-2 py-1 hover:bg-slate-50 cursor-pointer rounded-sm">
+                                        <input type="checkbox" @bind="showHistoryKnit" class="w-3 h-3" /> <span class="text-[10px] font-bold" style="color:#ef4444;">Knit</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 px-2 py-1 hover:bg-slate-50 cursor-pointer rounded-sm">
+                                        <input type="checkbox" @bind="showHistoryWeave" class="w-3 h-3" /> <span class="text-[10px] font-bold" style="color:#3b82f6;">Weave</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 px-2 py-1 hover:bg-slate-50 cursor-pointer rounded-sm">
+                                        <input type="checkbox" @bind="showHistorySilk" class="w-3 h-3" /> <span class="text-[10px] font-bold" style="color:#10b981;">Silk</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 px-2 py-1 hover:bg-slate-50 cursor-pointer rounded-sm">
+                                        <input type="checkbox" @bind="showHistoryLinen" class="w-3 h-3" /> <span class="text-[10px] font-bold" style="color:#f59e0b;">Linen</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 px-2 py-1 hover:bg-slate-50 cursor-pointer rounded-sm">
+                                        <input type="checkbox" @bind="showHistoryOther" class="w-3 h-3" /> <span class="text-[10px] font-bold" style="color:#8b5cf6;">Other</span>
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                      }
+                    </div>
+                </div>
+                  }
+                </div>
+            </div> 
+            
+            <div class="p-1">
+        
+        
+                @if (IsHistoryLoading)
+                {
+                    <div class="bg-white rounded-none shadow-sm border border-slate-200 p-4">
+                        <Skeleton Type="Skeleton.SkeletonType.Table" Rows="5" Columns="10" />
+                    </div>
+                }
+                else if (SelectedBuyerHistory.Any())
+                {
+                    
+
+                    @if (isHistoryGridView)
+                    {
+                        var knitTotal = SelectedBuyerHistory.Sum(h => h.Knit);
+                        var weaveTotal = SelectedBuyerHistory.Sum(h => h.Weave);
+                        var silkTotal = SelectedBuyerHistory.Sum(h => h.Silk);
+                        var linenTotal = SelectedBuyerHistory.Sum(h => h.Linen);
+                        var otherTotal = SelectedBuyerHistory.Sum(h => h.Other);
+                        var posTotal = SelectedBuyerHistory.Sum(h => h.NoofPos);
+                        var weightTotal = SelectedBuyerHistory.Sum(h => h.TotalWeight);
+                        var qtyTotal = SelectedBuyerHistory.Sum(h => h.TotalPcs);
+        
+                        <div class="bg-white rounded-none shadow-sm border border-slate-200 quick-grid-container" style="max-height: calc(100vh - 200px);">
+                            <QuickGrid Items="@SelectedBuyerHistory" class="quick-grid w-full" style="table-layout: fixed;">
+                                <PropertyColumn Property="@(h => h.SN)" Title="SN" Sortable="true" Align="Align.Center" Class="col-sn" />
+                                <TemplateColumn Title="Year" Align="Align.Center" Class="col-year">
+                                    <button type="button" class="text-blue-600 hover:text-blue-800 hover:underline text-left text-xs font-bold" @onclick="() => ShowYearlyHistory(context)">
+                                        @context.Year
+                                    </button>
+                                </TemplateColumn>
+                                @if (knitTotal > 0) { <PropertyColumn Property="@(h => h.Knit)" Title="knit" Align="Align.Center" Class="col-knit" /> }
+                                @if (weaveTotal > 0) { <PropertyColumn Property="@(h => h.Weave)" Title="Weave" Align="Align.Center" Class="col-weave" /> }
+                                @if (silkTotal > 0) { <PropertyColumn Property="@(h => h.Silk)" Title="Silk" Align="Align.Center" Class="col-silk" /> }
+                                @if (linenTotal > 0) { <PropertyColumn Property="@(h => h.Linen)" Title="Linen" Align="Align.Center" Class="col-linen" /> }
+                                @if (otherTotal > 0) { <PropertyColumn Property="@(h => h.Other)" Title="Other" Align="Align.Center" Class="col-other" /> }
+                                <PropertyColumn Property="@(h => (int)h.NoofPos)" Title="No of POs" Align="Align.Center" Class="col-noofpos" />
+                                <PropertyColumn Property="@(h => h.TotalWeight)" Title="Total Weight" Align="Align.Center" Class="col-weight" />
+                                <PropertyColumn Property="@(h => h.TotalPcs)" Title="Total Qty" Align="Align.Center" Class="col-qty" />
+                            </QuickGrid>
+        
+                            <div class="footer-container">
+                                <table class="grand-total-table" style="table-layout: fixed; width: 100%;">
+                                    <tr>
+                                        <td class="col-sn"></td>
+                                        <td class="col-year footer-label" style="text-align: right; padding-right: .5rem !important;">TOTAL</td>
+                                        @if (knitTotal > 0) { <td class="footer-val col-knit">@knitTotal</td> }
+                                        @if (weaveTotal > 0) { <td class="footer-val col-weave">@weaveTotal</td> }
+                                        @if (silkTotal > 0) { <td class="footer-val col-silk">@silkTotal</td> }
+                                        @if (linenTotal > 0) { <td class="footer-val col-linen">@linenTotal</td> }
+                                        @if (otherTotal > 0) { <td class="footer-val col-other">@otherTotal</td> }
+                                        <td class="footer-val col-noofpos">@((int)posTotal)</td>
+                                        <td class="footer-val col-weight font-bold text-indigo-700">@weightTotal</td>
+                                        <td class="footer-val col-qty font-bold text-indigo-700">@qtyTotal</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="h-[320px]">
+                            <MultiLineGraph Title="@($"Production Trend: {SelectedBuyerName}")" 
+                                       Series="@BuyerHistoryMultiGraphData" 
+                                       XLabel="Year"
+                                       YLabel="Quantity" />
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="py-12 text-center text-gray-400">
+                        <span class="oi oi-inbox text-3xl block mb-2 opacity-10"></span>
+                        <p class="text-xs font-medium">No history found for this buyer</p>
+                    </div>
+                }
+            </div>
+        
+            </div>
+    </ChildContent>
+</DataModal>
+<DataModal @bind-IsVisible="showYearHistoryModal" Title="@($"Year History - {SelectedBuyerName} ({SelectedYear})")" IsLoading="false" ZIndex="2600">
+    <ChildContent>
+        <div class="bg-white flex-1 min-w-0 bg-white rounded-none shadow border border-gray-200">  
+            <div class="p-1">
+                 <div class="max-w-4xl mx-auto p-1">
+                @if (IsYearHistoryLoading)
+                {
+                    <Skeleton Type="Skeleton.SkeletonType.Profile" Class="mb-00 p-3 bg-blue-50/20 rounded-none border border-blue-50 shadow-sm" />
+                }
+                else
+                {
+                   <div class="flex flex-row bg-blue-50/40 rounded-none border-l-4 border-l-blue-500 border border-blue-100 px-4 py-2 mb-0 shadow-sm items-center gap-3 relative z-[50]">
+                    <div class="text-right mb-1">
+                        <button @onclick="() => isYearHistoryGridView = !isYearHistoryGridView" 
+                                class="inline-flex items-center px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-none border border-blue-200 bg-white shadow-sm hover:bg-blue-50 transition-all text-blue-700"
+                                title="@(isYearHistoryGridView ? "Switch to Graph View" : "Switch to Table View")">
+                            @if (isYearHistoryGridView)
+                            {
+                                
+                                <i class="fa-solid fa-chart-column text-red-700"></i>
+                            }
+                            else
+                            {
+                                <i class="fa-solid fa-table-list text-red-700"></i>
+                            }
+                            <span>@(isYearHistoryGridView ? "" : "")</span>
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-6">
+                        <div class="flex items-center gap-2">
+                             <div class="flex items-center gap-0.5 h-4 border-l border-slate-300 pl-1.5">
+                                <span class="text-[13px] font-black text-slate-900 border-b-2 border-blue-400 leading-none">1</span>
+                                <sup class="text-[8px] font-bold text-slate-500 -mt-2">st</sup>
+                             </div>
+                            <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">P.O :</span>
+                            <span class="text-[10px] font-black text-slate-900">@SelectedBuyerProfile?.JoinedDate</span>
+                        </div>
+                        <div class="w-px h-4 bg-blue-200"></div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Recent P.O :</span>
+                            <span class="text-[10px] font-black text-slate-900">@SelectedBuyerProfile?.RecentDate</span>
+                        </div>
+                    </div>
+                
+                    <div class="flex items-center gap-1">
+                          <a href="mailto:@SelectedBuyerProfile?.CustomerEmail" 
+                          class="w-7 h-7 flex items-center justify-center bg-white text-blue-600 text-xs hover:bg-blue-600 hover:text-blue-500 transition-all shadow-sm border border-blue-200" 
+                          title="Send Email">
+                         <i class="fa-solid fa-envelope"></i>
+                       </a>
+                       
+                       @if (!isYearHistoryGridView)
+                       {
+                        <div class="relative inline-block">
+                            <button @onclick="() => showYearHistoryFilterDropdown = !showYearHistoryFilterDropdown" 
+                                    class="w-7 h-7 flex items-center justify-center bg-white text-slate-600 text-xs hover:bg-slate-50 transition-all shadow-sm border border-slate-200" 
+                                    title="Filter Categories">
+                                <i class="fa-solid fa-filter"></i>
+                            </button>
+                            @if (showYearHistoryFilterDropdown)
+                            {
+                                <div class="absolute right-0 mt-1 w-32 bg-white border border-slate-200 shadow-xl rounded-none z-[3000] p-2 flex flex-col gap-1" style='z-index: 6000;'>
+                                    <label class="flex items-center gap-2 px-2 py-1 hover:bg-slate-50 cursor-pointer rounded-sm">
+                                        <input type="checkbox" @bind="showYearAll" class="w-3 h-3" /> <span class="text-[10px] font-bold" style="color:#2e2b8e;">All</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 px-2 py-1 hover:bg-slate-50 cursor-pointer rounded-sm">
+                                        <input type="checkbox" @bind="showYearKnit" class="w-3 h-3" /> <span class="text-[10px] font-bold" style="color:#ef4444;">Knit</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 px-2 py-1 hover:bg-slate-50 cursor-pointer rounded-sm">
+                                        <input type="checkbox" @bind="showYearWeave" class="w-3 h-3" /> <span class="text-[10px] font-bold" style="color:#3b82f6;">Weave</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 px-2 py-1 hover:bg-slate-50 cursor-pointer rounded-sm">
+                                        <input type="checkbox" @bind="showYearSilk" class="w-3 h-3" /> <span class="text-[10px] font-bold" style="color:#10b981;">Silk</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 px-2 py-1 hover:bg-slate-50 cursor-pointer rounded-sm">
+                                        <input type="checkbox" @bind="showYearLinen" class="w-3 h-3" /> <span class="text-[10px] font-bold" style="color:#f59e0b;">Linen</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 px-2 py-1 hover:bg-slate-50 cursor-pointer rounded-sm">
+                                        <input type="checkbox" @bind="showYearOther" class="w-3 h-3" /> <span class="text-[10px] font-bold" style="color:#8b5cf6;">Other</span>
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                       }
+                    </div>
+                </div>
+                }
+                </div>
+                </div>
+            <div class="p-1">
+        
+                @if (IsYearHistoryLoading)
+                {
+                    <div class="bg-white rounded-none shadow-sm border border-slate-200 p-4">
+                        <Skeleton Type="Skeleton.SkeletonType.Table" Rows="5" Columns="10" />
+                    </div>
+                }
+                else if (SelectedYearHistory.Any())
+                {
+                     
+
+                    @if (isYearHistoryGridView)
+                    {
+                        var knitTotal = SelectedYearHistory.Sum(h => h.Knit);
+                        var weaveTotal = SelectedYearHistory.Sum(h => h.Weave);
+                        var silkTotal = SelectedYearHistory.Sum(h => h.Silk);
+                        var linenTotal = SelectedYearHistory.Sum(h => h.Linen);
+                        var otherTotal = SelectedYearHistory.Sum(h => h.Other);
+                        var posTotal = SelectedYearHistory.Sum(h => h.NoofPos);
+                        var weightTotal = SelectedYearHistory.Sum(h => h.TotalWeight);
+                        var qtyTotal = SelectedYearHistory.Sum(h => h.TotalPcs);
+        
+                        <div class="bg-white rounded-none shadow-sm border border-slate-200 quick-grid-container" style="max-height: calc(100vh - 200px);">
+                            <QuickGrid Items="@SelectedYearHistory" class="quick-grid w-full" style="table-layout: fixed;">
+                                <PropertyColumn Property="@(h => h.SN)" Title="SN" Sortable="true" Align="Align.Center" Class="col-sn" />
+                                <PropertyColumn Property="@(h => h.MonthName)" Title="MonthName" Sortable="true" Class="col-month font-bold text-slate-800" />
+                                @if (knitTotal > 0) { <PropertyColumn Property="@(h => h.Knit)" Title="knit" Align="Align.Center" Class="col-knit" /> }
+                                @if (weaveTotal > 0) { <PropertyColumn Property="@(h => h.Weave)" Title="Weave" Align="Align.Center" Class="col-weave" /> }
+                                @if (silkTotal > 0) { <PropertyColumn Property="@(h => h.Silk)" Title="Silk" Align="Align.Center" Class="col-silk" /> }
+                                @if (linenTotal > 0) { <PropertyColumn Property="@(h => h.Linen)" Title="Linen" Align="Align.Center" Class="col-linen" /> }
+                                @if (otherTotal > 0) { <PropertyColumn Property="@(h => h.Other)" Title="Other" Align="Align.Center" Class="col-other" /> }
+                                <PropertyColumn Property="@(h => (int)h.NoofPos)" Title="No of POs" Align="Align.Center" Class="col-noofpos" />
+                                <PropertyColumn Property="@(h => h.TotalWeight)" Title="Weight(Kg)" Align="Align.Center" Class="col-weight" />
+                                <PropertyColumn Property="@(h => h.TotalPcs)" Title="Quantity" Align="Align.Center" Class="col-qty" />
+                            </QuickGrid>
+        
+                            <div class="footer-container">
+                                <table class="grand-total-table" style="table-layout: fixed; width: 100%;">
+                                    <tr>
+                                        <td class="col-sn"></td>
+                                        <td class="col-month footer-label" style="text-align: right; padding-right: 1rem !important;">TOTAL</td>
+                                        @if (knitTotal > 0) { <td class="footer-val col-knit">@knitTotal</td> }
+                                        @if (weaveTotal > 0) { <td class="footer-val col-weave">@weaveTotal</td> }
+                                        @if (silkTotal > 0) { <td class="footer-val col-silk">@silkTotal</td> }
+                                        @if (linenTotal > 0) { <td class="footer-val col-linen">@linenTotal</td> }
+                                        @if (otherTotal > 0) { <td class="footer-val col-other">@otherTotal</td> }
+                                        <td class="footer-val col-noofpos">@((int)posTotal)</td>
+                                        <td class="footer-val col-weight font-bold text-indigo-700">@weightTotal</td>
+                                        <td class="footer-val col-qty font-bold text-indigo-700">@qtyTotal</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="h-[320px]">
+                            <MultiLineGraph Title="@($"Monthly Trend: {SelectedBuyerName} ({SelectedYear})")"
+                                       Series="@YearHistoryMultiGraphData"
+                                       XLabel="Month"
+                                       YLabel="Quantity" />
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="py-12 text-center text-gray-400">
+                        <span class="oi oi-inbox text-3xl block mb-2 opacity-10"></span>
+                        <p class="text-xs font-medium">No Year history found for this buyer</p>
+                    </div>
+                }
+            </div>
+            </div>
+    </ChildContent>
+</DataModal>
+
+<DataModal @bind-IsVisible="showRunningOrdersModal" Title="@($"{CurrentRunningOrdersTitle} - {SelectedBuyerName}")" IsLoading="false" FullScreen="false" MaxWidth="1000px" ZIndex="2600">
+    <ChildContent>
+        <div class="px-2 pb-4">
+            @if (IsRunningOrdersLoading)
+            {
+                <div class="bg-white rounded-none shadow-sm border border-slate-200 p-4">
+                    <Skeleton Type="Skeleton.SkeletonType.Table" Rows="8" Columns="12" />
+                </div>
+            }
+            else if (RunningOrdersList.Any())
+            {
+    
+                <div class="bg-white rounded-none shadow-sm border border-slate-200 quick-grid-container" style="max-height: calc(100vh - 180px);">
+                    <QuickGrid Items="@RunningOrdersList" class="quick-grid w-full" style="table-layout: fixed;">
+                        <PropertyColumn Property="@(h => h.SN)" Title="SN"      Align="Align.Center" Class="col-sn" />
+                        <TemplateColumn Title="Order No"   Class="col-order-no">
+                            <button type="button" class="text-blue-600 hover:text-blue-800 hover:underline font-bold text-left whitespace-nowrap" @onclick="() => ShowProductionFlowByOrder(context)">
+                                @context.OrderNo
+                            </button>
+                        </TemplateColumn>
+                        <PropertyColumn Property="@(h => h.Collection)" Title="Type"  Align="Align.Center" Class="col-coll" />
+                        <PropertyColumn Property="@(h => h.ShippingDate)" Title="Ship Date" Align="Align.Center"  Format="yyyy-MM-dd" Class="col-ship-date" />
+                        
+                        @foreach (var cat in RunningOrderCategories)
+                        {
+                            <TemplateColumn Title="@cat"  Align="Align.Center" Class="col-category">
+                                @{
+                                    var val = context.Categories.GetValueOrDefault(cat);
+                                    @(val == 0 ? "" : val.ToString())
+                                }
+                            </TemplateColumn>
+                        }
+    
+                        <TemplateColumn Title="Knitted"  Align="Align.Center" Class="col-recv">
+                            @(context.TotalKnitterItems == 0 ? "" : context.TotalKnitterItems.ToString())
+                        </TemplateColumn>
+                        <TemplateColumn Title="Total Qty"  Align="Align.Center" Class="col-order-pics">
+                            @(context.TotalOrderPics == 0 ? "" : context.TotalOrderPics.ToString())
+                        </TemplateColumn>
+                        <TemplateColumn Title="Balance"  Align="Align.Center" Class="col-diff font-bold text-red-600">
+                            @(context.Difference == 0 ? "" : context.Difference.ToString())
+                        </TemplateColumn>
+                    </QuickGrid>
+    
+                    <div class="footer-container">
+                        <table class="grand-total-table" style="table-layout: fixed;">
+                            <tr>
+                                <td class="col-sn"></td>
+                                <td class="col-order-no"></td>
+                                <td class="col-coll"></td>
+                                <td class="col-ship-date footer-label" style="text-align: right; padding-right: 1rem !important;">
+                                    TOTAL
+                                </td>
+                                
+                                @{
+                                    var knitterTotal = RunningOrdersList.Sum(h => h.TotalKnitterItems);
+                                    var orderPicsTotal = RunningOrdersList.Sum(h => h.TotalOrderPics);
+                                    var diffTotal = RunningOrdersList.Sum(h => h.Difference);
+                                }
+    
+                                @foreach (var cat in RunningOrderCategories)
+                                {
+                                    var catTotal = RunningOrdersList.Sum(h => h.Categories.GetValueOrDefault(cat));
+                                    <td class="col-category footer-val">@(catTotal == 0 ? "" : catTotal.ToString())</td>
+                                }
+    
+                                <td class="col-recv footer-val">@(knitterTotal == 0 ? "" : knitterTotal.ToString())</td>
+                                <td class="col-order-pics footer-val">@(orderPicsTotal == 0 ? "" : orderPicsTotal.ToString())</td>
+                                <td class="col-diff footer-val font-bold text-red-600">@(diffTotal == 0 ? "" : diffTotal.ToString())</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="py-12 text-center text-gray-400">
+                    <span class="oi oi-inbox text-3xl block mb-2 opacity-10"></span>
+                    <p class="text-xs font-medium">No running orders found</p>
+                </div>
+            }
+        </div>
+    </ChildContent>
+</DataModal>
+
+<!-- GLOBAL STYLE DETAIL POPUP (ROOT LEVEL FOR PERFECT CENTERING) -->
+<DataModal @bind-IsVisible="IsStyleModalVisible" 
+           Title="@($"Style Details - {SelectedStyleNo}")"
+           BadgeText="@SelectedStyleDetails?.GeneralInfo?.StyleId.ToString()"
+           IsLoading="IsLoadingStyleDetails"
+           MaxWidth="850px"
+           ZIndex="3000">
+    </div>
+</DataModal>
+
+<!-- ORDER DETAIL POPUP (HOISTED FOR SEPARATION) -->
+<DataModal @bind-IsVisible="IsOrderDetailVisible" 
+           Title="@($"Order Details - {SelectedOrderNo}")"
+           IsLoading="IsLoadingOrderDetail"
+           MaxWidth="1200px"
+           ZIndex="2500">
+    <div class="flex-1 w-full relative min-h-[500px] bg-white p-4 overflow-hidden flex flex-col">
+        @if (SelectedOrderDetails != null && SelectedOrderDetails.Any())
+        {
+            var firstItem = SelectedOrderDetails.FirstOrDefault();
+            var totalPieces = SelectedOrderDetails.Sum(x => x.Qty);
+            var sizeHeaders = SelectedOrderDetails
+                .SelectMany(x => x.Sizes)
+                .Where(x => x.Value > 0)
+                .Select(x => x.Key.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(s => {
+                    var fixedOrder = new List<string> { "XXXS", "XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL", "OSFA" };
+                    int idx = fixedOrder.IndexOf(s.ToUpper());
+                    return idx == -1 ? 999 : idx;
+                })
+                .ToList();
+
+            <!-- TOP SECTION: Order Summary Card -->
+            <div class="bg-white rounded-none shadow-sm border border-slate-200 p-3 flex flex-wrap lg:flex-nowrap justify-between items-center gap-4 shrink-0 mb-4">
+                <div class="flex flex-col gap-1 min-w-[250px]">
+                    <div class="flex items-center gap-2 text-emerald-600">
+                        <i class="fa-solid fa-truck-fast text-xs"></i>
+                        <span class="text-[10px] font-black uppercase tracking-widest">Shipping Date:</span>
+                        <span class="text-sm font-black">@(firstItem?.ShippingDate?.ToString("yyyy-MM-dd") ?? "-")</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2 bg-indigo-50 border border-indigo-100 px-4 py-2 rounded-sm shadow-sm">
+                        <i class="fa-solid fa-calculator text-indigo-400"></i>
+                        <span class="text-lg font-black text-indigo-700">@totalPieces</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DATA GRID SECTION -->
+            <div class="bg-white rounded-none border border-slate-200 quick-grid-container flex-1 flex flex-col overflow-hidden min-h-0">
+                <div class="flex-1 min-h-0 overflow-y-auto">
+                    <QuickGrid Items="@SelectedOrderDetails.AsQueryable()" class="quick-grid w-full">
+                        <TemplateColumn Title="Style No" Class="col-style font-medium text-slate-800">
+                            <div class="cursor-pointer text-indigo-600 hover:text-indigo-800 hover:underline font-bold transition-colors flex items-center gap-1.5 min-w-0 overflow-hidden" @onclick="() => ShowStyleDetails(context.StyleNo)">
+                                <i class="fa-solid fa-circle-info text-[10px] opacity-50 shrink-0"></i>
+                                <span class="truncate" title="@context.StyleNo">@context.StyleNo</span>
+                            </div>
+                        </TemplateColumn>
+                        <PropertyColumn Property="@(x => x.ProductName)" Title="Product Name" Class="col-product text-slate-700" />
+                        <PropertyColumn Property="@(x => x.Color)" Title="Color" Class="col-color text-slate-700" />
+                        <PropertyColumn Property="@(x => x.Guage)" Title="Guage" Class="col-guage text-slate-600" />
+                        <PropertyColumn Property="@(x => x.Ply)" Title="Ply" Class="col-ply text-slate-600" />
+                        <TemplateColumn Title="Yarn" Class="col-yarn text-slate-600 text-xs">
+                            <div class="truncate text-[10px]" title="@context.Yarn">@context.Yarn</div>
+                        </TemplateColumn>
+
+                        @foreach (var size in sizeHeaders)
+                        {
+                            <TemplateColumn Title="@size" Align="Align.Center" Class="col-size">
+                                @{ var count = context.Sizes.TryGetValue(size, out var val) ? val : 0; }
+                                <span class="@(count > 0 ? "text-slate-900 font-bold" : "text-transparent")">@(count > 0 ? count.ToString() : "")</span>
+                            </TemplateColumn>
+                        }
+
+                        <PropertyColumn Property="@(x => x.Qty)" Title="Qty" Align="Align.Center" Class="col-pieces font-bold text-slate-900 bg-slate-50/30" />
+                        <PropertyColumn Property="@(x => x.KnSl)" Title="Kn/Sl" Class="col-knsl text-slate-600" />
+                        <PropertyColumn Property="@(x => x.DaysRequired)" Title="Days Req" Align="Align.Center" Class="col-daysreq font-semibold text-indigo-600" />
+                    </QuickGrid>
+                </div>
+
+                <div class="footer-container shrink-0">
+                    <table class="grand-total-table w-full">
+                        <tr>
+                            <td colspan="6" class="footer-label font-black text-right pr-4 uppercase tracking-widest text-[#002d54]">Grand Totals</td>
+                            @foreach (var size in sizeHeaders)
+                            {
+                                <td class="footer-val-size col-size text-center">@SelectedOrderDetails.Sum(x => x.Sizes.TryGetValue(size, out var val) ? val : 0)</td>
+                            }
+                            <td class="footer-val-total col-pieces text-center font-black text-slate-900 bg-slate-100">@totalPieces</td>
+                            <td class="col-knsl"></td>
+                            <td class="col-daysreq"></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+</DataModal>
+
+<!-- PRICE ANALYSIS POPUP (HOISTED FOR SEPARATION) -->
+<DataModal @bind-IsVisible="IsAnalysisPopupVisible" 
+           Title="@($"Order Price Analysis - {SelectedOrderNo}")"
+           BadgeText="@($"Rate: {UsdRate:N2}")"
+           IsLoading="IsLoadingAnalysis"
+           FullScreen="false" MaxWidth="85vw"
+           ZIndex="2500"
+           class="analysis-modal">
+    <HeaderExtra>
+        <div class="flex items-center gap-2 bg-indigo-50/50 px-3 py-1.5 rounded-full border border-indigo-100 shadow-sm ml-4">
+            <span class="text-[10px] font-black text-indigo-400 uppercase tracking-widest">USD Rate</span>
+            <input type="number" 
+                   @bind="UsdRate" 
+                   class="w-20 h-5 text-sm font-black text-indigo-600 bg-transparent border-none focus:ring-0 p-0 text-center" 
+                   step="0.01" />
+            <button @onclick="() => ShowOrderAnalysis(SelectedOrderNo)" 
+                    class="ml-1 text-indigo-500 hover:text-indigo-700 transition-colors p-1"
+                    title="Recalculate with new rate">
+                <i class="fa-solid fa-arrows-rotate text-xs"></i>
+            </button>
+            @if (IsAnalysisUnmasked)
+            {
+                <button @onclick="() => IsAnalysisUnmasked = false" 
+                        class="ml-1 text-slate-400 hover:text-rose-500 transition-colors p-1 border-l border-indigo-100 pl-2"
+                        title="Lock pricing data">
+                    <i class="fa-solid fa-lock-open text-xs"></i>
+                </button>
+            }
+        </div>
+    </HeaderExtra>
+    <ChildContent>
+        @if (IsAnalysisPopupVisible)
+        {
+            <div class="flex-1 w-full relative min-h-[500px] bg-white" style="height: calc(90vh - 120px);">
+                <!-- Absolute inner container maps to padding to sever the flex-stretch bug entirely -->
+                <div class="absolute inset-2 sm:inset-4 flex flex-col overflow-hidden">
+                
+                    @if (IsLoadingAnalysis)
+                    {
+                        <div class="space-y-4 flex-1 flex flex-col justify-center">
+                            <Skeleton Type="Skeleton.SkeletonType.Table" Rows="12" Columns="8" />
+                        </div>
+                    }
+                    else if (AnalysisItems != null && AnalysisItems.Any())
+                    {
+                        <div class="bg-white rounded-none shadow-sm border border-slate-200 quick-grid-container flex-1 flex flex-col overflow-hidden min-h-0">
+
+                        <div class="flex-1 min-h-0 overflow-y-auto">
+                            <QuickGrid Items="@AnalysisItems.AsQueryable()" class="quick-grid w-full">
+                                <PropertyColumn Property="@(x => x.SN)" Title="S.N" Class="col-sn-an" />
+                                <TemplateColumn Title="Style" Sortable="true" Class="col-style-an font-black text-slate-800">
+                                    <div class="truncate" title="@context.ProductName">@context.ProductName</div>
+                                </TemplateColumn>
+                                <PropertyColumn Property="@(x => x.TotalQuantity)" Title="Qty" Sortable="true" Align="Align.Center" Format="N0" Class="col-qty-an" />
+                                <PropertyColumn Property="@(x => x.StyleGuage)" Title="Guage" Class="col-guage-an" />
+                                <PropertyColumn Property="@(x => x.StylePly)" Title="Ply" Class="col-ply-an" />
+                                <TemplateColumn Title="Yarn" Class="col-yarn-an">
+                                    <div class="truncate text-[10px]" title="@context.YarnInfo">@context.YarnInfo</div>
+                                </TemplateColumn>
+                                <PropertyColumn Property="@(x => x.NetWet)" Title="Weight" Sortable="true" Align="Align.Right" Format="N2" Class="col-wt-an text-right" />
+                                
+                                <PropertyColumn Property="@(x => x.OverratePerPcUsd)" Title="Overhead" Sortable="true" Align="Align.Right" Format="C2" Class="@($"col-overhead-an text-right text-amber-600 font-bold transition-all duration-500 {(IsAnalysisUnmasked ? "" : "blur-[6px] select-none opacity-50")}")" />
+                                <PropertyColumn Property="@(x => x.FinalCostPerPcUsd)" Title="Prod.Cost" Sortable="true" Align="Align.Right" Format="C2" Class="@($"col-prod-cost-an text-right text-blue-600 font-bold transition-all duration-500 {(IsAnalysisUnmasked ? "" : "blur-[6px] select-none opacity-50")}")" />
+                                
+                                <PropertyColumn Property="@(x => x.GrandTotalProductionCostUsd)" Title="Total Cost" Sortable="true" Align="Align.Right" Format="C2" Class="@($"col-total-cost-an text-right bg-slate-50 font-black text-rose-600 transition-all duration-500 {(IsAnalysisUnmasked ? "" : "blur-[6px] select-none opacity-50")}")" />
+                                <PropertyColumn Property="@(x => x.TotalRevenueUsd)" Title="S.Price" Sortable="true" Align="Align.Right" Format="C2" Class="@($"col-s-price-an text-right bg-emerald-50 font-black text-emerald-600 transition-all duration-500 {(IsAnalysisUnmasked ? "" : "blur-[6px] select-none opacity-50")}")" />
+                                
+                                <TemplateColumn Title="Gross Profit" Align="Align.Right" Class="@($"col-profit-an text-right font-black transition-all duration-500")">
+                                    @{
+                                        var profit = context.TotalRevenueUsd - context.GrandTotalProductionCostUsd;
+                                    }
+                                    <span class="@(profit >= 0 ? "text-emerald-600" : "text-rose-600") @(IsAnalysisUnmasked ? "" : "blur-[6px] select-none opacity-50") transition-all duration-500">
+                                        @profit.ToString("C2")
+                                    </span>
+                                </TemplateColumn>
+                            </QuickGrid>
+                        </div>
+
+                        <div class="footer-container shrink-0 relative @(IsAnalysisUnmasked ? "" : "pointer-events-none") z-10">
+                            @if (!IsAnalysisUnmasked) { <div class="absolute inset-0 bg-slate-100/50 backdrop-blur-[1px] z-20 flex items-center justify-center"></div> }
+                            <table class="grand-total-table w-full">
+                                <tr class="transition-all duration-500">
+                                    <td colspan="2" class="footer-label font-black text-right pr-4 uppercase tracking-widest text-[#002d54]">
+                                        Total
+                                    </td>
+                                    <td class="footer-val col-qty-an text-center font-bold text-indigo-700">
+                                        @AnalysisItems.Sum(x => x.TotalQuantity).ToString("N0")
+                                    </td>
+                                    <td colspan="3"></td>
+                                    <td class="footer-val col-wt-an text-right font-bold text-slate-600">
+                                        @AnalysisItems.Sum(x => x.NetWet).ToString("N2")
+                                    </td>
+                                    <td class="col-overhead-an"></td>
+                                    <td class="footer-val col-prod-cost-an font-bold text-blue-600 @(IsAnalysisUnmasked ? "" : "blur-[6px] opacity-10")">
+                                        @AnalysisItems.Sum(x => x.FinalCostPerPcUsd).ToString("C2")
+                                    </td>
+                                    <td class="footer-val col-total-cost-an font-black text-rose-600 bg-rose-50/30 @(IsAnalysisUnmasked ? "" : "blur-[6px] opacity-10")">
+                                        @AnalysisItems.Sum(x => x.GrandTotalProductionCostUsd).ToString("C2")
+                                    </td>
+                                    <td class="footer-val col-s-price-an font-black text-emerald-600 bg-emerald-50/30 @(IsAnalysisUnmasked ? "" : "blur-[6px] opacity-10")">
+                                        @AnalysisItems.Sum(x => x.TotalRevenueUsd).ToString("C2")
+                                    </td>
+                                    @{
+                                        var totalProfit = AnalysisItems.Sum(x => x.TotalRevenueUsd) - AnalysisItems.Sum(x => x.GrandTotalProductionCostUsd);
+                                    }
+                                    <td class="footer-val col-profit-an font-black @(totalProfit >= 0 ? "text-emerald-600" : "text-rose-600") bg-slate-50 @(IsAnalysisUnmasked ? "" : "blur-[6px] opacity-10")">
+                                        @totalProfit.ToString("C2")
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    }
+                </div>
+                
+                </div> <!-- END OF INSET CONTENT -->
+
+                <!-- PIN OVERLAY (On top of everything, contained to modal bounds strictly) -->
+                @if (!IsAnalysisUnmasked && AnalysisItems != null && AnalysisItems.Any() && !IsLoadingAnalysis)
+                {
+                    <div class="absolute inset-0 z-[100] bg-white/40 backdrop-blur-md pointer-events-auto"></div>
+                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[200] bg-white p-8 rounded-none shadow-2xl border border-slate-200 flex flex-col items-center gap-4 max-w-sm w-full">
+                        <div class="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mb-2">
+                            <i class="fa-solid fa-shield-halved text-2xl text-indigo-500"></i>
+                        </div>
+                        <div class="text-center">
+                            <h3 class="text-lg font-black text-slate-900 leading-tight">Secure Access</h3>
+                            <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">PIN Required for Pricing</p>
+                        </div>
+                        <div class="w-full mt-2">
+                            <input type="password" 
+                                    @bind="AnalysisPinInput" 
+                                    @bind:event="oninput"
+                                    @onkeydown='@(e => { if (e.Key == "Enter") VerifyAnalysisPin(); })'
+                                    placeholder="••••" 
+                                    class="w-full h-12 text-[#222222] text-center text-xl font-black tracking-[1rem] border-2 border-slate-200 focus:border-indigo-500 rounded-none focus:ring-0 transition-all uppercase placeholder:tracking-normal placeholder:text-sm placeholder:font-bold" 
+                                    maxlength="4" />
+                            @if (!string.IsNullOrEmpty(AnalysisPinError))
+                            {
+                                <p class="text-[10px] text-rose-500 font-bold mt-2 text-center">@AnalysisPinError</p>
+                            }
+                        </div>
+                        <button @onclick="VerifyAnalysisPin" class="w-full h-12 bg-slate-900 hover:bg-indigo-600 text-white font-black text-sm uppercase tracking-widest transition-all rounded-none shadow-lg">
+                            Unlock Data
+                        </button>
+                        <p class="text-[9px] text-slate-300 uppercase font-black mt-2">Confidential Information</p>
+                    </div>
+                }
+            </div>
+        }
+
+    </ChildContent>
+</DataModal>
+

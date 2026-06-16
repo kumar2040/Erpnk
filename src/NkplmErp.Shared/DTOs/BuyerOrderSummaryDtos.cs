@@ -166,6 +166,7 @@ public class DepartmentStockDto
 
 public class OrderViewHeaderDto
 {
+    public long SN { get; set; }
     public DateOnly? ShippingDate { get; set; }
     public string? Guage { get; set; }
     public string? Ply { get; set; }

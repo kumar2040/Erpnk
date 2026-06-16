@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("NkplmErp.Migrations")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+24e879155c37196264b24ce47ea8b6f9ecdc18e3")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+610417bc391a27c686372cb00d7f89631c5f937b")]
 [assembly: System.Reflection.AssemblyProductAttribute("NkplmErp.Migrations")]
 [assembly: System.Reflection.AssemblyTitleAttribute("NkplmErp.Migrations")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

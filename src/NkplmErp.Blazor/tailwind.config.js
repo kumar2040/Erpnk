@@ -23,8 +23,7 @@ module.exports = {
                 glass: '12px',
             },
             fontFamily: {
-                sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-                poppins: ['Poppins', 'sans-serif'], // 👈 added
+                sans: ['Poppins', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
             },
             fontSize: {
                 11: '11px', // 👈 optional shortcut (text-11)

@@ -8,6 +8,8 @@ public partial class Users
 {
     [Inject] private NkplmErp.Blazor.Services.Users.UsersApiClient Api { get; set; } = default!;
     [Inject] private NavigationManager Navigation { get; set; } = default!;
+    [Inject] private NkplmErp.Blazor.Services.RoleManagement.PermissionService Permissions { get; set; } = default!;
+    [Inject] private NkplmErp.Blazor.Services.RoleManagement.RoleManagementApiClient RoleApi { get; set; } = default!;
 
     private List<UserListItemDto> users = new();
     private IEnumerable<UserListItemDto> filteredUsers => FilterUsersList();
@@ -32,12 +34,38 @@ public partial class Users
     private string? deleteUserId;
     private string? deleteUserName;
 
-    // Available roles (hardcoded for now, could be fetched from API)
-    private List<string> availableRoles = new() { "Admin", "User", "Manager", "Viewer" };
+    // Available roles — fetched dynamically from Role Management API
+    private List<string> availableRoles = new();
 
     protected override async Task OnInitializedAsync()
     {
+        if (!Permissions.IsLoaded)
+        {
+            await Permissions.LoadPermissionsAsync();
+        }
+
+        if (!Permissions.CanView("Users"))
+        {
+            Navigation.NavigateTo("/dashboard");
+            return;
+        }
+
         await LoadUsers();
+        await LoadRoles();
+    }
+
+    private async Task LoadRoles()
+    {
+        try
+        {
+            var roles = await RoleApi.GetAllRolesAsync();
+            availableRoles = roles.Select(r => r.RoleName).OrderBy(n => n).ToList();
+        }
+        catch
+        {
+            // Keep empty list on error — user will see no checkboxes
+            availableRoles = new();
+        }
     }
 
     private async Task LoadUsers()
@@ -126,6 +154,7 @@ public partial class Users
                     LastName = user.LastName,
                     Email = user.Email,
                     IsActive = user.IsActive,
+                    AssignedGauge = user.AssignedGauge,
                     Roles = user.Roles.ToList()
                 };
                 showModal = true;
@@ -162,6 +191,7 @@ public partial class Users
                     LastName = formData.LastName,
                     Email = formData.Email,
                     IsActive = formData.IsActive,
+                    AssignedGauge = formData.AssignedGauge,
                     Roles = formData.Roles
                 };
 
@@ -177,6 +207,7 @@ public partial class Users
                     Email = formData.Email,
                     Password = formData.Password,
                     IsActive = formData.IsActive,
+                    AssignedGauge = formData.AssignedGauge,
                     Roles = formData.Roles
                 };
 
@@ -273,6 +304,7 @@ public partial class Users
         public string Email { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
         public bool IsActive { get; set; } = true;
+        public string? AssignedGauge { get; set; }
         public List<string> Roles { get; set; } = new();
     }
 

@@ -15,4 +15,10 @@ public class TokenProvider
     }
 
     public event Action? OnTokenChanged;
+    public event Action? OnSessionExpired;
+
+    public void NotifySessionExpired()
+    {
+        OnSessionExpired?.Invoke();
+    }
 }

@@ -23,10 +23,13 @@
             <h1 class="text-2xl font-bold text-gray-900">Users Management</h1>
             <p class="text-sm text-gray-600 mt-1">Manage system users, roles, and permissions</p>
         </div>
-        <button @onclick="OpenCreateModal" class="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors flex items-center gap-2">
-            <i class="oi oi-plus"></i>
-            Add User
-        </button>
+        @if (Permissions.CanEdit("Users"))
+        {
+            <button @onclick="OpenCreateModal" class="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors flex items-center gap-2">
+                <i class="oi oi-plus"></i>
+                Add User
+            </button>
+        }
     </div>
 
     <!-- Search and Filter -->
@@ -74,6 +77,19 @@
                     </div>
                 </TemplateColumn>
 
+                <TemplateColumn Title="Gauge Restriction" class="px-4 py-4 border-b border-gray-100">
+                    @if (!string.IsNullOrEmpty(context.AssignedGauge))
+                    {
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-none text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                            Gauge: @context.AssignedGauge
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="text-gray-400 text-xs">No Restriction</span>
+                    }
+                </TemplateColumn>
+
                 <TemplateColumn Title="Status" SortBy="@(GridSort<UserListItemDto>.ByAscending(u => u.IsActive))" class="px-4 py-4 border-b border-gray-100">
                     @if (context.IsActive)
                     {
@@ -95,14 +111,20 @@
 
                 <TemplateColumn Title="Actions" class="px-4 py-4 text-right border-b border-gray-100">
                     <div class="flex items-center justify-end gap-2">
-                        <button @onclick="() => OpenEditModal(context.Id)" 
-                                class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-none transition-colors border border-transparent hover:border-blue-100" title="Edit">
-                            <i class="oi oi-pencil text-xs"></i>
-                        </button>
-                        <button @onclick="() => OpenDeleteConfirm(context.Id, context.FullName)" 
-                                class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-none transition-colors border border-transparent hover:border-rose-100" title="Delete">
-                            <i class="oi oi-trash text-xs"></i>
-                        </button>
+                        @if (Permissions.CanEdit("Users"))
+                        {
+                            <button @onclick="() => OpenEditModal(context.Id)" 
+                                    class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-none transition-colors border border-transparent hover:border-blue-100" title="Edit">
+                                <i class="oi oi-pencil text-xs"></i>
+                            </button>
+                        }
+                        @if (Permissions.CanDelete("Users"))
+                        {
+                            <button @onclick="() => OpenDeleteConfirm(context.Id, context.FullName)" 
+                                    class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-none transition-colors border border-transparent hover:border-rose-100" title="Delete">
+                                <i class="oi oi-trash text-xs"></i>
+                            </button>
+                        }
                     </div>
                 </TemplateColumn>
             </QuickGrid>
@@ -207,6 +229,13 @@
                         </label>
                     }
                 </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Gauge / Factory Restriction</label>
+                <input @bind="formData.AssignedGauge" type="text" placeholder="e.g. Gyatri (leave blank for no restriction)"
+                       class="w-full px-4 py-2 text-black border border-gray-300 rounded-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                <span class="text-xs text-gray-500 mt-1 block">⚠️ This user will only see/manage data for the specified gauge.</span>
             </div>
 
             <div>

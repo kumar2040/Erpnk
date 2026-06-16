@@ -2,7 +2,7 @@
 @using NkplmErp.Shared.DTOs
 @using Microsoft.AspNetCore.Components.QuickGrid
 
-<div class="order-view-container h-full flex flex-col gap-4">
+<div class="order-view-container flex flex-col min-h-0">
     
     @{
         var firstItem = Data?.FirstOrDefault();
@@ -28,7 +28,7 @@
     else
     {
         <!-- TOP SECTION: Order Summary Card -->
-        <div class="bg-white rounded-none shadow-sm border border-slate-200 p-3 flex flex-wrap lg:flex-nowrap justify-between items-center gap-4 shrink-0">
+        <div class="bg-white rounded-none shadow-sm border border-slate-200 p-3 flex flex-wrap lg:flex-nowrap justify-between items-center gap-4 shrink-0 mb-4">
             <!-- Left: Basic Order Info -->
             <div class="flex flex-col gap-1 min-w-[250px]">
                 
@@ -70,11 +70,11 @@
     else
     {
         <!-- DATA GRID SECTION -->
-        <div class="bg-white rounded-none shadow-sm border border-slate-200 quick-grid-container flex-1 min-h-0 flex flex-col">
+        <div class="bg-white rounded-none border border-slate-200 quick-grid-container flex-1 flex flex-col overflow-hidden min-h-0">
             <div class="flex-1 min-h-0 overflow-y-auto">
                 <QuickGrid Items="@Data.AsQueryable()" class="quick-grid w-full">
                     <TemplateColumn Title="Style No" Class="col-style font-medium text-slate-800">
-                        <div class="cursor-pointer text-indigo-600 hover:text-indigo-800 hover:underline font-bold transition-colors flex items-center gap-1.5 min-w-0 overflow-hidden" @onclick="() => ShowStyleDetails(context)">
+                        <div class="cursor-pointer text-indigo-600 hover:text-indigo-800 hover:underline font-bold transition-colors flex items-center gap-1.5 min-w-0 overflow-hidden" @onclick="() => ShowStyleDetails(context.StyleNo)">
                             <i class="fa-solid fa-circle-info text-[10px] opacity-50 shrink-0"></i>
                             <span class="truncate" title="@context.StyleNo">@context.StyleNo</span>
                         </div>
@@ -104,7 +104,6 @@
                         @if (!string.IsNullOrWhiteSpace(context.StylePrint) && context.StylePrint != "0")
                         {
                             <span title="@context.StylePrint" class="inline-flex items-center justify-center text-indigo-500">
-                                <!-- clothing / screen-print icon -->
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.57a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.57a2 2 0 0 0-1.34-2.23z"/>
                                 </svg>
@@ -116,24 +115,18 @@
                 </QuickGrid>
             </div>
 
-            <!-- STICKY FOOTER -->
-            <div class="footer-container shrink-0 border-t-2 border-slate-300">
+            <div class="footer-container shrink-0">
                 <table class="grand-total-table w-full">
                     <tr>
-                        <!-- Span across fixed columns before sizes -->
-                        <td class="footer-label font-black text-right pr-4 uppercase tracking-widest text-[#002d54]">
+                        <td colspan="6" class="footer-label font-black text-right pr-4 uppercase tracking-widest text-[#002d54]">
                             Grand Totals
                         </td>
-                        
-                        <!-- Dynamic Size Totals -->
                         @foreach (var size in SizeHeaders)
                         {
                             <td class="footer-val-size col-size text-center">
                                 @Data.Sum(x => x.Sizes.TryGetValue(size, out var val) ? val : 0)
                             </td>
                         }
-                        
-                        <!-- Fixed Columns Totals -->
                         <td class="footer-val-total col-pieces text-center font-black text-slate-900 bg-slate-100">@totalPieces</td>
                         <td class="col-print"></td>
                         <td class="col-knsl"></td>
@@ -144,15 +137,3 @@
         </div>
     }
 </div>
-
-<!-- STYLE DETAIL POPUP -->
-<DataModal @bind-IsVisible="IsStyleModalVisible" 
-           Title="@($"Style Details - {SelectedStyleItem?.StyleNo}")"
-           BadgeText="@SelectedStyleDetails?.GeneralInfo?.StyleId.ToString()"
-           IsLoading="false"
-           MaxWidth="1100px"
-           ZIndex="2800">
-    <div class="h-full">
-        <StyleComponent Details="SelectedStyleDetails" IsLoading="IsLoadingStyleHistory" />
-    </div>
-</DataModal>

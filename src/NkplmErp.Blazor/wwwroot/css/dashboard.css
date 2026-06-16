@@ -100,3 +100,11 @@
     font-size: 0.75rem;
     color: var(--text-muted);
 }
+
+.gradient-icon {
+    background: linear-gradient(to right, #ff0000, #ffae00, #00ff62, #00d4ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+    font-weight: 900 !important;
+}

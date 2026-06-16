@@ -7,327 +7,407 @@
 @inject NavigationManager NavigationManager
 @inject NkplmErp.Blazor.Services.Toast.ToastService ToastService
 @inject IJSRuntime JSRuntime
-
-<div class="login-container">
-    <div class="login-card">
-        @if (isRedirecting)
-        {
-            <div style="text-align: center; padding: 2rem;">
-                <div class="spinner" style="width: 3rem; height: 3rem; margin: 0 auto 1rem;"></div>
-                <p style="color: #f8fafc; font-size: 1.1rem;">Signing you in...</p>
-                <p style="color: #94a3b8; font-size: 0.9rem;">Redirecting to dashboard</p>
-            </div>
-        }
-        else
-        {
-            <div class="login-header">
-                <h2>NKPLM ERP</h2>
-                <p>Enterprise Resource Planning Solution</p>
+<PageTitle>Login - NatureKnit MIS</PageTitle>
+<div class="login-page-bg">
+    <div class="unified-login-card glass-morph">
+        <div class="auth-side">
+            <div class="auth-header-centered">
+                <h1 tabindex=0>NATUREKNIT MIS</h1>
+                <div class="sub-header-line">
+                    <span class="line"></span>
+                    <span class="label">MIS </span>
+                    <span class="line"></span>
+                </div>
             </div>
 
-            @if (!showMfa)
+            @if (!string.IsNullOrEmpty(errorMessage))
             {
-                    <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
-                        <DataAnnotationsValidator />
+                <div class="auth-error-glass animate-shake">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span>@errorMessage</span>
+                </div>
+            }
 
-                        <div class="form-group">
-                            <label>Email Address</label>
-                            <InputText @bind-Value="loginModel.Email" class="form-control" placeholder="admin@nkplm.erp" />
-                        </div>
-
-                        <div class="form-group">
-                            <label>Password</label>
-                            <InputText @bind-Value="loginModel.Password" type="password" class="form-control" placeholder="••••••••" />
-                        </div>
-
-
-                        <button type="submit" class="btn-login" disabled="@isSubmitting">
-                        @if (isSubmitting)
-                        {
-                                     <div class="flex items-center justify-center gap-2">
-                                        <span class="spinner"></span>
-                                        <span>Signing in...</span>
-                                     </div>
-                        }
-                        else
-                        {
-                                    <span>Sign In</span>
-                        }
-                        </button>
-                    </EditForm>
-
-                    <div class="divider">
-                        <span>OR</span>
-                    </div>
-
-                    <button class="btn-biometric" @onclick="HandleBiometricLogin" disabled="@isSubmitting" title="Sign in using FaceID, TouchID or Windows Hello">
-                        <i class="fa-solid fa-user-shield"></i>
-                        <span>Sign in with Face / Biometrics</span>
-                    </button>
-                    <div style="margin-top: 1rem; text-align: center;">
-                        <a href="/profile" style="color: rgba(255,255,255,0.4); font-size: 0.75rem; text-decoration: none; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 2px;">
-                            New device? Register in Profile first.
-                        </a>
-                    </div>
+            @if (isRedirecting)
+            {
+                <div class="redirect-glass">
+                    <div class="spinner-glass"></div>
+                    <p>Securing session...</p>
+                </div>
             }
             else
             {
-                    <div class="mfa-section">
-                        <div class="login-header">
-                            <p>Verify your identity by entering the code from your authenticator app.</p>
-                        </div>
-                        <div class="form-group">
-                            <InputText @bind-Value="mfaCode" class="form-control mfa-input" placeholder="000 000" maxlength="6" />
+                @if (!showMfa)
+                {
+                    <div class="auth-form-glass">
+                        <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
+                            <DataAnnotationsValidator />
+
+                            <div class="form-group-pill">
+                                <i class="fa-solid fa-user"></i>
+                                <input @bind="loginModel.Email" class="form-control-pill" placeholder="User ID" autocomplete="username" />
+                            </div>
+
+                            <div class="form-group-pill">
+                                <i class="fa-solid fa-lock"></i>
+                                <input @bind="loginModel.Password" type="password" class="form-control-pill" placeholder="Passkey" autocomplete="current-password" />
+                            </div>
+
+                            <div class="btn-login-container">
+                                <button type="submit" class="btn-login-circular" disabled="@isSubmitting">
+                                    <div class="glass-disk">
+                                        @if (isSubmitting)
+                                        {
+                                            <div class="spinner-glass-tiny"></div>
+                                        }
+                                        else
+                                        {
+                                            <i class="fa-solid fa-leaf"></i>
+                                        }
+                                    </div>
+                                    <span class="btn-text">Log In</span>
+                                </button>
+                            </div>
+
+                            <div class="auth-options-centered">
+                                <button type="button" class="btn-link-glass">Forgot Passkey?</button>
+                                <button type="button" class="btn-link-glass">First-time Setup?</button>
+                            </div>
+                            
+                            <div class="biometric-center">
+                                <button type="button" class="btn-biometric-pill" @onclick="HandleBiometricLogin" disabled="@isSubmitting">
+                                    <i class="fa-solid fa-user-shield"></i>
+                                    <span>FaceID / Fingerprint</span>
+                                </button>
+                            </div>
+
+                            <ValidationSummary class="validation-errors-glass" />
+                        </EditForm>
+                    </div>
+                }
+                else
+                {
+                    <div class="mfa-section-glass">
+                        <h3>MFA Verification</h3>
+                        <div class="form-group-pill">
+                            <i class="fa-solid fa-key"></i>
+                            <InputText @bind-Value="mfaCode" class="form-control-pill" placeholder="000 000" maxlength="6" />
                         </div>
 
-
-                        <button @onclick="HandleMfa" class="btn-login" disabled="@isSubmitting">
-                            @if (isSubmitting)
-                            {
-                                <span class="spinner"></span>
-                            }
-                            else
-                            {
-                                <span>Verify & Continue</span>
-                            }
+                        <button @onclick="HandleMfa" class="btn-login-circular" disabled="@isSubmitting">
+                            <div class="glass-disk">
+                                @if (isSubmitting)
+                                {
+                                    <div class="spinner-glass-tiny"></div>
+                                }
+                                else
+                                {
+                                    <i class="fa-solid fa-check"></i>
+                                }
+                            </div>
+                            <span class="btn-text">Verify</span>
                         </button>
                     </div>
+                }
+
+                <div class="auth-footer-centered">
+                    <p>NatureKnit &copy; 2026</p>
+                </div>
             }
-            <div style="margin-top: 2.5rem; text-align: center;">
-                <button @onclick="ClearSession" class="trouble-btn">
-                    Having trouble? Reset Session
-                </button>
-            </div>
-        }
+        </div>
     </div>
 </div>
- 
 
 <style>
-    .login-container {
+h1:focus {
+    outline: none;
+}
+    :root {
+    .login-page-bg {
         min-height: 100vh;
         width: 100vw;
+        background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), url('images/login.png') center/cover no-repeat fixed;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: url('images/login-bg.png') no-repeat center center fixed;
-        background-size: cover;
+        padding: 2rem;
         font-family: 'Inter', system-ui, -apple-system, sans-serif;
-        padding: 1.5rem;
-        position: relative;
     }
 
-    /* Subtle overlay for better readability */
-    .login-container::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: radial-gradient(circle at center, transparent 0%, rgba(15, 23, 42, 0.4) 100%);
-        pointer-events: none;
-    }
-
-    .login-card {
+    .unified-login-card.glass-morph {
+        width: 100%;
+        max-width: 400px;
         background: rgba(255, 255, 255, 0.12);
-        backdrop-filter: blur(24px) saturate(180%);
-        -webkit-backdrop-filter: blur(24px) saturate(180%);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        padding: 2rem 1.5rem;
-        border-radius: 2rem;
-        width: 100%;
-        max-width: 380px;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5),
-                    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
-        z-index: 10;
-        animation: fadeInScale 0.6s ease-out;
-    }
-
-    @@keyframes fadeInScale {
-        from { opacity: 0; transform: scale(0.95) translateY(10px); }
-        to { opacity: 1; transform: scale(1) translateY(0); }
-    }
-
-    .login-header h2 {
-        color: #ffffff;
-        margin-bottom: 0.75rem;
-        text-align: center;
-        letter-spacing: -0.04em;
-        font-weight: 900;
-        font-size: 2.25rem;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .login-header p {
-        color: rgba(255, 255, 255, 0.7);
-        text-align: center;
-        font-size: 0.95rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .form-group {
-        margin-bottom: 1rem;
-    }
-
-    .form-group label {
-        display: block;
-        color: rgba(255, 255, 255, 0.9);
-        font-size: 0.8rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: 0.75rem;
-        margin-left: 0.5rem;
-    }
-
-    .form-control {
-        width: 100%;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        padding: 0.75rem 1rem;
-        border-radius: 1rem;
-        color: #ffffff;
-        font-size: 0.9rem;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        backdrop-filter: blur(5px);
-    }
-
-    .form-control::placeholder {
-        color: rgba(255, 255, 255, 0.4);
-    }
-
-    .form-control:focus {
-        outline: none;
-        border-color: rgba(255, 255, 255, 0.5);
-        background: rgba(255, 255, 255, 0.12);
-        box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
-        transform: translateY(-1px);
-    }
-
-    .btn-login {
-        width: 100%;
-        background: #ffffff;
-        color: #0f172a;
-        border: none;
-        padding: 0.8rem;
-        border-radius: 1rem;
-        font-weight: 700;
-        font-size: 0.95rem;
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        margin-top: 0.5rem;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
-    }
-
-    .btn-login:hover:not(:disabled) {
-        background: #f8fafc;
-        transform: translateY(-2px);
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
-    }
-
-    .btn-login:active:not(:disabled) {
-        transform: translateY(0);
-    }
-
-    .btn-login:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
-
-    .divider {
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+        border-radius: 2.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        box-shadow: 0 40px 100px -20px rgba(0,0,0,0.4);
+        padding: 2.5rem 2rem;
+        animation: cardAppear 0.8s cubic-bezier(0.16, 1, 0.3, 1);
         display: flex;
+        flex-direction: column;
         align-items: center;
-        text-align: center;
-        margin: 1.25rem 0;
-        color: rgba(255, 255, 255, 0.4);
-        font-size: 0.7rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.15em;
     }
 
-    .divider::before, .divider::after {
-        content: '';
-        flex: 1;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .divider span {
-        padding: 0 1rem;
-    }
-
-    .btn-biometric {
+    .auth-side {
         width: 100%;
-        background: rgba(255, 255, 255, 0.08);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .auth-header-centered {
+        text-align: center;
+        margin-bottom: 2rem;
         color: #ffffff;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        padding: 0.8rem;
-        border-radius: 1rem;
-        font-weight: 600;
-        font-size: 0.9rem;
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        width: 100%;
+    }
+
+    .auth-header-centered h1 {
+        font-size: 1.6rem;
+        font-weight: 300;
+        letter-spacing: 0.3em;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+
+    .sub-header-line {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 0.75rem;
-        backdrop-filter: blur(5px);
+        gap: 1.25rem;
+        opacity: 0.6;
     }
 
-    .btn-biometric:hover:not(:disabled) {
-        background: rgba(255, 255, 255, 0.15);
-        border-color: rgba(255, 255, 255, 0.4);
-        transform: translateY(-2px);
+    .sub-header-line .line {
+        height: 1px;
+        width: 45px;
+        background: rgba(255,255,255,0.4);
     }
 
-    .btn-biometric:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        background: rgba(255, 255, 255, 0.04);
-        border-color: rgba(255, 255, 255, 0.1);
+    .sub-header-line .label {
+        font-size: 0.7rem;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
     }
 
-    .btn-biometric i {
-        font-size: 1.1rem;
+    .form-group-pill {
+        position: relative;
+        margin-bottom: 1rem;
+        width: 100%;
     }
 
-    .mfa-input {
-        text-align: center;
-        font-size: 1.75rem;
-        letter-spacing: 0.75rem;
-        font-weight: 700;
-        background: rgba(255, 255, 255, 0.1);
+    .form-group-pill i {
+        position: absolute;
+        left: 1.25rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: rgba(255,255,255,0.8);
+        font-size: 0.9rem;
     }
 
-    .spinner {
-        display: inline-block;
-        width: 1.25rem;
-        height: 1.25rem;
-        border: 2.5px solid rgba(15, 23, 42, 0.2);
-        border-radius: 50%;
-        border-top-color: #0f172a;
-        animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    .form-control-pill {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1.5px solid rgba(255, 255, 255, 0.3);
+        padding: 0.85rem 1.25rem 0.85rem 3rem;
+        border-radius: 3rem;
+        color: #ffffff;
+        font-size: 0.95rem;
+        transition: all 0.3s;
     }
 
-    @@keyframes spin {
-        to { transform: rotate(360deg); }
+    .form-control-pill::placeholder { color: rgba(255,255,255,0.5); font-weight: 300; }
+    .form-control-pill:focus {
+        background: rgba(255, 255, 255, 0.12);
+        border-color: rgba(255, 255, 255, 0.9);
+        outline: none;
+        box-shadow: 0 0 15px rgba(255,255,255,0.1);
     }
 
-    /* Help text style */
-    .trouble-btn {
-        color: rgba(255, 255, 255, 0.5);
+    .btn-login-container {
+        display: flex;
+        justify-content: center;
+        margin: 1.75rem 0 1.5rem;
+        width: 100%;
+    }
+
+    .btn-login-circular {
         background: none;
         border: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
         cursor: pointer;
-        font-size: 0.8rem;
-        font-weight: 500;
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .btn-login-circular:hover { transform: translateY(-5px); }
+
+    .glass-disk {
+        width: 4.8rem;
+        height: 4.8rem;
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(12px);
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        font-size: 1.6rem;
+        box-shadow: 0 0 30px rgba(255,255,255,0.1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .glass-disk::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+        pointer-events: none;
+        animation: rotateGlow 4s linear infinite;
+    }
+
+    @@keyframes rotateGlow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    .btn-login-circular:hover .glass-disk {
+        background: rgba(255, 255, 255, 0.25);
+        border-color: #ffffff;
+        box-shadow: 0 0 50px rgba(255,255,255,0.25);
+    }
+
+    .btn-text {
+        color: rgba(255,255,255,0.8);
+        font-size: 0.95rem;
+        font-weight: 400;
+        letter-spacing: 0.08em;
+        text-transform: capitalize;
+    }
+
+    .auth-options-centered {
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        margin-bottom: 2rem;
+        width: 100%;
+    }
+
+    .btn-link-glass {
+        background: none;
+        border: none;
+        color: rgba(255,255,255,0.5);
+        font-size: 0.75rem;
+        cursor: pointer;
+        text-decoration: underline;
+        text-underline-offset: 5px;
         transition: color 0.2s;
     }
 
-    .trouble-btn:hover {
-        color: rgba(255, 255, 255, 1);
-        text-decoration: underline;
+    .btn-link-glass:hover { color: #ffffff; text-decoration-color: #ffffff; }
+
+    .biometric-center {
+        display: flex;
+        justify-content: center;
+        margin-top: 0.25rem;
+        width: 100%;
+    }
+
+    .btn-biometric-pill {
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.15);
+        padding: 0.5rem 1.25rem;
+        border-radius: 3rem;
+        color: rgba(255,255,255,0.6);
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .btn-biometric-pill:hover { 
+        background: rgba(255,255,255,0.08); 
+        border-color: rgba(255,255,255,0.4); 
+        color: #ffffff;
+    }
+
+    .auth-footer-centered {
+        text-align: center;
+        margin-top: 2.5rem;
+        opacity: 0.3;
+        color: #ffffff;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        width: 100%;
+    }
+
+    .spinner-glass {
+        width: 2.5rem;
+        height: 2.5rem;
+        border: 3px solid rgba(255,255,255,0.15);
+        border-top-color: #ffffff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto;
+    }
+
+    .spinner-glass-tiny {
+        width: 1.5rem;
+        height: 1.5rem;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-top-color: #ffffff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    .redirect-glass {
+        text-align: center;
+        width: 100%;
+        padding: 2.5rem 0;
+    }
+
+    .redirect-glass p {
+        color: #ffffff;
+        margin-top: 1.5rem;
+        font-weight: 300;
+        letter-spacing: 0.05em;
+    }
+
+    .auth-error-glass {
+        background: rgba(239, 68, 68, 0.25);
+        border: 1px solid rgba(239, 68, 68, 0.5);
+        backdrop-filter: blur(15px);
+        color: #ffffff;
+        padding: 1rem 1.25rem;
+        border-radius: 1.25rem;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        font-size: 0.85rem;
+        width: 100%;
+    }
+
+    @@keyframes spin { to { transform: rotate(360deg); } }
+    @@keyframes cardAppear { from { opacity: 0; transform: translateY(30px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+    .validation-errors-glass {
+        color: #ffcccc;
+        font-size: 0.75rem;
+        text-align: center;
+        list-style: none;
+        margin-top: 1.5rem;
+        width: 100%;
     }
 </style>
-
 
 @code {
     [CascadingParameter]
@@ -338,21 +418,40 @@
     private bool showMfa;
     private bool isRedirecting;
     private string mfaCode = "";
+    private string? errorMessage;
+    private string? returnUrl;
 
     protected override async Task OnInitializedAsync()
     {
+        // Pick up the deep-link the session-expiry flow passed through.
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("returnUrl", out var rv))
+        {
+            var candidate = rv.ToString();
+            if (!string.IsNullOrEmpty(candidate) && candidate.StartsWith("/")
+                && !candidate.StartsWith("//")
+                && !candidate.StartsWith("/login", StringComparison.OrdinalIgnoreCase)
+                && !candidate.StartsWith("/auth", StringComparison.OrdinalIgnoreCase))
+            {
+                returnUrl = candidate;
+            }
+        }
+
         if (AuthState != null)
         {
             var state = await AuthState;
             if (state.User.Identity?.IsAuthenticated == true)
             {
-                NavigationManager.NavigateTo("/main-dashboard", replace: true);
+                NavigationManager.NavigateTo(!string.IsNullOrEmpty(returnUrl) ? returnUrl : "/main-dashboard", replace: true);
             }
         }
     }
 
     private async Task HandleLogin()
     {
+        errorMessage = null;
+        if (!string.IsNullOrWhiteSpace(loginModel.Email)) loginModel.Email = loginModel.Email.Trim();
         isSubmitting = true;
 
         try
@@ -369,12 +468,14 @@
                     isRedirecting = true;
                     ToastService.ShowSuccess("Welcome back! Login successful.");
                     await Task.Delay(500);
-                    await JSRuntime.InvokeVoidAsync("submitToken", result.Token);
+                    await JSRuntime.InvokeVoidAsync("submitToken", result.Token, returnUrl);
                 }
             }
             else
             {
-                ToastService.ShowError(result.Message ?? "Login failed");
+                var debugInfo = $"(Sent: {loginModel.Email?.Length ?? 0} ID, {loginModel.Password?.Length ?? 0} PWD)";
+                errorMessage = $"{result.Message ?? "Invalid credentials."} {debugInfo}";
+                ToastService.ShowError(errorMessage);
             }
         }
         catch (Exception ex)
@@ -407,11 +508,12 @@
                 isRedirecting = true;
                 ToastService.ShowSuccess("Verification successful.");
                 await Task.Delay(500);
-                await JSRuntime.InvokeVoidAsync("submitToken", result.Token);
+                await JSRuntime.InvokeVoidAsync("submitToken", result.Token, returnUrl);
             }
             else
             {
-                ToastService.ShowError(result.Message ?? "MFA verification failed");
+                errorMessage = result.Message ?? "Verification failed. Please try again.";
+                ToastService.ShowError(errorMessage);
             }
         }
         catch (Exception ex)
@@ -440,7 +542,7 @@
                 isRedirecting = true;
                 ToastService.ShowSuccess("Biometric login successful.");
                 await Task.Delay(500);
-                await JSRuntime.InvokeVoidAsync("submitToken", result.Token);
+                await JSRuntime.InvokeVoidAsync("submitToken", result.Token, returnUrl);
             }
             else
             {
@@ -449,7 +551,8 @@
                 {
                     msg = "Biometric device not recognized. Please register it in your Profile settings first.";
                 }
-                ToastService.ShowError(msg);
+                errorMessage = msg;
+                ToastService.ShowError(errorMessage);
             }
         }
         catch (Exception ex)

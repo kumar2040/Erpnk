@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Components.QuickGrid;
 using NkplmErp.Application.Interfaces;
 using NkplmErp.Shared.DTOs;
 using NkplmErp.Blazor.Services.Auth;
+using System.Net;
+using System.Net.Http;
 
 namespace NkplmErp.Blazor.Pages;
 
@@ -16,6 +18,12 @@ public partial class MainDashboard : ComponentBase
 
     [Inject]
     private ILogger<MainDashboard> Logger { get; set; } = default!;
+
+    [Inject]
+    private TokenProvider _tokenProvider { get; set; } = default!;
+
+    [Inject]
+    private NkplmErp.Blazor.Services.Toast.ToastService ToastService { get; set; } = default!;
 
     private IQueryable<BuyerOrderSummaryDto> OrderSummaries { get; set; } = Enumerable.Empty<BuyerOrderSummaryDto>().AsQueryable();
     private IQueryable<BuyerOrderSummaryDto> OrderSummaries_pop { get; set; } = Enumerable.Empty<BuyerOrderSummaryDto>().AsQueryable();
@@ -82,20 +90,175 @@ public partial class MainDashboard : ComponentBase
     private bool showMoreOrdersMenu { get; set; } = false;
     private List<string> FlowOrderNoList { get; set; } = new();
 
-    private List<LineGraphDataPoint> BuyerHistoryGraphData => 
-        SelectedBuyerHistory.ToList()
-            .OrderBy(x => x.Year)
-            .Select(x => new LineGraphDataPoint { 
-                Label = x.Year.ToString(), 
-                Value = (double)x.TotalPcs 
-            }).ToList();
+    // Global Style Detail Properties
+    private bool IsStyleModalVisible { get; set; } = false;
+    private StyleDetailsDto? SelectedStyleDetails { get; set; }
+    private bool IsLoadingStyleDetails { get; set; } = false;
+    private string? SelectedStyleNo { get; set; }
 
-    private List<LineGraphDataPoint> YearHistoryGraphData => 
-        SelectedYearHistory.ToList()
-            .Select(x => new LineGraphDataPoint { 
-                Label = x.MonthName, 
-                Value = (double)x.TotalPcs 
-            }).ToList();
+    // Order Detail Popup State (Hoisted from ProductionFlow)
+    private bool IsOrderDetailVisible { get; set; }
+    private bool IsLoadingOrderDetail { get; set; }
+    private IEnumerable<OrderViewHeaderDto> SelectedOrderDetails { get; set; } = Enumerable.Empty<OrderViewHeaderDto>();
+    private string SelectedOrderNo { get; set; } = string.Empty;
+    private List<string> sizeHeaders { get; set; } = new();
+
+    // Price Analysis Popup State (Hoisted from ProductionFlow)
+    private bool IsAnalysisPopupVisible { get; set; }
+    private bool IsLoadingAnalysis { get; set; }
+    private IEnumerable<OrderPriceAnalysisDto> AnalysisItems { get; set; } = Enumerable.Empty<OrderPriceAnalysisDto>();
+    private decimal UsdRate { get; set; } = 150m;
+    private bool IsAnalysisUnmasked { get; set; } = false;
+    private string AnalysisPinInput { get; set; } = string.Empty;
+    private string? AnalysisPinError { get; set; }
+
+    private async Task ShowStyleDetails(string styleNo)
+    {
+        SelectedStyleNo = styleNo;
+        IsStyleModalVisible = true;
+        IsLoadingStyleDetails = true;
+        StateHasChanged();
+
+        try 
+        {
+            SelectedStyleDetails = await BuyerOrderSummaryService.GetStyleDetailsAsync(styleNo);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            IsStyleModalVisible = false;
+            ToastService.ShowWarning("Session Expired. Redirecting to login...");
+            _tokenProvider.NotifySessionExpired();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading style details for {StyleNo}", styleNo);
+        }
+        finally
+        {
+            IsLoadingStyleDetails = false;
+            StateHasChanged();
+        }
+    }
+
+    public bool showHistoryKnit { get; set; } = false;
+    public bool showHistoryWeave { get; set; } = false;
+    public bool showHistorySilk { get; set; } = false;
+    public bool showHistoryLinen { get; set; } = false;
+    public bool showHistoryOther { get; set; } = false;
+    public bool showHistoryAll { get; set; } = true;
+    public bool showHistoryFilterDropdown { get; set; } = false;
+
+    private void ToggleHistoryFilter(string type)
+    {
+        if (type == "All")
+        {
+            showHistoryAll = !showHistoryAll;
+            if (showHistoryAll)
+            {
+                showHistoryKnit = showHistoryWeave = showHistorySilk = showHistoryLinen = showHistoryOther = false;
+            }
+        }
+        else
+        {
+            showHistoryAll = false;
+            if (type == "Knit") showHistoryKnit = !showHistoryKnit;
+            if (type == "Weave") showHistoryWeave = !showHistoryWeave;
+            if (type == "Silk") showHistorySilk = !showHistorySilk;
+            if (type == "Linen") showHistoryLinen = !showHistoryLinen;
+            if (type == "Other") showHistoryOther = !showHistoryOther;
+            
+            if (!showHistoryKnit && !showHistoryWeave && !showHistorySilk && !showHistoryLinen && !showHistoryOther)
+            {
+                showHistoryAll = true;
+            }
+        }
+        StateHasChanged();
+    }
+
+    private void ToggleYearHistoryFilter(string type)
+    {
+        if (type == "All")
+        {
+            showYearAll = !showYearAll;
+            if (showYearAll)
+            {
+                showYearKnit = showYearWeave = showYearSilk = showYearLinen = showYearOther = false;
+            }
+        }
+        else
+        {
+            showYearAll = false;
+            if (type == "Knit") showYearKnit = !showYearKnit;
+            if (type == "Weave") showYearWeave = !showYearWeave;
+            if (type == "Silk") showYearSilk = !showYearSilk;
+            if (type == "Linen") showYearLinen = !showYearLinen;
+            if (type == "Other") showYearOther = !showYearOther;
+            
+            if (!showYearKnit && !showYearWeave && !showYearSilk && !showYearLinen && !showYearOther)
+            {
+                showYearAll = true;
+            }
+        }
+        StateHasChanged();
+    }
+
+
+    private List<MultiLineGraphSeries> BuyerHistoryMultiGraphData
+    {
+        get
+        {
+            var data = SelectedBuyerHistory.ToList().OrderBy(x => x.Year).ToList();
+            var seriesList = new List<MultiLineGraphSeries>();
+
+            if (showHistoryAll)
+                seriesList.Add(new MultiLineGraphSeries { Name = "All", Color = "#2e2b8e", DataPoints = data.Select(x => new LineGraphDataPoint { Label = x.Year.ToString(), Value = (double)x.TotalPcs }).ToList() });
+            if (showHistoryKnit)
+                seriesList.Add(new MultiLineGraphSeries { Name = "Knit", Color = "#ef4444", DataPoints = data.Select(x => new LineGraphDataPoint { Label = x.Year.ToString(), Value = (double)x.Knit }).ToList() });
+            if (showHistoryWeave)
+                seriesList.Add(new MultiLineGraphSeries { Name = "Weave", Color = "#3b82f6", DataPoints = data.Select(x => new LineGraphDataPoint { Label = x.Year.ToString(), Value = (double)x.Weave }).ToList() });
+            if (showHistorySilk)
+                seriesList.Add(new MultiLineGraphSeries { Name = "Silk", Color = "#10b981", DataPoints = data.Select(x => new LineGraphDataPoint { Label = x.Year.ToString(), Value = (double)x.Silk }).ToList() });
+            if (showHistoryLinen)
+                seriesList.Add(new MultiLineGraphSeries { Name = "Linen", Color = "#f59e0b", DataPoints = data.Select(x => new LineGraphDataPoint { Label = x.Year.ToString(), Value = (double)x.Linen }).ToList() });
+            if (showHistoryOther)
+                seriesList.Add(new MultiLineGraphSeries { Name = "Other", Color = "#8b5cf6", DataPoints = data.Select(x => new LineGraphDataPoint { Label = x.Year.ToString(), Value = (double)x.Other }).ToList() });
+
+            return seriesList;
+        }
+    }
+
+    public bool showYearKnit { get; set; } = false;
+    public bool showYearWeave { get; set; } = false;
+    public bool showYearSilk { get; set; } = false;
+    public bool showYearLinen { get; set; } = false;
+    public bool showYearOther { get; set; } = false;
+    public bool showYearAll { get; set; } = true;
+    public bool showYearHistoryFilterDropdown { get; set; } = false;
+
+
+    private List<MultiLineGraphSeries> YearHistoryMultiGraphData
+    {
+        get
+        {
+            var data = SelectedYearHistory.ToList();
+            var seriesList = new List<MultiLineGraphSeries>();
+
+            if (showYearAll)
+                seriesList.Add(new MultiLineGraphSeries { Name = "All", Color = "#2e2b8e", DataPoints = data.Select(x => new LineGraphDataPoint { Label = x.MonthName, Value = (double)x.TotalPcs }).ToList() });
+            if (showYearKnit)
+                seriesList.Add(new MultiLineGraphSeries { Name = "Knit", Color = "#ef4444", DataPoints = data.Select(x => new LineGraphDataPoint { Label = x.MonthName, Value = (double)x.Knit }).ToList() });
+            if (showYearWeave)
+                seriesList.Add(new MultiLineGraphSeries { Name = "Weave", Color = "#3b82f6", DataPoints = data.Select(x => new LineGraphDataPoint { Label = x.MonthName, Value = (double)x.Weave }).ToList() });
+            if (showYearSilk)
+                seriesList.Add(new MultiLineGraphSeries { Name = "Silk", Color = "#10b981", DataPoints = data.Select(x => new LineGraphDataPoint { Label = x.MonthName, Value = (double)x.Silk }).ToList() });
+            if (showYearLinen)
+                seriesList.Add(new MultiLineGraphSeries { Name = "Linen", Color = "#f59e0b", DataPoints = data.Select(x => new LineGraphDataPoint { Label = x.MonthName, Value = (double)x.Linen }).ToList() });
+            if (showYearOther)
+                seriesList.Add(new MultiLineGraphSeries { Name = "Other", Color = "#8b5cf6", DataPoints = data.Select(x => new LineGraphDataPoint { Label = x.MonthName, Value = (double)x.Other }).ToList() });
+
+            return seriesList;
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -137,7 +300,6 @@ public partial class MainDashboard : ComponentBase
                 Console.WriteLine($">>>> [DEBUG] CRITICAL ERROR in MainDashboard.OnAfterRenderAsync: {ex.Message}");
                 Console.WriteLine(ex.StackTrace);
                 LastErrorMessage = $"Critical Error during initialization: {ex.Message}";
-                IsLoading = false; // Fix: Ensure loading ends on error
                 StateHasChanged();
             }
         }
@@ -172,6 +334,11 @@ public partial class MainDashboard : ComponentBase
                 Console.WriteLine($">>>> [DEBUG] MainDashboard.LoadData - Received {OrderSummaries.Count()} records.");
             }
         }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            ToastService.ShowWarning("Session Expired. Redirecting to login...");
+            _tokenProvider.NotifySessionExpired();
+        }
         catch (Exception ex)
         {
             Console.WriteLine($">>>> [DEBUG] ERROR in LoadData: {ex.Message}");
@@ -193,6 +360,11 @@ public partial class MainDashboard : ComponentBase
             {
                 CurrentYear = AvailableYears.First();
             }
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            ToastService.ShowWarning("Session Expired. Redirecting to login...");
+            _tokenProvider.NotifySessionExpired();
         }
         catch (Exception ex)
         {
@@ -238,6 +410,12 @@ public partial class MainDashboard : ComponentBase
             SelectedBuyerHistory = list.AsQueryable();
             await LoadBuyerProfile(summary.CustomerId, null);
         }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            showHistoryModal = false;
+            ToastService.ShowWarning("Session Expired. Redirecting to login...");
+            _tokenProvider.NotifySessionExpired();
+        }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading buyer history for {BuyerId}", summary.CustomerId);
@@ -261,6 +439,12 @@ public partial class MainDashboard : ComponentBase
             SelectedBuyerHistory = result.AsQueryable();
             await LoadBuyerProfile(summary.CustomerId, null);
 
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            showHistoryModal = false;
+            ToastService.ShowWarning("Session Expired. Redirecting to login...");
+            _tokenProvider.NotifySessionExpired();
         }
         catch (Exception ex)
         {
@@ -287,6 +471,12 @@ public partial class MainDashboard : ComponentBase
             await LoadBuyerProfile(summary.CustomerId, null);
 
         }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            showHistoryModal = false;
+            ToastService.ShowWarning("Session Expired. Redirecting to login...");
+            _tokenProvider.NotifySessionExpired();
+        }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading buyer history for {BuyerId}", summary.CustomerId);
@@ -309,6 +499,12 @@ public partial class MainDashboard : ComponentBase
             for (int i = 0; i < list.Count; i++) list[i].SN = i + 1;
             SelectedYearHistory = list.AsQueryable();
             await LoadBuyerProfile(history.CustomerId,history.Year);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            showYearHistoryModal = false;
+            ToastService.ShowWarning("Session Expired. Redirecting to login...");
+            _tokenProvider.NotifySessionExpired();
         }
         catch (Exception ex)
         {
@@ -338,6 +534,11 @@ public partial class MainDashboard : ComponentBase
             var result = await BuyerOrderSummaryService.GetBuyerProfileAsync(Buyer, year);
             SelectedBuyerProfile = result.FirstOrDefault();
         }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            ToastService.ShowWarning("Session Expired. Redirecting to login...");
+            _tokenProvider.NotifySessionExpired();
+        }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading buyer profile for {BuyerId}", Buyer);
@@ -352,6 +553,11 @@ public partial class MainDashboard : ComponentBase
             var list = (result ?? Enumerable.Empty<AbsentBuyer>()).ToList();
             for (int i = 0; i < list.Count; i++) list[i].SN = i + 1;
             AbsentBuyerList = list.AsQueryable();
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            ToastService.ShowWarning("Session Expired. Redirecting to login...");
+            _tokenProvider.NotifySessionExpired();
         }
         catch (Exception ex)
         {
@@ -368,6 +574,11 @@ public partial class MainDashboard : ComponentBase
             var list = (result ?? Enumerable.Empty<OrderStatusDetailDto>()).ToList();
             for (int i = 0; i < list.Count; i++) list[i].SN = i + 1;
             OrderStatusDetailList = list.AsQueryable();
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            ToastService.ShowWarning("Session Expired. Redirecting to login...");
+            _tokenProvider.NotifySessionExpired();
         }
         catch (Exception ex)
         {
@@ -386,6 +597,12 @@ public partial class MainDashboard : ComponentBase
         {
             var result = await BuyerOrderSummaryService.GetProductionFlowAsync(buyerId, OrderNo);
             ProductionFlowList = result.AsQueryable();
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            showProductionFlowModal = false;
+            ToastService.ShowWarning("Session Expired. Redirecting to login...");
+            _tokenProvider.NotifySessionExpired();
         }
         catch (Exception ex)
         {
@@ -499,6 +716,12 @@ public partial class MainDashboard : ComponentBase
 
             RunningOrdersList = list.AsQueryable();
         }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            showRunningOrdersModal = false;
+            ToastService.ShowWarning("Session Expired. Redirecting to login...");
+            _tokenProvider.NotifySessionExpired();
+        }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading running orders for {BuyerId}", summary.CustomerId);
@@ -559,5 +782,101 @@ public partial class MainDashboard : ComponentBase
                 FlowOrderNoList.Add(itemAt10);
             }
         }
+    }
+
+    // NEW: Handler invoked by ProductionFlow component to show order details in the hoisted modal
+    private async Task ShowOrderDetails(string orderNo)
+    {
+        if (string.IsNullOrWhiteSpace(orderNo)) return;
+
+        SelectedOrderNo = orderNo;
+        IsOrderDetailVisible = true;
+        IsLoadingOrderDetail = true;
+        SelectedOrderDetails = Enumerable.Empty<OrderViewHeaderDto>();
+        StateHasChanged();
+
+        try
+        {
+            var result = await BuyerOrderSummaryService.GetOrderViewDataAsync(orderNo);
+            var list = (result ?? Enumerable.Empty<OrderViewHeaderDto>()).ToList();
+            for (int i = 0; i < list.Count; i++) list[i].SN = i + 1;
+            
+            // Extract unique sizes for dynamic columns
+            sizeHeaders = list
+                .SelectMany(x => x.Sizes.Keys)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            SelectedOrderDetails = list;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            IsOrderDetailVisible = false;
+            ToastService.ShowWarning("Session Expired. Redirecting to login...");
+            _tokenProvider.NotifySessionExpired();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading order details for {OrderNo}", orderNo);
+        }
+        finally
+        {
+            IsLoadingOrderDetail = false;
+            StateHasChanged();
+        }
+    }
+
+    // NEW: Handler invoked by ProductionFlow component to show price analysis in the hoisted modal
+    private async Task ShowOrderAnalysis(string orderNo)
+    {
+        if (string.IsNullOrWhiteSpace(orderNo)) return;
+
+        SelectedOrderNo = orderNo;
+        IsAnalysisPopupVisible = true;
+        IsLoadingAnalysis = true;
+        IsAnalysisUnmasked = false;
+        AnalysisPinInput = string.Empty;
+        AnalysisPinError = null;
+        AnalysisItems = Enumerable.Empty<OrderPriceAnalysisDto>();
+        StateHasChanged();
+
+        try
+        {
+            var result = await BuyerOrderSummaryService.GetOrderPriceAnalysisAsync(orderNo, UsdRate);
+            var list = (result ?? Enumerable.Empty<OrderPriceAnalysisDto>()).ToList();
+            for (int i = 0; i < list.Count; i++) list[i].SN = i + 1;
+            AnalysisItems = list;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            IsAnalysisPopupVisible = false;
+            ToastService.ShowWarning("Session Expired. Redirecting to login...");
+            _tokenProvider.NotifySessionExpired();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading order analysis for {OrderNo}", orderNo);
+        }
+        finally
+        {
+            IsLoadingAnalysis = false;
+            StateHasChanged();
+        }
+    }
+
+    // NEW: Verify PIN to unmask pricing data in the analysis modal
+    private Task VerifyAnalysisPin()
+    {
+        if (AnalysisPinInput == "1221")
+        {
+            IsAnalysisUnmasked = true;
+            AnalysisPinError = null;
+        }
+        else
+        {
+            AnalysisPinError = "Incorrect PIN. Please try again.";
+            AnalysisPinInput = string.Empty;
+        }
+        return Task.CompletedTask;
     }
 }

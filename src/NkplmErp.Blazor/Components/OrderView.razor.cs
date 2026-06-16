@@ -15,12 +15,15 @@ public partial class OrderView : ComponentBase
     [Parameter]
     public bool IsLoading { get; set; }
 
+    [Parameter]
+    public EventCallback<string> OnStyleSelected { get; set; }
+
     private List<string> SizeHeaders { get; set; } = new();
     
-    private bool IsStyleModalVisible { get; set; }
-    private bool IsLoadingStyleHistory { get; set; }
-    private OrderViewHeaderDto? SelectedStyleItem { get; set; }
-    private StyleDetailsDto? SelectedStyleDetails { get; set; }
+    private void ShowStyleDetails(string styleNo)
+    {
+        OnStyleSelected.InvokeAsync(styleNo);
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -29,26 +32,7 @@ public partial class OrderView : ComponentBase
         // Production history is now loaded on-demand when a style is clicked
     }
 
-    private async Task ShowStyleDetails(OrderViewHeaderDto item)
-    {
-        SelectedStyleItem = item;
-        IsStyleModalVisible = true;
-        IsLoadingStyleHistory = true;
-        StateHasChanged();
 
-        try
-        {
-            SelectedStyleDetails = await BuyerOrderSummaryService.GetStyleDetailsAsync(item.StyleNo);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading style details: {ex.Message}");
-            SelectedStyleDetails = new StyleDetailsDto();
-        }
-        
-        IsLoadingStyleHistory = false;
-        StateHasChanged();
-    }
 
     private void ExtractSizeHeaders()
     {

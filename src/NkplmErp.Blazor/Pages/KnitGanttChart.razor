@@ -1,0 +1,1439 @@
+@page "/knit-gantt-chart"
+@using NkplmErp.Shared.DTOs
+@using NkplmErp.Application.Interfaces
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@namespace NkplmErp.Blazor.Pages
+
+<style>
+    /* Design System Tokens */
+    :root {
+        --navy:    #1a3353;
+        --blue:    #435663;
+        --teal:    #2ab3b1;
+        --teal-lt: #e6f7f7;
+        --sky:     #e8f4fb;
+        --red:     #e05252;
+        --green:   #3dbf8a;
+        --amber:   #f0a500;
+        --bg:      #f4f6f9;
+        --white:   #ffffff;
+        --border:  #dde3ec;
+        --text:    #222222;
+        --muted:   #7a8fa6;
+    }
+
+    .planning-page {
+        background-color: var(--bg) !important;
+        color: var(--text) !important;
+        font-family: 'Inter', system-ui, sans-serif !important;
+        font-size: 12px !important;
+    }
+
+    /* Panel Component */
+    .panel {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .panel-header {
+        background: var(--navy);
+        color: #fff;
+        padding: 4px 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        min-height: 24px;
+    }
+
+    .panel-header-left { display: flex; align-items: center; gap: 8px; }
+    .panel-icon { font-size: 12px; opacity: 0.8; }
+    .panel-title { font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+    .panel-count {
+        background: var(--teal); color: #fff;
+        font-size: 9px; font-weight: 700;
+        padding: 1px 6px; border-radius: 20px;
+    }
+    .panel-body { padding: 0; flex: 1; overflow: auto; }
+
+    /* Form Fields */
+    .form-field {
+        padding: 4px 10px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .form-field:last-child { border-bottom: none; }
+    .form-label {
+        display: block; font-size: 9px; font-weight: 700;
+        color: var(--text); text-transform: uppercase; letter-spacing: 0.6px;
+        margin-bottom: 2px; padding-bottom: 1px;
+        border-bottom: 1px solid var(--border);
+    }
+    .form-input, .form-select {
+        width: 100%; border: 1px solid var(--border); border-radius: 6px;
+        padding: 4px 8px; font-size: 11px; font-family: inherit;
+        color: var(--text); background: var(--white); outline: none;
+        transition: border 0.15s, box-shadow 0.15s;
+    }
+    .form-input:focus, .form-select:focus {
+        border-color: var(--teal); box-shadow: 0 0 0 3px rgba(42,179,177,0.12);
+    }
+
+    /* Tables */
+    .nk-table { width: 100%; border-collapse: collapse; }
+    .nk-table thead tr { background: var(--sky); }
+    .nk-table thead th {
+        padding: 3px 8px; text-align: left;
+        font-size: 9px; font-weight: 700; color: #222 !important;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap; letter-spacing: 0.2px;
+        text-transform: none !important;
+    }
+    .nk-table tbody tr { border-bottom: 1px solid #f0f2f6; transition: background 0.1s; }
+    .nk-table tbody tr:hover { background: var(--sky); }
+    .nk-table tbody td { padding: 3px 8px; font-size: 10px; color: #222 !important; white-space: nowrap; font-weight: normal !important; }
+    
+    /* Comprehensive Typography Normalization: Override all data body elements, spans, badges to normal weight */
+    .nk-table tbody td span,
+    .nk-table tbody td div,
+    .nk-table tbody td strong,
+    .nk-table tbody td a,
+    .nk-table tbody td button,
+    .nk-table tbody td i,
+    .planning-page p,
+    .planning-page strong:not(.panel-title),
+    .planning-page span:not(.panel-title):not(.panel-count):not(.form-label) {
+        font-weight: normal !important;
+    }
+
+    /* Badges & Chips */
+    .gauge-chip {
+        display:inline-block; padding:1px 8px; border-radius:20px;
+        font-size:9px; font-weight: normal !important; letter-spacing:0.3px;
+        background:var(--teal-lt); color:var(--teal);
+    }
+    .clickable-span {
+        display: inline-block;
+        cursor: pointer;
+        color: var(--teal);
+        background-color: rgba(0, 128, 128, 0.1);
+        padding: 3px 10px; 
+        border-radius: 20px;
+        font-size: 9px; 
+        font-weight: normal !important; 
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        border: 1px solid transparent;
+    }
+    .clickable-span:hover {
+        background: var(--teal); 
+        color: var(--white);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Analyse Button */
+    .btn-analyse {
+        background: var(--teal); color: #fff;
+        border: none; padding: 6px 20px; border-radius: 6px;
+        font-size: 11px; font-weight: 700; cursor: pointer;
+        letter-spacing: 0.5px; transition: background 0.15s;
+        box-shadow: 0 2px 6px rgba(42,179,177,0.25);
+        text-transform: uppercase;
+    }
+    .btn-analyse:hover { background: #219e9c; }
+    .btn-analyse:disabled { background: var(--border); box-shadow: none; cursor: not-allowed; }
+
+    /* Compact Utilities */
+    .compact-table th { padding: 3px 6px !important; font-size: 9px !important; }
+    .compact-table td { padding: 3px 6px !important; font-size: 10px !important; }
+    .compact-panel-header { padding: 3px 8px !important; min-height: 24px !important; }
+    .compact-panel-title { font-size: 9px !important; }
+
+    /* Custom Scrollbar */
+    .custom-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+    /* Gantt Layout */
+    .gantt-container {
+        position: relative;
+        background: #ffffff;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        overflow-x: auto;
+    }
+
+    .gantt-grid {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        min-width: 1100px;
+    }
+
+    /* Swimlanes */
+    .gantt-row {
+        display: contents;
+    }
+
+    .gantt-row-label {
+        background: #f8fafc;
+        padding: 8px 6px;
+        border-bottom: 1px solid var(--border);
+        border-right: 2px solid var(--navy);
+        font-weight: 800;
+        color: var(--navy);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        position: sticky;
+        left: 0;
+        z-index: 10;
+    }
+
+    .gantt-row-label-clickable {
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+    }
+    .gantt-row-label-clickable:hover {
+        background: var(--navy);
+        color: #fff;
+    }
+
+    .gantt-row-timeline {
+        position: relative;
+        height: 42px;
+        border-bottom: 1px solid var(--border);
+        background-image: linear-gradient(to right, var(--border) 1px, transparent 1px);
+        background-size: calc(100% / var(--timeline-columns)) 100%;
+    }
+
+    /* Calendar Grid Columns background highlight */
+    .gantt-day-column {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        border-right: 1px dashed rgba(226, 232, 240, 0.6);
+        pointer-events: none;
+    }
+
+    .gantt-day-weekend {
+        background: rgba(226, 232, 240, 0.3);
+    }
+
+    /* Saturday is a public holiday in Nepal: show the day number in red */
+    .gantt-axis-day.gantt-day-weekend,
+    .gantt-axis-day.gantt-day-weekend span {
+        color: #dc2626 !important;
+    }
+
+    /* Gantt Blocks */
+    .gantt-block {
+        position: absolute;
+        top: 7px;
+        height: 28px;
+        border-radius: 4px;
+        color: #ffffff;
+        padding: 0 10px;
+        font-weight: normal !important;
+        font-size: 10px;
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+        transition: all 0.2s ease;
+        border: 1px solid rgba(255,255,255,0.15);
+        user-select: none;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .gantt-block:hover {
+        transform: scale(1.02);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+        z-index: 50;
+    }
+
+    .gantt-block-active {
+        background: linear-gradient(135deg, var(--navy) 0%, #1e40af 100%);
+    }
+
+    .gantt-block-partial {
+        background: linear-gradient(135deg, #b45309 0%, var(--amber) 100%);
+    }
+
+    .gantt-block-completed {
+        background: linear-gradient(135deg, #065f46 0%, var(--green) 100%);
+    }
+
+    /* Tooltip */
+    .gantt-tooltip {
+        visibility: hidden;
+        position: absolute;
+        bottom: 120%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(15, 23, 42, 0.95);
+        color: #fff;
+        text-align: left;
+        padding: 10px 14px;
+        border-radius: 8px;
+        z-index: 100;
+        width: 250px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        font-size: 10px;
+        line-height: 1.4;
+        opacity: 0;
+        transition: opacity 0.2s ease, visibility 0.2s ease;
+        pointer-events: none;
+        border: 1px solid rgba(255,255,255,0.1);
+        backdrop-filter: blur(4px);
+    }
+
+    .gantt-block:hover .gantt-tooltip {
+        visibility: visible;
+        opacity: 1;
+    }
+
+    /* Gantt Axis Headers */
+    .gantt-axis-label {
+        background: #f1f5f9;
+        color: var(--navy);
+        font-weight: 800;
+        padding: 8px;
+        border-bottom: 2px solid var(--border);
+        text-align: center;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .gantt-axis-timeline {
+        background: #f8fafc;
+        border-bottom: 2px solid var(--border);
+        min-height: 36px;
+        position: relative;
+    }
+
+    .gantt-axis-day {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-size: 8px;
+        font-weight: 800;
+        border-right: 1px solid var(--border);
+        color: var(--blue);
+    }
+
+    /* TODAY vertical marker */
+    .gantt-today {
+        position: absolute; top: 0; bottom: 0; width: 2px;
+        background: var(--red); opacity: .55; z-index: 6; pointer-events: none;
+    }
+    .gantt-today-axis::after {
+        content: "TODAY"; position: absolute; top: 1px; left: 3px;
+        font-size: 7px; font-weight: 800; color: var(--red); letter-spacing: .04em;
+    }
+
+    /* Free (idle) window emphasis */
+    .gantt-free {
+        position: absolute; top: 0; bottom: 0; right: 0;
+        background: rgba(61, 191, 138, .10);
+        border-left: 2px dashed rgba(61, 191, 138, .55);
+        pointer-events: none; z-index: 1;
+    }
+
+    /* Status accents on top of the per-order colour */
+    .gantt-acc-completed { box-shadow: inset 0 -3px 0 var(--green), 0 4px 6px rgba(0,0,0,0.08); }
+    .gantt-acc-partial   { box-shadow: inset 0 -3px 0 var(--amber), 0 4px 6px rgba(0,0,0,0.08); }
+
+    /* Order colour legend */
+    .gantt-legend { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; align-items: center; }
+    .gantt-legend .lg-chip {
+        display: inline-flex; align-items: center; gap: 5px;
+        background: #fff; border: 1px solid var(--border); border-radius: 14px;
+        padding: 2px 9px; font-size: 9px; font-weight: 700; color: var(--navy);
+    }
+    .gantt-legend .lg-dot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+</style>
+
+<div class="planning-page p-2 h-full overflow-y-auto custom-scroll">
+    <!-- Header panel with navigation -->
+    <div class="panel mb-2">
+        <div class="panel-header">
+            <div class="panel-header-left">
+                <span class="panel-icon">📊</span>
+                <span class="panel-title">Knit Production Gantt Chart</span>
+            </div>
+            <div class="flex gap-2">
+                <a href="/order-planning" class="clickable-span text-center" style="padding: 2px 12px; text-transform: uppercase;">
+                    Planning Board
+                </a>
+                <a href="/" class="clickable-span text-center" style="padding: 2px 12px; text-transform: uppercase; background-color: var(--white); color: var(--navy);">
+                    Home
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Parameters Panel -->
+    <div class="panel mb-2" style="overflow: visible !important;">
+        <div class="panel-body" style="overflow: visible !important;">
+            <div class="flex flex-wrap items-center gap-3 p-2">
+                <div class="flex items-center gap-2 flex-1 min-w-[200px]">
+                    <label class="form-label whitespace-nowrap" style="margin-bottom: 0; padding-bottom: 0; border-bottom: none; flex-shrink: 0;">Order Number</label>
+                    <input type="text" @bind="OrderNoFilter" placeholder="e.g. PO-1926" class="form-input" />
+                </div>
+
+                <div class="flex items-center gap-2 flex-1 min-w-[160px]">
+                    <label class="form-label whitespace-nowrap" style="margin-bottom: 0; padding-bottom: 0; border-bottom: none; flex-shrink: 0;">Gauge</label>
+                    <select @bind="GaugeFilter" class="form-select">
+                        <option value="">All Gauges</option>
+                        @foreach (var g in AvailableGauges)
+                        {
+                            <option value="@g">G-@g</option>
+                        }
+                    </select>
+                </div>
+                <!-- Date Range Selector -->
+                <div class="flex items-center gap-2 min-w-[280px] relative">
+                    <label class="form-label whitespace-nowrap" style="margin-bottom: 0; padding-bottom: 0; border-bottom: none; flex-shrink: 0;">Date Range</label>
+                    <button type="button" @onclick="ToggleDateDropdown" 
+                            class="form-input flex items-center justify-between gap-2 h-8 text-left bg-white hover:bg-slate-50 border border-slate-300 rounded px-2.5 py-1 text-[12px] font-semibold text-navy shadow-sm transition-colors cursor-pointer select-none">
+                        <span class="flex items-center gap-1.5">
+                            <span class="text-teal text-[13px]">📅</span>
+                            <span>@GetDateRangeLabel()</span>
+                        </span>
+                        <span class="text-[8px] text-slate-400">▼</span>
+                    </button>
+
+                    @if (IsDateDropdownOpen)
+                    {
+                        <!-- Invisible backdrop to catch clicks outside the dropdown -->
+                        <div class="fixed inset-0 z-40 bg-transparent" @onclick="CancelDateTime"></div>
+                        <div class="absolute right-0 top-full mt-1 z-50 transition-all duration-150"
+                             style="width: @(ActiveViewMode == "custom" ? "540px" : "150px"); filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1)) drop-shadow(0 4px 6px rgba(0,0,0,0.05));">
+                            
+                            <!-- Arrow pointer positioned on the right -->
+                            <div class="absolute -top-1 w-2.5 h-2.5 bg-white border-t border-l border-slate-200 transform rotate-45 right-12 z-0"></div>
+                            
+                            <!-- Menu content (flex container) -->
+                            <div class="bg-white border border-slate-200 rounded-md relative z-10 flex flex-col overflow-hidden">
+                                
+                                <div class="flex">
+                                    <!-- Left Preset Sidebar (Compact width) -->
+                                    <div class="w-[140px] @(ActiveViewMode == "custom" ? "border-r border-slate-100" : "") flex flex-col py-1 bg-slate-50 flex-shrink-0">
+                                        <button type="button" @onclick='() => ApplyPreset("today")' 
+                                                class="w-full text-left px-3 py-1.5 text-[11px] font-semibold transition-colors block cursor-pointer @(ActiveViewMode == "today" ? "bg-[#0284c7] text-white" : "text-navy hover:bg-slate-100")">
+                                            Today
+                                        </button>
+                                        
+                                        <button type="button" @onclick='() => ApplyPreset("yesterday")' 
+                                                class="w-full text-left px-3 py-1.5 text-[11px] font-semibold transition-colors block cursor-pointer @(ActiveViewMode == "yesterday" ? "bg-[#0284c7] text-white" : "text-navy hover:bg-slate-100")">
+                                            Yesterday
+                                        </button>
+                                        
+                                        <button type="button" @onclick='() => ApplyPreset("thisweek")' 
+                                                class="w-full text-left px-3 py-1.5 text-[11px] font-semibold transition-colors block cursor-pointer @(ActiveViewMode == "thisweek" ? "bg-[#0284c7] text-white" : "text-navy hover:bg-slate-100")">
+                                            This Week
+                                        </button>
+
+                                        <button type="button" @onclick='() => ApplyPreset("last7days")' 
+                                                class="w-full text-left px-3 py-1.5 text-[11px] font-semibold transition-colors block cursor-pointer @(ActiveViewMode == "last7days" ? "bg-[#0284c7] text-white" : "text-navy hover:bg-slate-100")">
+                                            Last 7 Days
+                                        </button>
+                                        
+                                        <button type="button" @onclick='() => ApplyPreset("30days")' 
+                                                class="w-full text-left px-3 py-1.5 text-[11px] font-semibold transition-colors block cursor-pointer @(ActiveViewMode == "30days" ? "bg-[#0284c7] text-white" : "text-navy hover:bg-slate-100")">
+                                            30 Days
+                                        </button>
+                                        
+                                        <button type="button" @onclick='() => ApplyPreset("thismonth")' 
+                                                class="w-full text-left px-3 py-1.5 text-[11px] font-semibold transition-colors block cursor-pointer @(ActiveViewMode == "thismonth" ? "bg-[#0284c7] text-white" : "text-navy hover:bg-slate-100")">
+                                            This Month
+                                        </button>
+                                        
+                                        <button type="button" @onclick='() => ApplyPreset("lastmonth")' 
+                                                class="w-full text-left px-3 py-1.5 text-[11px] font-semibold transition-colors block cursor-pointer @(ActiveViewMode == "lastmonth" ? "bg-[#0284c7] text-white" : "text-navy hover:bg-slate-100")">
+                                            Last Month
+                                        </button>
+                                        
+                                        <button type="button" @onclick='() => SelectPreset("custom")' 
+                                                class="w-full text-left px-3 py-1.5 text-[11px] font-semibold border-t border-slate-100 transition-colors block cursor-pointer @(ActiveViewMode == "custom" ? "bg-[#0284c7] text-white" : "text-navy hover:bg-slate-100")">
+                                            Custom Range
+                                        </button>
+                                    </div>
+
+                                    @if (ActiveViewMode == "custom")
+                                    {
+                                        <!-- Right Calendar Grids (Compact and elegant) -->
+                                        <div class="flex-1 p-2 flex flex-col gap-1.5 bg-white">
+                                            <!-- Header Navigation with MMM yyyy formatting to prevent overlap -->
+                                            <div class="flex items-center justify-between px-1 mb-1">
+                                                <button type="button" @onclick="PrevMonth" class="p-1 hover:bg-slate-100 rounded text-slate-600 font-bold cursor-pointer text-[11px]">
+                                                    &lt;
+                                                </button>
+                                                <div class="flex flex-1 justify-around text-[11px] font-bold text-slate-700">
+                                                    <span>@LeftCalendarMonth?.ToString("MMM yyyy")</span>
+                                                    <span>@LeftCalendarMonth?.AddMonths(1).ToString("MMM yyyy")</span>
+                                                </div>
+                                                <button type="button" @onclick="NextMonth" class="p-1 hover:bg-slate-100 rounded text-slate-600 font-bold cursor-pointer text-[11px]">
+                                                    &gt;
+                                                </button>
+                                            </div>
+
+                                            <!-- The Calendars -->
+                                            <div class="flex gap-3">
+                                                <!-- Left Month Grid -->
+                                                <div class="flex-1">
+                                                    <div class="grid grid-cols-7 gap-y-0.5 text-center">
+                                                        @foreach (var dayLabel in new[] { "Su", "Mo", "Tu", "We", "Th", "Fr", "Sa" })
+                                                        {
+                                                            <span class="text-[9px] font-bold text-slate-400 py-0.5">@dayLabel</span>
+                                                        }
+                                                        @foreach (var day in GetCalendarDaysList((LeftCalendarMonth ?? DateTime.Today).Year, (LeftCalendarMonth ?? DateTime.Today).Month))
+                                                        {
+                                                            var isCurrentMonth = day.Month == (LeftCalendarMonth ?? DateTime.Today).Month;
+                                                            var isSelected = IsDaySelected(day);
+                                                            var isInRange = IsDayInRange(day);
+                                                            var isToday = day == DateTime.Today;
+
+                                                            <button type="button" @onclick="() => OnDayClick(day)" @onmouseover="() => OnDayHover(day)"
+                                                                    class="text-[9px] font-semibold h-5 w-5 rounded flex items-center justify-center cursor-pointer transition-colors m-auto
+                                                                           @(isSelected ? "bg-[#0284c7] text-white" : isInRange ? "bg-sky-100 text-sky-800 rounded-none w-full" : isCurrentMonth ? "text-slate-700 hover:bg-slate-100" : "text-slate-300 hover:bg-slate-50")
+                                                                           @(isToday && !isSelected ? "border border-[#0284c7]" : "")">
+                                                                @day.Day
+                                                            </button>
+                                                        }
+                                                    </div>
+                                                </div>
+
+                                                <!-- Right Month Grid -->
+                                                <div class="flex-1">
+                                                    <div class="grid grid-cols-7 gap-y-0.5 text-center">
+                                                         @foreach (var dayLabel in new[] { "Su", "Mo", "Tu", "We", "Th", "Fr", "Sa" })
+                                                         {
+                                                             <span class="text-[9px] font-bold text-slate-400 py-0.5">@dayLabel</span>
+                                                         }
+                                                         @{ var rightMonth = (LeftCalendarMonth ?? DateTime.Today).AddMonths(1); }
+                                                         @foreach (var day in GetCalendarDaysList(rightMonth.Year, rightMonth.Month))
+                                                         {
+                                                             var isCurrentMonth = day.Month == rightMonth.Month;
+                                                             var isSelected = IsDaySelected(day);
+                                                             var isInRange = IsDayInRange(day);
+                                                             var isToday = day == DateTime.Today;
+
+                                                             <button type="button" @onclick="() => OnDayClick(day)" @onmouseover="() => OnDayHover(day)"
+                                                                     class="text-[9px] font-semibold h-5 w-5 rounded flex items-center justify-center cursor-pointer transition-colors m-auto
+                                                                            @(isSelected ? "bg-[#0284c7] text-white" : isInRange ? "bg-sky-100 text-sky-800 rounded-none w-full" : isCurrentMonth ? "text-slate-700 hover:bg-slate-100" : "text-slate-300 hover:bg-slate-50")
+                                                                            @(isToday && !isSelected ? "border border-[#0284c7]" : "")">
+                                                                 @day.Day
+                                                             </button>
+                                                         }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+
+                                @if (ActiveViewMode == "custom")
+                                {
+                                    <!-- Footer actions (only shown for Custom Range) -->
+                                    <div class="border-t border-slate-100 p-2 bg-slate-50 flex items-center justify-between">
+                                        <div class="text-[11px] font-semibold text-slate-600 pl-2">
+                                            @if (TempStartDate != null)
+                                            {
+                                                <span>@TempStartDate.Value.ToString("MM/dd/yyyy")</span>
+                                                @if (TempEndDate != null)
+                                                {
+                                                    <span> - @TempEndDate.Value.ToString("MM/dd/yyyy")</span>
+                                                }
+                                            }
+                                        </div>
+                                        <div class="flex gap-2">
+                                            <button type="button" @onclick="CancelDateTime" 
+                                                    class="px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-200 border border-slate-300 rounded cursor-pointer transition-colors bg-white">
+                                                Cancel
+                                            </button>
+                                            <button type="button" @onclick="ApplyDateTime" 
+                                                    class="px-3.5 py-1 text-[11px] font-bold text-white bg-[#0284c7] hover:bg-[#0270ad] rounded cursor-pointer transition-colors shadow-sm">
+                                                Apply
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <button type="button" @onclick="FetchGanttData" class="btn-analyse">
+                    Filter
+                </button>
+                <button type="button" @onclick="ResetFilters" class="btn-analyse" style="background: var(--blue); box-shadow: none;">
+                    Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gantt Chart Timeline View Panel -->
+    <div class="panel mb-2">
+        <div class="panel-header compact-panel-header" style="background: var(--navy); color: #fff;">
+            <div class="panel-header-left">
+                <span class="panel-icon">📅</span>
+                <span class="compact-panel-title">Interactive Swimlane Timeline View</span>
+            </div>
+            <div class="flex gap-3 text-[9px] font-bold uppercase tracking-wider text-slate-300">
+                <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full" style="background: var(--navy); border: 1px solid var(--white);"></span> Active</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full" style="background: var(--amber);"></span> Partial</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full" style="background: var(--green);"></span> Completed</span>
+            </div>
+        </div>
+        <div class="panel-body custom-scroll p-2 overflow-auto" style="min-height: 250px;">
+            @if (IsLoading)
+            {
+                <div class="py-12 text-center">
+                    <div class="w-8 h-8 border-4 border-slate-200 border-t-teal rounded-full animate-spin mx-auto mb-3"></div>
+                    <h4 class="text-xs font-bold text-navy uppercase tracking-widest">Loading Schedule Data...</h4>
+                    <p class="text-[10px] text-muted mt-1">Retrieving order plans and mapping calendar timelines</p>
+                </div>
+            }
+            else if (!GanttData.Any())
+            {
+                <div class="py-16 text-center text-muted">
+                    <span class="text-3xl block mb-2 opacity-30">📭</span>
+                    <h4 class="text-xs font-bold text-navy uppercase tracking-widest">No Active Plans Found</h4>
+                    <p class="text-[10px] text-muted mt-1">No Knit production allocations match your query filters.</p>
+                </div>
+            }
+            else
+            {
+                <!-- Order colour legend -->
+                <div class="gantt-legend">
+                    @foreach (var ord in VisibleOrders)
+                    {
+                        <span class="lg-chip"><span class="lg-dot" style="background:@OrderColor(ord);"></span>@ord</span>
+                    }
+                </div>
+
+                <div class="gantt-container" style="--timeline-columns: @CalendarDays.Count">
+                    <div class="gantt-grid">
+                        <!-- Horizontal Axis Headers -->
+                        <div class="gantt-axis-label flex items-center justify-center">Gauge</div>
+
+                        <div class="gantt-axis-timeline">
+                           @if (TodayOffsetPct is double tap)
+                           {
+                               <div class="gantt-today gantt-today-axis" style="left:@(tap.ToString("F3", System.Globalization.CultureInfo.InvariantCulture))%;"></div>
+                           }
+                           @for (int i = 0; i < CalendarDays.Count; i++)
+                           {
+                               var day = CalendarDays[i];
+                               var widthPct = 100.0 / CalendarDays.Count;
+                               var leftPct = i * widthPct;
+                               var isWeekend = day.DayOfWeek == DayOfWeek.Saturday;
+                               var isMonthStart = day.Day == 1 || i == 0;
+                               
+                               <div class="gantt-axis-day @(isWeekend ? "gantt-day-weekend" : "")" 
+                                    style="left: @(leftPct.ToString("F3", System.Globalization.CultureInfo.InvariantCulture))%; width: @(widthPct.ToString("F3", System.Globalization.CultureInfo.InvariantCulture))%;">
+                                   @if (isMonthStart)
+                                   {
+                                       <span class="text-[8px] font-bold text-navy block uppercase mb-0.5">@day.ToString("MMM")</span>
+                                   }
+                                   <span class="block">@day.Day</span>
+                               </div>
+                           }
+                        </div>
+
+                        <!-- Render Grid Rows by Unique Gauges -->
+                        @foreach (var gaugeGroup in GanttData.GroupBy(x => x.Guage).OrderBy(g => double.TryParse(g.Key, out double d) ? d : 999.0))
+                        {
+                            var gauge = gaugeGroup.Key;
+                            var plansForGauge = gaugeGroup.OrderByDescending(p => p.Qty).ToList();
+
+                            <div class="gantt-row">
+                                <!-- Row Swimlane Label -->
+                                <div class="gantt-row-label gantt-row-label-clickable" @onclick="() => OpenGaugeMachineModal(gauge)" title="Click to view machine-wise timeline">
+                                    <span>G-@gauge</span>
+                                </div>
+
+                                <!-- Swimlane Timeline Grid Area -->
+                                <div class="gantt-row-timeline">
+                                    <!-- Render Weekend Vertical Background Stripes -->
+                                    @for (int i = 0; i < CalendarDays.Count; i++)
+                                    {
+                                        var day = CalendarDays[i];
+                                        var widthPct = 100.0 / CalendarDays.Count;
+                                        var leftPct = i * widthPct;
+                                        if (day.DayOfWeek == DayOfWeek.Saturday)
+                                        {
+                                            <div class="gantt-day-column gantt-day-weekend"
+                                                 style="left: @(leftPct.ToString("F3", System.Globalization.CultureInfo.InvariantCulture))%; width: @(widthPct.ToString("F3", System.Globalization.CultureInfo.InvariantCulture))%;">
+                                            </div>
+                                        }
+                                    }
+
+                                    @if (FreeFromPct(plansForGauge) is double freePct)
+                                    {
+                                        <div class="gantt-free" style="left:@(freePct.ToString("F3", System.Globalization.CultureInfo.InvariantCulture))%;" title="Free from here"></div>
+                                    }
+                                    @if (TodayOffsetPct is double trp)
+                                    {
+                                        <div class="gantt-today" style="left:@(trp.ToString("F3", System.Globalization.CultureInfo.InvariantCulture))%;"></div>
+                                    }
+
+                                    <!-- Render Planned Allocation Blocks -->
+                                    @foreach (var plan in plansForGauge)
+                                    {
+                                        var (leftOffset, width) = CalculateBlockPlacement(plan);
+                                        if (width <= 0) continue;
+
+                                        var accClass = plan.PlaningStatus == "Completed"
+                                            ? "gantt-acc-completed"
+                                            : (plan.PlaningStatus == "Partial" ? "gantt-acc-partial" : "");
+                                        var planKnitter = GetPlanKnitter(plan.MasterPlanChildId);
+
+                                        <div class="gantt-block @accClass"
+                                             style="left: @(leftOffset.ToString("F3", System.Globalization.CultureInfo.InvariantCulture))%; width: @(width.ToString("F3", System.Globalization.CultureInfo.InvariantCulture))%; background: @OrderColor(plan.OrderNo);"
+                                             @onclick="() => SelectPlan(plan)">
+                                            
+                                            <span class="truncate block w-full text-center">@plan.OrderNo (@plan.MachineCount Mc)</span>
+
+                                            <!-- High Contrast Custom HTML Hover Tooltip -->
+                                            <div class="gantt-tooltip">
+                                                <div class="font-bold text-[10px] text-teal uppercase mb-1 flex items-center justify-between">
+                                                    <span>Order details</span>
+                                                    <span class="bg-white/10 px-1 py-0.5 rounded text-[8px]">@plan.PlaningStatus</span>
+                                                </div>
+                                                <div class="grid grid-cols-[80px_1fr] gap-x-1 gap-y-0.5 mt-1 border-t border-slate-700/60 pt-1.5" style="font-weight: normal !important;">
+                                                    <span class="text-slate-400">Order No:</span>
+                                                    <span class="text-white">@plan.OrderNo</span>
+                                                    
+                                                    <span class="text-slate-400">Type:</span>
+                                                    <span class="text-white">@plan.OrderType / @plan.ProductionType</span>
+                                                    
+                                                    <span class="text-slate-400">Date Range:</span>
+                                                    <span class="text-white">@plan.StartDate.ToString("dd-MMM") to @plan.EndDate.ToString("dd-MMM")</span>
+                                                    
+                                                    <span class="text-slate-400">Machines (Mc):</span>
+                                                    <span class="text-white">@plan.MachineCount</span>
+                                                    
+                                                    <span class="text-slate-400">Planned Qty:</span>
+                                                    <span class="text-white">@plan.Qty.ToString("N0") pcs</span>
+
+                                                    <span class="text-slate-400">Knitter:</span>
+                                                    <span class="text-white">@(planKnitter ?? "Not assigned")</span>
+
+                                                    <span class="text-slate-400">Planner:</span>
+                                                    <span class="text-white">@plan.CreatedBy</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+</div>
+
+<!-- Selected Allocation Details Modal -->
+<DataModal @bind-IsVisible="IsPlanDetailModalOpen"
+           Title="@($"Allocation Details: {SelectedPlan?.OrderNo}")"
+           BadgeText="ORDER"
+           IsLoading="false"
+           MaxWidth="760px">
+    @if (SelectedPlan != null)
+    {
+        <div class="planning-page p-4 bg-bg">
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div class="panel p-3">
+                    <span class="text-[9px] font-bold text-muted uppercase tracking-wider block">Order No</span>
+                    <span class="text-sm font-bold text-navy mt-0.5 block">@SelectedPlan.OrderNo</span>
+                </div>
+                <div class="panel p-3">
+                    <span class="text-[9px] font-bold text-muted uppercase tracking-wider block">Gauge / Swimlane</span>
+                    <span class="text-sm font-bold text-navy mt-0.5 block">G-@SelectedPlan.Guage</span>
+                </div>
+                <div class="panel p-3">
+                    <span class="text-[9px] font-bold text-muted uppercase tracking-wider block">Status</span>
+                    <span class="text-sm font-bold text-navy mt-0.5 block">@SelectedPlan.PlaningStatus</span>
+                </div>
+                <div class="panel p-3">
+                    <span class="text-[9px] font-bold text-muted uppercase tracking-wider block">Order / Knit Type</span>
+                    <span class="text-sm font-bold text-navy mt-0.5 block">@SelectedPlan.OrderType / @SelectedPlan.ProductionType</span>
+                </div>
+                <div class="panel p-3">
+                    <span class="text-[9px] font-bold text-muted uppercase tracking-wider block">Machine</span>
+                    <span class="text-sm font-bold text-navy mt-0.5 block">@(string.IsNullOrWhiteSpace(SelectedPlan.Machine) ? "Unassigned" : SelectedPlan.Machine)</span>
+                </div>
+                <div class="panel p-3">
+                    <span class="text-[9px] font-bold text-muted uppercase tracking-wider block">Machines / Qty</span>
+                    <span class="text-sm font-bold text-navy mt-0.5 block">@SelectedPlan.MachineCount Mc / @SelectedPlan.Qty.ToString("N0") pcs</span>
+                </div>
+                <div class="panel p-3 col-span-2 sm:col-span-3">
+                    <span class="text-[9px] font-bold text-muted uppercase tracking-wider block">Allocation Timeline</span>
+                    <span class="text-sm font-bold text-navy mt-0.5 block">@SelectedPlan.StartDate.ToString("dd-MMM-yyyy") to @SelectedPlan.EndDate.ToString("dd-MMM-yyyy")</span>
+                </div>
+                <div class="panel p-3 col-span-2 sm:col-span-3">
+                    <span class="text-[9px] font-bold text-muted uppercase tracking-wider block">Planner</span>
+                    <span class="text-sm font-bold text-navy mt-0.5 block">@SelectedPlan.CreatedBy</span>
+                </div>
+            </div>
+        </div>
+    }
+</DataModal>
+
+<!-- Gauge Machine Timeline Modal -->
+<DataModal @bind-IsVisible="IsMachineModalOpen"
+           Title="@($"Gauge G-{ModalGauge} • Machine-wise Timeline")"
+           BadgeText="GANTT"
+           IsLoading="false"
+           MaxWidth="1150px">
+    <div class="planning-page p-3 bg-bg" style="max-height: 75vh; overflow: auto;">
+        <!-- Summary strip -->
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+            <div class="panel px-3 py-2 flex items-center gap-2">
+                <span class="text-[9px] font-bold text-muted uppercase tracking-wider">Machines</span>
+                <span class="text-sm font-bold text-navy">@ModalMachineGroups.Count</span>
+            </div>
+            <div class="panel px-3 py-2 flex items-center gap-2">
+                <span class="text-[9px] font-bold text-muted uppercase tracking-wider">Orders</span>
+                <span class="text-sm font-bold text-navy">@ModalPlans.Select(p => p.OrderNo).Distinct().Count()</span>
+            </div>
+            <div class="panel px-3 py-2 flex items-center gap-2">
+                <span class="text-[9px] font-bold text-muted uppercase tracking-wider">Planned Qty</span>
+                <span class="text-sm font-bold text-navy">@ModalPlans.Sum(p => p.Qty).ToString("N0")</span>
+            </div>
+            <div class="flex-1"></div>
+            <div class="flex gap-3 text-[9px] font-bold uppercase tracking-wider text-muted items-center">
+                <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full" style="background: var(--navy);"></span> Active</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full" style="background: var(--amber);"></span> Partial</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full" style="background: var(--green);"></span> Completed</span>
+            </div>
+        </div>
+
+        @if (!ModalMachineGroups.Any())
+        {
+            <div class="py-16 text-center text-muted">
+                <span class="text-3xl block mb-2 opacity-30">📭</span>
+                <h4 class="text-xs font-bold text-navy uppercase tracking-widest">No Machines Allocated</h4>
+                <p class="text-[10px] text-muted mt-1">No machine allocations found for gauge G-@ModalGauge.</p>
+            </div>
+        }
+        else
+        {
+            <div class="gantt-container" style="--timeline-columns: @CalendarDays.Count">
+                <div class="gantt-grid" style="grid-template-columns: 150px 1fr;">
+                    <!-- Axis Headers -->
+                    <div class="gantt-axis-label flex items-center justify-center">Machine</div>
+                    <div class="gantt-axis-timeline">
+                        @for (int i = 0; i < CalendarDays.Count; i++)
+                        {
+                            var day = CalendarDays[i];
+                            var widthPct = 100.0 / CalendarDays.Count;
+                            var leftPct = i * widthPct;
+                            var isWeekend = day.DayOfWeek == DayOfWeek.Saturday;
+                            var isMonthStart = day.Day == 1 || i == 0;
+
+                            <div class="gantt-axis-day @(isWeekend ? "gantt-day-weekend" : "")"
+                                 style="left: @(leftPct.ToString("F3", System.Globalization.CultureInfo.InvariantCulture))%; width: @(widthPct.ToString("F3", System.Globalization.CultureInfo.InvariantCulture))%;">
+                                @if (isMonthStart)
+                                {
+                                    <span class="text-[8px] font-bold text-navy block uppercase mb-0.5">@day.ToString("MMM")</span>
+                                }
+                                <span class="block">@day.Day</span>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- One swimlane per machine -->
+                    @foreach (var machineGroup in ModalMachineGroups)
+                    {
+                        var machineName = machineGroup.Key;
+                        var plansForMachine = machineGroup.OrderBy(p => p.StartDate).ToList();
+
+                        <div class="gantt-row">
+                            <div class="gantt-row-label" style="font-size: 11px;">
+                                <span>@(string.IsNullOrWhiteSpace(machineName) ? "Unassigned" : machineName)</span>
+                            </div>
+                            <div class="gantt-row-timeline">
+                                @for (int i = 0; i < CalendarDays.Count; i++)
+                                {
+                                    var day = CalendarDays[i];
+                                    var widthPct = 100.0 / CalendarDays.Count;
+                                    var leftPct = i * widthPct;
+                                    if (day.DayOfWeek == DayOfWeek.Saturday)
+                                    {
+                                        <div class="gantt-day-column gantt-day-weekend"
+                                             style="left: @(leftPct.ToString("F3", System.Globalization.CultureInfo.InvariantCulture))%; width: @(widthPct.ToString("F3", System.Globalization.CultureInfo.InvariantCulture))%;">
+                                        </div>
+                                    }
+                                }
+
+                                @if (FreeFromPct(plansForMachine) is double mFreePct)
+                                {
+                                    <div class="gantt-free" style="left:@(mFreePct.ToString("F3", System.Globalization.CultureInfo.InvariantCulture))%;" title="Free from here"></div>
+                                }
+                                @if (TodayOffsetPct is double mTrp)
+                                {
+                                    <div class="gantt-today" style="left:@(mTrp.ToString("F3", System.Globalization.CultureInfo.InvariantCulture))%;"></div>
+                                }
+
+                                @foreach (var plan in plansForMachine)
+                                {
+                                    var (leftOffset, width) = CalculateBlockPlacement(plan);
+                                    if (width <= 0) continue;
+
+                                    var accClass = plan.PlaningStatus == "Completed"
+                                        ? "gantt-acc-completed"
+                                        : (plan.PlaningStatus == "Partial" ? "gantt-acc-partial" : "");
+                                    var mKnitter = GetPlanKnitter(plan.MasterPlanChildId);
+
+                                    <div class="gantt-block @accClass"
+                                         style="left: @(leftOffset.ToString("F3", System.Globalization.CultureInfo.InvariantCulture))%; width: @(width.ToString("F3", System.Globalization.CultureInfo.InvariantCulture))%; background: @OrderColor(plan.OrderNo);">
+                                        <span class="truncate block w-full text-center">@plan.OrderNo</span>
+                                        <div class="gantt-tooltip">
+                                            <div class="font-bold text-[10px] text-teal uppercase mb-1 flex items-center justify-between">
+                                                <span>@(string.IsNullOrWhiteSpace(machineName) ? "Unassigned" : machineName)</span>
+                                                <span class="bg-white/10 px-1 py-0.5 rounded text-[8px]">@plan.PlaningStatus</span>
+                                            </div>
+                                            <div class="grid grid-cols-[80px_1fr] gap-x-1 gap-y-0.5 mt-1 border-t border-slate-700/60 pt-1.5" style="font-weight: normal !important;">
+                                                <span class="text-slate-400">Order No:</span>
+                                                <span class="text-white">@plan.OrderNo</span>
+                                                <span class="text-slate-400">Type:</span>
+                                                <span class="text-white">@plan.OrderType / @plan.ProductionType</span>
+                                                <span class="text-slate-400">Date Range:</span>
+                                                <span class="text-white">@plan.StartDate.ToString("dd-MMM") to @plan.EndDate.ToString("dd-MMM")</span>
+                                                <span class="text-slate-400">Planned Qty:</span>
+                                                <span class="text-white">@plan.Qty.ToString("N0") pcs</span>
+                                                <span class="text-slate-400">Knitter:</span>
+                                                <span class="text-white">@(mKnitter ?? "Not assigned")</span>
+                                                <span class="text-slate-400">Planner:</span>
+                                                <span class="text-white">@plan.CreatedBy</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</DataModal>
+
+@code {
+    [Inject]
+    private IProductionPlanningService PlanningService { get; set; } = null!;
+
+    [Inject]
+    private IJSRuntime JS { get; set; } = null!;
+
+    [Inject]
+    private NavigationManager Navigation { get; set; } = null!;
+
+    [Inject]
+    private NkplmErp.Blazor.Services.RoleManagement.PermissionService Permissions { get; set; } = null!;
+
+    private List<KnitGanttChartDto> GanttData { get; set; } = new();
+    private List<DateTime> CalendarDays { get; set; } = new();
+    private KnitGanttChartDto? SelectedPlan { get; set; }
+    private bool IsPlanDetailModalOpen { get; set; }
+
+    // Filters
+    private string OrderNoFilter { get; set; } = string.Empty;
+    private string GaugeFilter { get; set; } = string.Empty;
+    private List<string> AvailableGauges { get; set; } = new();
+    private DateTime? StartDateFilter { get; set; }
+    private DateTime? EndDateFilter { get; set; }
+    private string ActiveViewMode { get; set; } = "thismonth";
+    private bool IsDateDropdownOpen { get; set; } = false;
+
+    // Dual Calendar picker temporary state variables
+    private DateTime? TempStartDate { get; set; }
+    private DateTime? TempEndDate { get; set; }
+    private int DateSelectionStep { get; set; } = 0;
+    private DateTime? LeftCalendarMonth { get; set; }
+    private DateTime? HoveredDate { get; set; }
+
+    private bool IsLoading { get; set; } = true;
+    private DateTime MinTimelineDate { get; set; } = DateTime.Today;
+    private DateTime MaxTimelineDate { get; set; } = DateTime.Today.AddDays(30);
+
+    // Gauge machine-wise timeline modal
+    private bool IsMachineModalOpen { get; set; }
+    private string ModalGauge { get; set; } = string.Empty;
+    private List<KnitGanttChartDto> ModalPlans { get; set; } = new();
+    private List<IGrouping<string, KnitGanttChartDto>> ModalMachineGroups { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Zero Trust: page is permission-guarded like the rest of the app.
+        if (!Permissions.IsLoaded)
+        {
+            await Permissions.LoadPermissionsAsync();
+        }
+        if (!Permissions.CanView("KnitGanttChart"))
+        {
+            Navigation.NavigateTo("/dashboard");
+            return;
+        }
+
+        ActiveViewMode = "30days";
+        UpdateDatesForViewMode();
+        LeftCalendarMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        await FetchGanttData();
+    }
+
+    private void ToggleDateDropdown()
+    {
+        if (IsDateDropdownOpen)
+        {
+            IsDateDropdownOpen = false;
+        }
+        else
+        {
+            OpenDateDropdown();
+        }
+    }
+
+    private void OpenDateDropdown()
+    {
+        IsDateDropdownOpen = true;
+        TempStartDate = StartDateFilter;
+        TempEndDate = EndDateFilter;
+        DateSelectionStep = 0;
+        LeftCalendarMonth = new DateTime((TempStartDate ?? DateTime.Today).Year, (TempStartDate ?? DateTime.Today).Month, 1);
+    }
+
+    private string GetDateRangeLabel()
+    {
+        if (StartDateFilter == null || EndDateFilter == null)
+            return "Select Date Range";
+
+        return $"{StartDateFilter.Value.ToString("MMMM dd, yyyy")} – {EndDateFilter.Value.ToString("MMMM dd, yyyy")}";
+    }
+
+    private void PrevMonth()
+    {
+        if (LeftCalendarMonth != null)
+        {
+            LeftCalendarMonth = LeftCalendarMonth.Value.AddMonths(-1);
+        }
+    }
+
+    private void NextMonth()
+    {
+        if (LeftCalendarMonth != null)
+        {
+            LeftCalendarMonth = LeftCalendarMonth.Value.AddMonths(1);
+        }
+    }
+
+    private void OnDayClick(DateTime date)
+    {
+        if (DateSelectionStep == 0)
+        {
+            TempStartDate = date;
+            TempEndDate = null;
+            DateSelectionStep = 1;
+            ActiveViewMode = "custom";
+        }
+        else
+        {
+            if (date < TempStartDate)
+            {
+                TempStartDate = date;
+                TempEndDate = null;
+                DateSelectionStep = 1;
+            }
+            else
+            {
+                TempEndDate = date;
+                DateSelectionStep = 0;
+            }
+        }
+    }
+
+    private void OnDayHover(DateTime date)
+    {
+        if (DateSelectionStep == 1)
+        {
+            HoveredDate = date;
+        }
+    }
+
+    private bool IsDaySelected(DateTime date)
+    {
+        return date == TempStartDate || date == TempEndDate;
+    }
+
+    private bool IsDayInRange(DateTime date)
+    {
+        if (TempStartDate == null) return false;
+        
+        if (TempEndDate != null)
+        {
+            return date > TempStartDate && date < TempEndDate;
+        }
+        
+        if (DateSelectionStep == 1 && HoveredDate != null && HoveredDate > TempStartDate)
+        {
+            return date > TempStartDate && date < HoveredDate;
+        }
+        
+        return false;
+    }
+
+    private List<DateTime> GetCalendarDaysList(int year, int month)
+    {
+        var firstDay = new DateTime(year, month, 1);
+        var startOfWeek = firstDay.AddDays(-(int)firstDay.DayOfWeek);
+        
+        var days = new List<DateTime>();
+        for (int i = 0; i < 42; i++)
+        {
+            days.Add(startOfWeek.AddDays(i));
+        }
+        return days;
+    }
+
+    private async Task ApplyPreset(string preset)
+    {
+        ActiveViewMode = preset;
+        IsDateDropdownOpen = false;
+        UpdateDatesForViewMode();
+        await FetchGanttData();
+    }
+
+    private void SelectPreset(string preset)
+    {
+        ActiveViewMode = preset;
+        UpdateTempDatesForPreset();
+        DateSelectionStep = 0;
+        
+        if (TempStartDate != null)
+        {
+            LeftCalendarMonth = new DateTime(TempStartDate.Value.Year, TempStartDate.Value.Month, 1);
+        }
+    }
+
+    private void UpdateTempDatesForPreset()
+    {
+        var today = DateTime.Today;
+        if (ActiveViewMode == "today")
+        {
+            TempStartDate = today;
+            TempEndDate = today;
+        }
+        else if (ActiveViewMode == "yesterday")
+        {
+            TempStartDate = today.AddDays(-1);
+            TempEndDate = today.AddDays(-1);
+        }
+        else if (ActiveViewMode == "thisweek")
+        {
+            TempStartDate = today.AddDays(-(int)today.DayOfWeek);
+            TempEndDate = TempStartDate.Value.AddDays(6);
+        }
+        else if (ActiveViewMode == "last7days")
+        {
+            TempStartDate = today.AddDays(-6);
+            TempEndDate = today;
+        }
+        else if (ActiveViewMode == "30days")
+        {
+            TempStartDate = today;
+            TempEndDate = today.AddMonths(1);
+        }
+        else if (ActiveViewMode == "thismonth")
+        {
+            TempStartDate = new DateTime(today.Year, today.Month, 1);
+            TempEndDate = TempStartDate.Value.AddMonths(1).AddDays(-1);
+        }
+        else if (ActiveViewMode == "lastmonth")
+        {
+            TempStartDate = new DateTime(today.Year, today.Month, 1).AddMonths(-1);
+            TempEndDate = TempStartDate.Value.AddMonths(1).AddDays(-1);
+        }
+    }
+
+    private void CancelDateTime()
+    {
+        IsDateDropdownOpen = false;
+    }
+
+    private async Task ApplyDateTime()
+    {
+        StartDateFilter = TempStartDate;
+        EndDateFilter = TempEndDate;
+        IsDateDropdownOpen = false;
+        await FetchGanttData();
+    }
+
+    private void UpdateDatesForViewMode()
+    {
+        var today = DateTime.Today;
+        if (ActiveViewMode == "today")
+        {
+            StartDateFilter = today;
+            EndDateFilter = today;
+        }
+        else if (ActiveViewMode == "yesterday")
+        {
+            StartDateFilter = today.AddDays(-1);
+            EndDateFilter = today.AddDays(-1);
+        }
+        else if (ActiveViewMode == "thisweek")
+        {
+            StartDateFilter = today.AddDays(-(int)today.DayOfWeek);
+            EndDateFilter = StartDateFilter.Value.AddDays(6);
+        }
+        else if (ActiveViewMode == "last7days")
+        {
+            StartDateFilter = today.AddDays(-6);
+            EndDateFilter = today;
+        }
+        else if (ActiveViewMode == "30days")
+        {
+            StartDateFilter = today;
+            EndDateFilter = today.AddMonths(1);
+        }
+        else if (ActiveViewMode == "thismonth")
+        {
+            StartDateFilter = new DateTime(today.Year, today.Month, 1);
+            EndDateFilter = StartDateFilter.Value.AddMonths(1).AddDays(-1);
+        }
+        else if (ActiveViewMode == "lastmonth")
+        {
+            StartDateFilter = new DateTime(today.Year, today.Month, 1).AddMonths(-1);
+            EndDateFilter = StartDateFilter.Value.AddMonths(1).AddDays(-1);
+        }
+    }
+
+    private async Task FetchGanttData()
+    {
+        IsLoading = true;
+        StateHasChanged();
+        await Task.Yield();
+
+        try
+        {
+            var data = await PlanningService.GetKnitGanttChartDataAsync(StartDateFilter, EndDateFilter, OrderNoFilter, GaugeFilter);
+            GanttData = data.ToList();
+
+            // Populate the available gauges list dynamically from both planned Gantt data and machine setups
+            try
+            {
+                var allMachines = await PlanningService.GetMachinePlaningAsync(null);
+                var machineGauges = allMachines.Where(m => m.Gauge.HasValue)
+                                               .Select(m => m.Gauge!.Value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture));
+                var ganttGauges = GanttData.Select(x => x.Guage).Where(g => !string.IsNullOrEmpty(g));
+                
+                AvailableGauges = machineGauges.Union(ganttGauges)
+                                               .Distinct()
+                                               .OrderBy(g => double.TryParse(g, out double d) ? d : 999.0)
+                                               .ToList();
+            }
+            catch
+            {
+                // Fallback to active Gantt data gauges if machine API fails
+                AvailableGauges = GanttData.Select(x => x.Guage)
+                                           .Where(g => !string.IsNullOrEmpty(g))
+                                           .Distinct()
+                                           .OrderBy(g => double.TryParse(g, out double d) ? d : 999.0)
+                                           .ToList();
+            }
+
+            CalculateTimelineBoundaries();
+
+            // Best-effort: knitter assignments so capsules can show who runs each plan.
+            try
+            {
+                KnitterBusy = await PlanningService.GetKnitterBusyAsync();
+                var ks = await PlanningService.GetKnittersByGaugeAsync(null);
+                KnitterNames = ks.GroupBy(k => k.CardNo)
+                                 .ToDictionary(g => g.Key, g => g.First().KnitterName, StringComparer.OrdinalIgnoreCase);
+            }
+            catch { KnitterBusy = new(); KnitterNames = new(StringComparer.OrdinalIgnoreCase); }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to fetch Gantt chart data: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CalculateTimelineBoundaries()
+    {
+        DateTime minDate = StartDateFilter ?? DateTime.Today;
+        DateTime maxDate = EndDateFilter ?? DateTime.Today.AddDays(29);
+
+        if (ActiveViewMode == "custom" && GanttData.Any())
+        {
+            minDate = StartDateFilter ?? GanttData.Min(x => x.StartDate);
+            maxDate = EndDateFilter ?? GanttData.Max(x => x.EndDate);
+        }
+
+        MinTimelineDate = minDate;
+        MaxTimelineDate = maxDate;
+
+        // Generate full sequential calendar days list
+        CalendarDays.Clear();
+        var totalDays = (MaxTimelineDate - MinTimelineDate).Days + 1;
+        
+        // Safeguard calendar sizing to prevent render overflows if duration is excessively long
+        if (totalDays > 120)
+        {
+            totalDays = 120;
+            MaxTimelineDate = MinTimelineDate.AddDays(119);
+        }
+
+        for (int i = 0; i < totalDays; i++)
+        {
+            CalendarDays.Add(MinTimelineDate.AddDays(i));
+        }
+    }
+
+    // ---- Knitter on capsules ----
+    private List<KnitterBusyDto> KnitterBusy { get; set; } = new();
+    private Dictionary<string, string> KnitterNames { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    private string? GetPlanKnitter(int planId)
+    {
+        var b = KnitterBusy.FirstOrDefault(x => x.PlanId == planId);
+        if (b == null) return null;
+        return KnitterNames.TryGetValue(b.CardNo, out var n) && !string.IsNullOrEmpty(n)
+            ? $"{n} ({b.CardNo})" : b.CardNo;
+    }
+
+    // ---- Today marker ----
+    private double? TodayOffsetPct
+    {
+        get
+        {
+            var total = (MaxTimelineDate - MinTimelineDate).TotalDays;
+            if (total <= 0) return null;
+            var t = DateTime.Today;
+            if (t < MinTimelineDate || t > MaxTimelineDate) return null;
+            return (t - MinTimelineDate).TotalDays / total * 100.0;
+        }
+    }
+
+    // ---- Stable colour per order (same order = same colour on every machine/gauge) ----
+    private static readonly string[] OrderPalette =
+    {
+        "#1d6fb8", "#7048b6", "#b8336a", "#0e8f7e", "#c2702b", "#5a7d2a",
+        "#2455a4", "#9c2f2f", "#386fa4", "#7d5ba6", "#27867d", "#aa4a8c"
+    };
+
+    private string OrderColor(string? orderNo)
+    {
+        if (string.IsNullOrEmpty(orderNo)) return "var(--navy)";
+        int h = 17;
+        foreach (var c in orderNo) h = unchecked(h * 31 + c);
+        return OrderPalette[Math.Abs(h) % OrderPalette.Length];
+    }
+
+    private List<string> VisibleOrders =>
+        GanttData.Select(p => p.OrderNo).Where(o => !string.IsNullOrEmpty(o)).Distinct().Take(14).ToList();
+
+    // ---- Free-slot emphasis: % offset where a row becomes idle (null = busy to window end) ----
+    private double? FreeFromPct(IEnumerable<KnitGanttChartDto> plans)
+    {
+        var total = (MaxTimelineDate - MinTimelineDate).TotalDays;
+        if (total <= 0) return null;
+        var list = plans.ToList();
+        if (!list.Any()) return 0;
+        var end = list.Max(p => p.EndDate);
+        if (end >= MaxTimelineDate) return null;
+        var d = (end - MinTimelineDate).TotalDays;
+        if (d < 0) d = 0;
+        return d / total * 100.0;
+    }
+
+    private (double Left, double Width) CalculateBlockPlacement(KnitGanttChartDto plan)
+    {
+        var totalTimelineDuration = (MaxTimelineDate - MinTimelineDate).TotalDays;
+        if (totalTimelineDuration <= 0) return (0, 0);
+
+        // Clip block start and end to active visible calendar window
+        var blockStart = plan.StartDate < MinTimelineDate ? MinTimelineDate : plan.StartDate;
+        var blockEnd = plan.EndDate > MaxTimelineDate ? MaxTimelineDate : plan.EndDate;
+
+        if (blockEnd < blockStart) return (0, 0);
+
+        var leftDays = (blockStart - MinTimelineDate).TotalDays;
+        var blockDays = (blockEnd - blockStart).TotalDays;
+
+        // Ensure at least 1 day width so block is visually visible even if single-day plans land on weekend
+        if (blockDays <= 0) blockDays = 1.0;
+
+        var leftOffsetPct = (leftDays / totalTimelineDuration) * 100.0;
+        var widthPct = (blockDays / totalTimelineDuration) * 100.0;
+
+        // Clip overflows at 100% boundary limit
+        if (leftOffsetPct < 0) leftOffsetPct = 0;
+        if (leftOffsetPct + widthPct > 100) widthPct = 100 - leftOffsetPct;
+
+        return (leftOffsetPct, widthPct);
+    }
+
+    private void SelectPlan(KnitGanttChartDto plan)
+    {
+        SelectedPlan = plan;
+        IsPlanDetailModalOpen = true;
+        StateHasChanged();
+    }
+
+    private void OpenGaugeMachineModal(string gauge)
+    {
+        ModalGauge = gauge;
+        ModalPlans = GanttData.Where(x => x.Guage == gauge).ToList();
+        ModalMachineGroups = ModalPlans
+            .GroupBy(x => x.Machine ?? string.Empty)
+            .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        IsMachineModalOpen = true;
+        StateHasChanged();
+    }
+
+    private async Task ResetFilters()
+    {
+        OrderNoFilter = string.Empty;
+        GaugeFilter = string.Empty;
+        ActiveViewMode = "30days";
+        UpdateDatesForViewMode();
+        SelectedPlan = null;
+        await FetchGanttData();
+    }
+}

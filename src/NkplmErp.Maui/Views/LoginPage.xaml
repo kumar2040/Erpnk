@@ -1,0 +1,164 @@
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:NkplmErp.Maui.ViewModels"
+             x:Class="NkplmErp.Maui.Views.LoginPage"
+             BackgroundColor="#FFFFFF"
+             NavigationPage.HasNavigationBar="False">
+
+
+    <Grid RowDefinitions="Auto, *">
+        <!-- Top Custom Header Bar -->
+        <Grid Grid.Row="0" 
+              BackgroundColor="#3b78b4" 
+              HeightRequest="60" 
+              ColumnDefinitions="50, 50, *, 50" 
+              Padding="10, 0">
+            
+            <ImageButton Grid.Column="0" 
+                         Source="menu_icon.png" 
+                         HeightRequest="24" 
+                         WidthRequest="24" 
+                         HorizontalOptions="Center" 
+                         VerticalOptions="Center"
+                         BackgroundColor="Transparent" />
+            
+            <ImageButton Grid.Column="1" 
+                         Source="back_icon.png" 
+                         HeightRequest="24" 
+                         WidthRequest="24" 
+                         HorizontalOptions="Center" 
+                         VerticalOptions="Center"
+                         BackgroundColor="Transparent" />
+
+            <Label Grid.Column="2" 
+                   Text="NkplmErp" 
+                   TextColor="#FFFFFF" 
+                   FontSize="20" 
+                   FontAttributes="Bold" 
+                   HorizontalOptions="Center" 
+                   VerticalOptions="Center" />
+        </Grid>
+
+        <!-- Main Scrollable Login Area -->
+        <ScrollView Grid.Row="1" VerticalScrollBarVisibility="Never">
+            <VerticalStackLayout Padding="24, 16" Spacing="20" VerticalOptions="StartAndExpand">
+                
+                <!-- Security / Dashboard Graphic -->
+                <Image Source="login_illustration.png" 
+                       HeightRequest="220" 
+                       Aspect="AspectFit"
+                       HorizontalOptions="Center" 
+                       Margin="0, 10" />
+
+                <!-- Login Fields Container -->
+                <VerticalStackLayout Spacing="12">
+                    
+                    <!-- Username Entry -->
+                    <Border Stroke="#3b78b4"
+                            StrokeThickness="2"
+                            StrokeShape="RoundRectangle 8"
+                            BackgroundColor="#F4F7F9"
+                            Padding="8, 2">
+                        <Entry Placeholder="Email Address or Username" 
+                               Text="{Binding Username}"
+                               FontSize="16"
+                               HeightRequest="48"
+                               TextColor="#333333" />
+                    </Border>
+
+                    <!-- Password Entry -->
+                    <Border Stroke="#CCCCCC"
+                            StrokeThickness="1"
+                            StrokeShape="RoundRectangle 8"
+                            BackgroundColor="#F4F7F9"
+                            Padding="8, 2">
+                        <Grid ColumnDefinitions="*, Auto">
+                            <Entry Grid.Column="0"
+                                   Placeholder="Password" 
+                                   Text="{Binding Password}"
+                                   IsPassword="{Binding IsPasswordHidden}"
+                                   FontSize="16"
+                                   HeightRequest="48"
+                                   TextColor="#333333" />
+                            
+                            <ImageButton Grid.Column="1"
+                                         Source="{Binding EyeIconSource}"
+                                         Command="{Binding TogglePasswordVisibilityCommand}"
+                                         HeightRequest="24"
+                                         WidthRequest="24"
+                                         VerticalOptions="Center"
+                                         Margin="0,0,8,0"
+                                         BackgroundColor="Transparent" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Forgot Password Link -->
+                    <Label Text="Forgot Password?"
+                           TextColor="#1B5E20"
+                           FontSize="14"
+                           FontAttributes="Bold"
+                           HorizontalOptions="End"
+                           Margin="0, 4, 4, 0">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ForgotPasswordCommand}" />
+                        </Label.GestureRecognizers>
+                    </Label>
+                </VerticalStackLayout>
+
+                <!-- Login Button -->
+                <Button Text="LOG IN" 
+                        Command="{Binding LoginCommand}"
+                        BackgroundColor="#3b78b4" 
+                        TextColor="#FFFFFF" 
+                        HeightRequest="50" 
+                        CornerRadius="25"
+                        FontSize="16" 
+                        FontAttributes="Bold"
+                        Margin="0, 10, 0, 10" />
+
+                <!-- Social Logins Section -->
+                <VerticalStackLayout Spacing="10" HorizontalOptions="Center">
+                    <Label Text="Or sign in with:" 
+                           TextColor="#666666" 
+                           FontSize="14" 
+                           HorizontalOptions="Center" />
+                    
+                    <HorizontalStackLayout Spacing="20" HorizontalOptions="Center">
+                        <ImageButton Source="google_icon.png" 
+                                     Command="{Binding SocialLoginCommand}" 
+                                     CommandParameter="Google"
+                                     HeightRequest="44" 
+                                     WidthRequest="44"
+                                     BackgroundColor="Transparent" />
+                        <ImageButton Source="microsoft_icon.png" 
+                                     Command="{Binding SocialLoginCommand}" 
+                                     CommandParameter="Microsoft"
+                                     HeightRequest="44" 
+                                     WidthRequest="44"
+                                     BackgroundColor="Transparent" />
+                        <ImageButton Source="linkedin_icon.png" 
+                                     Command="{Binding SocialLoginCommand}" 
+                                     CommandParameter="LinkedIn"
+                                     HeightRequest="44" 
+                                     WidthRequest="44"
+                                     BackgroundColor="Transparent" />
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+
+                <!-- Footer Section -->
+                <Grid ColumnDefinitions="*, *" Margin="0, 30, 0, 10">
+                    <VerticalStackLayout Grid.Column="0" VerticalOptions="Center">
+                        <Label Text="POWERED BY" FontSize="10" TextColor="#888888" />
+                        <Label Text="NKPLMERP.API" FontSize="11" TextColor="#3b78b4" FontAttributes="Bold" />
+                    </VerticalStackLayout>
+                    
+                    <HorizontalStackLayout Grid.Column="1" Spacing="8" HorizontalOptions="End" VerticalOptions="Center">
+                        <Image Source="app_store_badge.png" HeightRequest="28" WidthRequest="85" Aspect="AspectFit" />
+                        <Image Source="google_play_badge.png" HeightRequest="28" WidthRequest="85" Aspect="AspectFit" />
+                    </HorizontalStackLayout>
+                </Grid>
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

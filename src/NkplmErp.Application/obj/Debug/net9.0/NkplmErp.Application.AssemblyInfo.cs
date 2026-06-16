@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("NkplmErp.Application")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+744e1c344231a088774cc4f2334a4398ea7f759d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+610417bc391a27c686372cb00d7f89631c5f937b")]
 [assembly: System.Reflection.AssemblyProductAttribute("NkplmErp.Application")]
 [assembly: System.Reflection.AssemblyTitleAttribute("NkplmErp.Application")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

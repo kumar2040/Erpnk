@@ -94,4 +94,11 @@ public class BuyerOrderSummaryController(IBuyerOrderSummaryService buyerOrderSum
         var result = await _buyerOrderSummaryService.GetBuyersOrdersAsync(buyerId, flag);
         return Ok(result);
     }
+
+    [HttpGet("orderPriceAnalyse")]
+    public async Task<IActionResult> GetOrderPriceAnalyse([FromQuery] string orderNo, [FromQuery] decimal usdRate)
+    {
+        var result = await _buyerOrderSummaryService.GetOrderPriceAnalysisAsync(orderNo, usdRate);
+        return Ok(result);
+    }
 }

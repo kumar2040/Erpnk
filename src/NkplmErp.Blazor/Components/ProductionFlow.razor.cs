@@ -24,6 +24,12 @@ public partial class ProductionFlow : ComponentBase
     [Parameter]
     public EventCallback<ProductionFlowDto> OnOrderSelected { get; set; }
 
+    [Parameter]
+    public EventCallback<string> OnShowOrderDetails { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnShowOrderAnalysis { get; set; }
+
     // ── Popup State ──────────────────────────────────────────────────────────
     private bool IsStockPopupVisible { get; set; }
     private bool IsLoadingStock { get; set; }
@@ -36,16 +42,27 @@ public partial class ProductionFlow : ComponentBase
     private List<string> SizeHeaderColumns { get; set; } = new();
     private List<string> DetailsSizeHeaders { get; set; } = new();
 
-    // ── Order Detail Popup State ──────────────────────────────────────────────
-    private bool IsOrderDetailVisible { get; set; }
-    private bool IsLoadingOrderDetail { get; set; }
-    private IEnumerable<OrderViewHeaderDto> SelectedOrderDetails { get; set; } = Enumerable.Empty<OrderViewHeaderDto>();
-    
     // ── Style Detail Popup State ──────────────────────────────────────────────
-    private bool IsStyleModalVisible { get; set; }
-    private bool IsLoadingStyleHistory { get; set; }
-    private string? SelectedStyleNo { get; set; }
-    private StyleDetailsDto? SelectedStyleDetails { get; set; }
+    [Parameter]
+    public EventCallback<string> OnStyleSelected { get; set; }
+
+    private async Task ShowStyleDetails(string styleNo)
+    {
+        if (string.IsNullOrEmpty(styleNo)) return;
+        await OnStyleSelected.InvokeAsync(styleNo);
+    }
+
+    private async Task ShowOrderAnalysis(string orderNo)
+    {
+        if (string.IsNullOrEmpty(orderNo)) return;
+        await OnShowOrderAnalysis.InvokeAsync(orderNo);
+    }
+
+    private async Task ShowOrderDetails(string orderNo)
+    {
+        if (string.IsNullOrEmpty(orderNo)) return;
+        await OnShowOrderDetails.InvokeAsync(orderNo);
+    }
 
     private async Task ShowDepartmentDetails(string orderNo, string deptCode, string deptName)
     {
@@ -114,57 +131,6 @@ public partial class ProductionFlow : ComponentBase
         StockItems = Enumerable.Empty<DepartmentStockDto>();
     }
 
-    private async Task ShowOrderDetails(string orderNo)
-    {
-        if (string.IsNullOrEmpty(orderNo)) return;
-        
-        SelectedOrderNo = orderNo;
-        IsLoadingOrderDetail = true;
-        IsOrderDetailVisible = true;
-        SelectedOrderDetails = Enumerable.Empty<OrderViewHeaderDto>();
-
-        try
-        {
-            SelectedOrderDetails = await BuyerOrderSummaryService.GetOrderViewDataAsync(orderNo);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error fetching order details: {ex.Message}");
-        }
-        finally
-        {
-            IsLoadingOrderDetail = false;
-        }
-    }
-
-    private async Task ShowStyleDetails(string styleNo)
-    {
-        if (string.IsNullOrEmpty(styleNo)) return;
-        
-        SelectedStyleNo = styleNo;
-        IsLoadingStyleHistory = true;
-        IsStyleModalVisible = true;
-        SelectedStyleDetails = null;
-
-        try
-        {
-            SelectedStyleDetails = await BuyerOrderSummaryService.GetStyleDetailsAsync(styleNo);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error fetching style details: {ex.Message}");
-        }
-        finally
-        {
-            IsLoadingStyleHistory = false;
-        }
-    }
-
-    private void CloseOrderDetail()
-    {
-        IsOrderDetailVisible = false;
-        SelectedOrderDetails = Enumerable.Empty<OrderViewHeaderDto>();
-    }
 
     private static int GetSizeSortOrder(string size)
     {

@@ -24,11 +24,18 @@
             <!-- Axis Labels -->
             @if (!string.IsNullOrEmpty(XLabel))
             {
-                <svg:text x="@(Width / 2)" y="@(Height - 5)" text-anchor="middle" class="axis-title">@XLabel</svg:text>
+                <svg:text x="@(Width / 2)" y="@(Height - Padding + 35)" text-anchor="middle" class="axis-title">@XLabel</svg:text>
             }
             @if (!string.IsNullOrEmpty(YLabel))
             {
                 <svg:text x="10" y="@(Height / 2)" text-anchor="middle" class="axis-title" transform="rotate(-90 10,@(Height / 2))">@YLabel</svg:text>
+            }
+
+            <!-- Y-Axis Ticks & Grid Lines -->
+            @foreach (var tick in _yTicks)
+            {
+                <line x1="@Padding" y1="@tick.Y" x2="@(Width - Padding)" y2="@tick.Y" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="4" />
+                <svg:text x="@(Padding - 5)" y="@(tick.Y + 4)" text-anchor="end" class="axis-label" style="font-size: 9px; fill: #64748b; font-weight: 600;">@tick.Label</svg:text>
             }
 
             <!-- The Line -->
@@ -39,7 +46,7 @@
             {
                 <g class="point-group">
                     <circle cx="@p.X" cy="@p.Y" r="4" fill="white" stroke="@StrokeColor" stroke-width="2" class="point-circle" />
-                    <svg:text x="@p.X" y="@(Height - 5)" text-anchor="middle" class="axis-label">@p.Label</svg:text>
+                    <svg:text x="@p.X" y="@(Height - Padding + 15)" text-anchor="middle" class="axis-label">@p.Label</svg:text>
                     
                     <!-- Tooltip Style Label (Visible on hover via CSS) -->
                     <g class="tooltip">
