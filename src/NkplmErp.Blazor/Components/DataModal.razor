@@ -8,179 +8,215 @@
         left: 0;
         right: 0;
         bottom: 0;
-    
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: center;
-        padding-top: 2.5rem;
         z-index: 1000;
-        animation: fade-in 0.3s ease-out;
+        animation: apple-fade-in 0.3s ease-out;
+    }
+
+    .modal-backdrop {
+        background: rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(12px) saturate(180%);
+        -webkit-backdrop-filter: blur(12px) saturate(180%);
     }
 
     .modal-content {
-        
-        
-        max-width: 800px;
-        width: 99%;
-        max-height: 80vh;
+        max-width: 850px;
+        width: 96%;
+        max-height: 90vh;
         overflow: hidden;
         display: flex;
         flex-direction: column;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border-radius: 8px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        box-shadow: 
+            0 25px 50px -12px rgba(0, 0, 0, 0.25),
+            0 0 0 1px rgba(0, 0, 0, 0.05);
         transform: scale(1);
-        animation: retina-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-     
+        animation: apple-pop 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 
     .modal-header {
-       
-        padding:0rem;
-        border-bottom: 1px solid #f9f9f9;
+        padding: 0.5rem 1rem;
         display: flex;
-        justify-content: space-between;
         align-items: center;
+        justify-content: space-between;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        flex-shrink: 0;
+    }
+
+    .modal-title-container {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        pointer-events: none;
+        width: 60%;
+        text-align: center;
+    }
+
+    .modal-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1d1d1f;
+        margin: 0;
+        letter-spacing: -0.02em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .modal-body {
-        padding:0rem;
-        overflow-y: auto;
-        flex: 1;
-        background: transparent;
-    }
-
-    .modal-footer {
-        padding: 1rem 1.5rem;
-        background: rgba(255, 255, 255, 0.4);
-        border-top: 1px solid rgba(0, 0, 0, 0.05);
-        display: flex;
-        justify-content: flex-end;
-        gap: 0.75rem;
-    }
-
-    .close-btn {
-        background: none;
-        border: none;
-        font-size: 1.5rem;
-        color: #991b1b;
-        cursor: pointer;
         padding: 0;
-        width: 32px;
-        height: 32px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        background: #fff;
+    }
+
+    .close-btn-apple {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.05);
+        border: none;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 6px;
-        transition: all 0.2s;
-    }
-     /* compact modal */
-    .modal-backdrop {
-      background: rgba(239, 237, 237, 0.4);
-      backdrop-filter: blur(5px);
-    }
-    .hidden-modal { display: none; }
-    .modal-liquid-compact {
-      
-      border: 1px solid rgba(246, 241, 241, 0.8);
-      border-radius: 0;
-      box-shadow: 0 20px 35px -12px #0b1e30, inset 0 1px 4px white;
-      
+        cursor: pointer;
+        transition: background 0.2s;
+        color: #86868b;
+        margin-left: auto;
     }
 
-    .close-btn:hover {
-        background-color: #fee2e2;
-        color: #7f1d1d;
+    .close-btn-apple:hover {
+        background: rgba(0, 0, 0, 0.1);
+        color: #1d1d1f;
     }
 
     .loading-spinner {
-        text-align: center;
-        padding: 3rem;
-        color: #6b7280;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 4rem 2rem;
     }
 
-    .spinner {
-        border: 3px solid #f3f4f6;
-        border-top: 3px solid #002d54;
+    .spinner-apple {
+        width: 32px;
+        height: 32px;
+        border: 3px solid rgba(0, 0, 0, 0.1);
+        border-top-color: #0071e3;
         border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        animation: spin 1s linear infinite;
-        margin: 0 auto 1rem;
+        animation: apple-spin 0.8s linear infinite;
     }
 
-    @@keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+    @@keyframes apple-spin {
+        to { transform: rotate(360deg); }
     }
 
-    .modal-content.full-screen {
-        width: calc(100vw - 80px);
-        max-width: calc(100vw - 80px);
-        height: calc(100vh - 80px);
-        max-height: calc(100vh - 80px);
-        border-radius: 0;
-    }
-
-    @@keyframes retina-pop {
-        from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    @@keyframes apple-pop {
+        from { opacity: 0; transform: scale(0.92) translateY(10px); }
         to { opacity: 1; transform: scale(1) translateY(0); }
     }
 
-    @@keyframes fade-in {
+    @@keyframes apple-fade-in {
         from { opacity: 0; }
         to { opacity: 1; }
     }
-    .modal-body table{
-        width  :100%;
+
+    /* iOS Sheet Style for Mobile */
+    @@media (max-width: 640px) {
+        .modal-overlay {
+            align-items: flex-end;
         }
-      .modal-body table td{
-         text-align:right;
-        } 
-      .modal-body table th{
-         text-align:right;
-        }  
-        .modal-body table td:first-child {
-    text-align: left;
-} 
-.modal-body table th:nth-child(2),
-.modal-body table td:nth-child(2) {
-  text-align: left;           /* ← this is what you asked for */
-}  
+        .modal-content {
+            width: 100%;
+            border-radius: 20px 20px 0 0;
+            max-height: 90vh;
+            animation: apple-sheet 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+       @@keyframes apple-sheet {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+    }
+
+    .modal-body table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .modal-body table td, .modal-body table th {
+        padding: 0.75rem 0.5rem;
+        border-bottom: 0.5px solid rgba(0, 0, 0, 0.05);
+        text-align: right;
+        font-size: 0.9rem;
+    }
+    .modal-body table th {
+        font-weight: 600;
+        color: #86868b;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+    }
+    .modal-body table td:first-child, .modal-body table th:first-child {
+        text-align: left;
+    }
+    .modal-body table th:nth-child(2), .modal-body table td:nth-child(2) {
+        text-align: left;
+    }
 </style>
 
 @if (IsVisible)
 {
-    <div class="modal-overlay fixed inset-0 flex items-center justify-center modal-backdrop duration-300" 
+    <div class="modal-overlay modal-backdrop" 
          style="z-index: @_currentZIndex;"
          @onmousedown="HandleClick"
          @ontouchstart="HandleClick">
         @{
-            var style = string.IsNullOrEmpty(MaxWidth) ? "" : $"max-width: {MaxWidth};";
+            var style = string.IsNullOrEmpty(MaxWidth) ? "" : $"width: 100%; max-width: {MaxWidth};";
         }
-        <div class="modal-content @(FullScreen ? "full-screen" : "h-full sm:h-[90vh] sm:w-[90vw]") relative shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 modal-liquid-compact" 
+        <div class="modal-content @(FullScreen ? "full-screen" : "")" 
              style="@style"
              @onmousedown="HandleClick"
              @ontouchstart="HandleClick"
              @onclick:stopPropagation="true"
              @attributes="AdditionalAttributes">
-            <div class="modal-header px-3 py-2 border-b border-slate-200 bg-slate-50/80 backdrop-blur-sm">
-                <div class="flex items-center gap-2.5">
-                    <h3 class="font-[900] text-[#2e2b8e] text-base uppercase tracking-wider">@Title</h3>
+            
+            <div class="modal-header">
+                <div class="flex items-center gap-2 min-w-0">
                     @if (!string.IsNullOrEmpty(BadgeText))
                     {
-                        <span class="text-[10px] font-bold text-slate-500 bg-white/80 px-2.5 py-0.5 rounded-full border border-slate-200/60 shadow-sm">ID: @BadgeText</span>
+                        <span class="text-[10px] font-bold text-[#0071e3] bg-[#0071e3]/10 px-2 py-0.5 rounded-full shrink-0">@BadgeText</span>
                     }
                     @HeaderExtra
                 </div>
-                <button class="close-btn w-7 h-7 text-lg opacity-70 hover:opacity-100 transition-opacity" @onclick="CloseModal">
-                    <span class="leading-none">&times;</span>
+
+                <div class="modal-title-container">
+                    <h3 class="modal-title">@Title</h3>
+                </div>
+
+                <button class="close-btn-apple"
+                        @onclick="CloseModal"
+                        aria-label="Close modal">
+                    <i class="fa-solid fa-xmark text-sm"></i>
                 </button>
             </div>
             
-            <div class="modal-body p-1">
+            <div class="modal-body">
                 @if (IsLoading)
                 {
                     <div class="loading-spinner">
-                        <div class="spinner"></div>
-                        <p class="text-sm">Loading data...</p>
+                        <div class="spinner-apple"></div>
+                        <p class="text-xs text-[#86868b] mt-4">Loading...</p>
                     </div>
                 }
                 else
@@ -188,8 +224,6 @@
                     @ChildContent
                 }
             </div>
-
-            
         </div>
     </div>
 }

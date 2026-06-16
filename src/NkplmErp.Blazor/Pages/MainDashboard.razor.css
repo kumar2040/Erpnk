@@ -12,6 +12,7 @@
     border-collapse: separate;
     border-spacing: 0;
     width: 100%;
+    table-layout: fixed;
 }
 
 /* Sticky Header Cells - Compact & Dark Blue */
@@ -75,6 +76,33 @@
 .col-order-pics { width: 70px; min-width: 70px; text-align: center; }
 .col-diff { width: 70px; min-width: 70px; text-align: center; }
 
+/* Order View Specific Columns */
+.col-sn-ov { width: 40px; min-width: 40px; text-align: center; }
+.col-style-ov { width: 100px; min-width: 100px; text-align: left; }
+.col-product-ov { width: 150px; min-width: 150px; text-align: left; }
+.col-color-ov { width: 100px; min-width: 100px; text-align: left; }
+.col-guage-ov { width: 60px; min-width: 60px; text-align: center; }
+.col-ply-ov { width: 60px; min-width: 60px; text-align: center; }
+.col-yarn-ov { width: 120px; min-width: 120px; text-align: left; }
+.col-size-ov { width: 60px; min-width: 60px; text-align: center; }
+.col-pieces-ov { width: 80px; min-width: 80px; text-align: center; }
+.col-knsl-ov { width: 80px; min-width: 80px; text-align: center; }
+.col-daysreq-ov { width: 80px; min-width: 80px; text-align: center; }
+
+/* Price Analysis Specific Columns */
+.col-sn-an { width: 40px; min-width: 40px; text-align: center; }
+.col-style-an { width: 150px; min-width: 150px; text-align: left; }
+.col-qty-an { width: 80px; min-width: 80px; text-align: center; }
+.col-guage-an { width: 60px; min-width: 60px; text-align: center; }
+.col-ply-an { width: 60px; min-width: 60px; text-align: center; }
+.col-yarn-an { width: 120px; min-width: 120px; text-align: left; }
+.col-wt-an { width: 80px; min-width: 80px; text-align: right; }
+.col-overhead-an { width: 90px; min-width: 90px; text-align: right; }
+.col-prod-cost-an { width: 90px; min-width: 90px; text-align: right; }
+.col-total-cost-an { width: 100px; min-width: 100px; text-align: right; }
+.col-s-price-an { width: 100px; min-width: 100px; text-align: right; }
+.col-profit-an { width: 100px; min-width: 100px; text-align: right; }
+
 /* Grand Total Footer Styles - Attached and Aligned */
 .footer-container {
     position: sticky;
@@ -89,6 +117,7 @@
     border-collapse: separate;
     border-spacing: 0;
     border-top: 2px solid #e2e8f0;
+    table-layout: fixed;
 }
 
 .grand-total-table td {

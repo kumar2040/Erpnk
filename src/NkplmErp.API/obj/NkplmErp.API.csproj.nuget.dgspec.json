@@ -1,42 +1,51 @@
 {
   "format": 1,
   "restore": {
-    "/Users/vijayanand/Erpnk/src/NkplmErp.API/NkplmErp.API.csproj": {}
+    "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.API\\NkplmErp.API.csproj": {}
   },
   "projects": {
-    "/Users/vijayanand/Erpnk/src/NkplmErp.API/NkplmErp.API.csproj": {
+    "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.API\\NkplmErp.API.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/vijayanand/Erpnk/src/NkplmErp.API/NkplmErp.API.csproj",
+        "projectUniqueName": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.API\\NkplmErp.API.csproj",
         "projectName": "NkplmErp.API",
-        "projectPath": "/Users/vijayanand/Erpnk/src/NkplmErp.API/NkplmErp.API.csproj",
-        "packagesPath": "/Users/vijayanand/.nuget/packages/",
-        "outputPath": "/Users/vijayanand/Erpnk/src/NkplmErp.API/obj/",
+        "projectPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.API\\NkplmErp.API.csproj",
+        "packagesPath": "C:\\Users\\Vijay.Anand\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.API\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
+          "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
+        ],
         "configFilePaths": [
-          "/Users/vijayanand/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\Vijay.Anand\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net9.0": {
+            "framework": "net9.0",
             "targetAlias": "net9.0",
             "projectReferences": {
-              "/Users/vijayanand/Erpnk/src/NkplmErp.Application/NkplmErp.Application.csproj": {
-                "projectPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Application/NkplmErp.Application.csproj"
+              "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Application\\NkplmErp.Application.csproj": {
+                "projectPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Application\\NkplmErp.Application.csproj"
               },
-              "/Users/vijayanand/Erpnk/src/NkplmErp.Infrastructure/NkplmErp.Infrastructure.csproj": {
-                "projectPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Infrastructure/NkplmErp.Infrastructure.csproj"
+              "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Infrastructure\\NkplmErp.Infrastructure.csproj": {
+                "projectPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Infrastructure\\NkplmErp.Infrastructure.csproj"
               },
-              "/Users/vijayanand/Erpnk/src/NkplmErp.Security/NkplmErp.Security.csproj": {
-                "projectPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Security/NkplmErp.Security.csproj"
+              "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Security\\NkplmErp.Security.csproj": {
+                "projectPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Security\\NkplmErp.Security.csproj"
               },
-              "/Users/vijayanand/Erpnk/src/NkplmErp.Shared/NkplmErp.Shared.csproj": {
-                "projectPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Shared/NkplmErp.Shared.csproj"
+              "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Shared\\NkplmErp.Shared.csproj": {
+                "projectPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Shared\\NkplmErp.Shared.csproj"
               }
             }
           }
@@ -55,6 +64,7 @@
       },
       "frameworks": {
         "net9.0": {
+          "framework": "net9.0",
           "targetAlias": "net9.0",
           "dependencies": {
             "Asp.Versioning.Mvc": {
@@ -115,37 +125,46 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.305/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.312/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "/Users/vijayanand/Erpnk/src/NkplmErp.Application/NkplmErp.Application.csproj": {
+    "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Application\\NkplmErp.Application.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/vijayanand/Erpnk/src/NkplmErp.Application/NkplmErp.Application.csproj",
+        "projectUniqueName": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Application\\NkplmErp.Application.csproj",
         "projectName": "NkplmErp.Application",
-        "projectPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Application/NkplmErp.Application.csproj",
-        "packagesPath": "/Users/vijayanand/.nuget/packages/",
-        "outputPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Application/obj/",
+        "projectPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Application\\NkplmErp.Application.csproj",
+        "packagesPath": "C:\\Users\\Vijay.Anand\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Application\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
+          "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
+        ],
         "configFilePaths": [
-          "/Users/vijayanand/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\Vijay.Anand\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net9.0": {
+            "framework": "net9.0",
             "targetAlias": "net9.0",
             "projectReferences": {
-              "/Users/vijayanand/Erpnk/src/NkplmErp.Domain/NkplmErp.Domain.csproj": {
-                "projectPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Domain/NkplmErp.Domain.csproj"
+              "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Domain\\NkplmErp.Domain.csproj": {
+                "projectPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Domain\\NkplmErp.Domain.csproj"
               },
-              "/Users/vijayanand/Erpnk/src/NkplmErp.Shared/NkplmErp.Shared.csproj": {
-                "projectPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Shared/NkplmErp.Shared.csproj"
+              "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Shared\\NkplmErp.Shared.csproj": {
+                "projectPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Shared\\NkplmErp.Shared.csproj"
               }
             }
           }
@@ -164,6 +183,7 @@
       },
       "frameworks": {
         "net9.0": {
+          "framework": "net9.0",
           "targetAlias": "net9.0",
           "dependencies": {
             "Fido2": {
@@ -203,30 +223,39 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.305/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.312/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "/Users/vijayanand/Erpnk/src/NkplmErp.Domain/NkplmErp.Domain.csproj": {
+    "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Domain\\NkplmErp.Domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/vijayanand/Erpnk/src/NkplmErp.Domain/NkplmErp.Domain.csproj",
+        "projectUniqueName": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Domain\\NkplmErp.Domain.csproj",
         "projectName": "NkplmErp.Domain",
-        "projectPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Domain/NkplmErp.Domain.csproj",
-        "packagesPath": "/Users/vijayanand/.nuget/packages/",
-        "outputPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Domain/obj/",
+        "projectPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Domain\\NkplmErp.Domain.csproj",
+        "packagesPath": "C:\\Users\\Vijay.Anand\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Domain\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
+          "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
+        ],
         "configFilePaths": [
-          "/Users/vijayanand/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\Vijay.Anand\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net9.0": {
+            "framework": "net9.0",
             "targetAlias": "net9.0",
             "projectReferences": {}
           }
@@ -245,6 +274,7 @@
       },
       "frameworks": {
         "net9.0": {
+          "framework": "net9.0",
           "targetAlias": "net9.0",
           "dependencies": {
             "Microsoft.Extensions.Identity.Stores": {
@@ -268,40 +298,49 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.305/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.312/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "/Users/vijayanand/Erpnk/src/NkplmErp.Infrastructure/NkplmErp.Infrastructure.csproj": {
+    "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Infrastructure\\NkplmErp.Infrastructure.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/vijayanand/Erpnk/src/NkplmErp.Infrastructure/NkplmErp.Infrastructure.csproj",
+        "projectUniqueName": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Infrastructure\\NkplmErp.Infrastructure.csproj",
         "projectName": "NkplmErp.Infrastructure",
-        "projectPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Infrastructure/NkplmErp.Infrastructure.csproj",
-        "packagesPath": "/Users/vijayanand/.nuget/packages/",
-        "outputPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Infrastructure/obj/",
+        "projectPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Infrastructure\\NkplmErp.Infrastructure.csproj",
+        "packagesPath": "C:\\Users\\Vijay.Anand\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Infrastructure\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
+          "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
+        ],
         "configFilePaths": [
-          "/Users/vijayanand/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\Vijay.Anand\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net9.0": {
+            "framework": "net9.0",
             "targetAlias": "net9.0",
             "projectReferences": {
-              "/Users/vijayanand/Erpnk/src/NkplmErp.Application/NkplmErp.Application.csproj": {
-                "projectPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Application/NkplmErp.Application.csproj"
+              "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Application\\NkplmErp.Application.csproj": {
+                "projectPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Application\\NkplmErp.Application.csproj"
               },
-              "/Users/vijayanand/Erpnk/src/NkplmErp.Domain/NkplmErp.Domain.csproj": {
-                "projectPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Domain/NkplmErp.Domain.csproj"
+              "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Domain\\NkplmErp.Domain.csproj": {
+                "projectPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Domain\\NkplmErp.Domain.csproj"
               },
-              "/Users/vijayanand/Erpnk/src/NkplmErp.Shared/NkplmErp.Shared.csproj": {
-                "projectPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Shared/NkplmErp.Shared.csproj"
+              "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Shared\\NkplmErp.Shared.csproj": {
+                "projectPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Shared\\NkplmErp.Shared.csproj"
               }
             }
           }
@@ -320,6 +359,7 @@
       },
       "frameworks": {
         "net9.0": {
+          "framework": "net9.0",
           "targetAlias": "net9.0",
           "dependencies": {
             "Bogus": {
@@ -351,43 +391,52 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.305/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.312/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "/Users/vijayanand/Erpnk/src/NkplmErp.Security/NkplmErp.Security.csproj": {
+    "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Security\\NkplmErp.Security.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/vijayanand/Erpnk/src/NkplmErp.Security/NkplmErp.Security.csproj",
+        "projectUniqueName": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Security\\NkplmErp.Security.csproj",
         "projectName": "NkplmErp.Security",
-        "projectPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Security/NkplmErp.Security.csproj",
-        "packagesPath": "/Users/vijayanand/.nuget/packages/",
-        "outputPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Security/obj/",
+        "projectPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Security\\NkplmErp.Security.csproj",
+        "packagesPath": "C:\\Users\\Vijay.Anand\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Security\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
+          "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
+        ],
         "configFilePaths": [
-          "/Users/vijayanand/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\Vijay.Anand\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net9.0": {
+            "framework": "net9.0",
             "targetAlias": "net9.0",
             "projectReferences": {
-              "/Users/vijayanand/Erpnk/src/NkplmErp.Application/NkplmErp.Application.csproj": {
-                "projectPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Application/NkplmErp.Application.csproj"
+              "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Application\\NkplmErp.Application.csproj": {
+                "projectPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Application\\NkplmErp.Application.csproj"
               },
-              "/Users/vijayanand/Erpnk/src/NkplmErp.Domain/NkplmErp.Domain.csproj": {
-                "projectPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Domain/NkplmErp.Domain.csproj"
+              "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Domain\\NkplmErp.Domain.csproj": {
+                "projectPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Domain\\NkplmErp.Domain.csproj"
               },
-              "/Users/vijayanand/Erpnk/src/NkplmErp.Infrastructure/NkplmErp.Infrastructure.csproj": {
-                "projectPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Infrastructure/NkplmErp.Infrastructure.csproj"
+              "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Infrastructure\\NkplmErp.Infrastructure.csproj": {
+                "projectPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Infrastructure\\NkplmErp.Infrastructure.csproj"
               },
-              "/Users/vijayanand/Erpnk/src/NkplmErp.Shared/NkplmErp.Shared.csproj": {
-                "projectPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Shared/NkplmErp.Shared.csproj"
+              "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Shared\\NkplmErp.Shared.csproj": {
+                "projectPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Shared\\NkplmErp.Shared.csproj"
               }
             }
           }
@@ -406,6 +455,7 @@
       },
       "frameworks": {
         "net9.0": {
+          "framework": "net9.0",
           "targetAlias": "net9.0",
           "dependencies": {
             "Fido2": {
@@ -445,30 +495,39 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.305/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.312/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "/Users/vijayanand/Erpnk/src/NkplmErp.Shared/NkplmErp.Shared.csproj": {
+    "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Shared\\NkplmErp.Shared.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/vijayanand/Erpnk/src/NkplmErp.Shared/NkplmErp.Shared.csproj",
+        "projectUniqueName": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Shared\\NkplmErp.Shared.csproj",
         "projectName": "NkplmErp.Shared",
-        "projectPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Shared/NkplmErp.Shared.csproj",
-        "packagesPath": "/Users/vijayanand/.nuget/packages/",
-        "outputPath": "/Users/vijayanand/Erpnk/src/NkplmErp.Shared/obj/",
+        "projectPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Shared\\NkplmErp.Shared.csproj",
+        "packagesPath": "C:\\Users\\Vijay.Anand\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Vijay.Anand\\Documents\\GitHub\\Erpnk\\src\\NkplmErp.Shared\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
+          "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
+        ],
         "configFilePaths": [
-          "/Users/vijayanand/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\Vijay.Anand\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net9.0": {
+            "framework": "net9.0",
             "targetAlias": "net9.0",
             "projectReferences": {}
           }
@@ -487,6 +546,7 @@
       },
       "frameworks": {
         "net9.0": {
+          "framework": "net9.0",
           "targetAlias": "net9.0",
           "dependencies": {
             "Fido2": {
@@ -510,7 +570,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.305/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.312/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

@@ -12,6 +12,7 @@ public class UserResponseDto
     public bool MfaEnabled { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
+    public string? AssignedGauge { get; set; }
     public IEnumerable<string> Roles { get; set; } = new List<string>();
 }
 
@@ -23,6 +24,7 @@ public class UserListItemDto
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
+    public string? AssignedGauge { get; set; }
     public IEnumerable<string> Roles { get; set; } = new List<string>();
 }
 
@@ -34,6 +36,7 @@ public class CreateUserDto
     public string LastName { get; set; } = string.Empty;
     public Guid? BranchId { get; set; }
     public bool IsActive { get; set; } = true;
+    public string? AssignedGauge { get; set; }
     public IEnumerable<string> Roles { get; set; } = new List<string>();
 }
 
@@ -44,6 +47,7 @@ public class UpdateUserDto
     public string Email { get; set; } = string.Empty;
     public Guid? BranchId { get; set; }
     public bool IsActive { get; set; }
+    public string? AssignedGauge { get; set; }
     public IEnumerable<string> Roles { get; set; } = new List<string>();
 }
 

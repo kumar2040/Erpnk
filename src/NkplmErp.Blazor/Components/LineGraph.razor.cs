@@ -11,14 +11,15 @@ public partial class LineGraph : ComponentBase
     [Parameter] public string StrokeColor { get; set; } = "#3b82f6";
     [Parameter] public string FillColor { get; set; } = "#3b82f6";
     [Parameter] public string? XLabel { get; set; }
-    [Parameter] public string? YLabel { get; set; }
-    [Parameter] public double Height { get; set; } = 300;
-    [Parameter] public double Width { get; set; } = 800;
-    [Parameter] public double Padding { get; set; } = 40;
+    [Parameter] public string? YLabel { get; set; } = "Quantity";
+    [Parameter] public double Height { get; set; } = 400;
+    [Parameter] public double Width { get; set; } = 900;
+    [Parameter] public double Padding { get; set; } = 75;
 
     private string _linePath = string.Empty;
     private string _areaPath = string.Empty;
     private List<(double X, double Y, string Label, double Value)> _points = new();
+    private List<(double Y, string Label)> _yTicks = new();
 
     protected override void OnParametersSet()
     {
@@ -56,6 +57,15 @@ public partial class LineGraph : ComponentBase
         areaSb.Append($" L {_points.First().X} {Height - Padding}");
         areaSb.Append(" Z");
         _areaPath = areaSb.ToString();
+
+        // Calculate Y-Axis Ticks (5 ticks)
+        _yTicks.Clear();
+        for (int i = 0; i <= 4; i++)
+        {
+            var val = (maxVal / 4) * i;
+            var y = Height - Padding - (val / maxVal * usableHeight);
+            _yTicks.Add((y, val.ToString("N0")));
+        }
     }
 
     private string BuildSmoothPath(List<(double X, double Y, string Label, double Value)> pts)

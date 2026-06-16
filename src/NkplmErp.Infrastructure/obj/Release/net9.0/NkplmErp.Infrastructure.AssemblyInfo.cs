@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("NkplmErp.Infrastructure")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+fe9b5f2cf99d4ba530d870097d41da852dc05089")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+610417bc391a27c686372cb00d7f89631c5f937b")]
 [assembly: System.Reflection.AssemblyProductAttribute("NkplmErp.Infrastructure")]
 [assembly: System.Reflection.AssemblyTitleAttribute("NkplmErp.Infrastructure")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

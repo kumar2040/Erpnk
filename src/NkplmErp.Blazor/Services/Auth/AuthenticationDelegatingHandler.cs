@@ -64,8 +64,9 @@ public class AuthenticationDelegatingHandler : DelegatingHandler
 
             if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
-                _logger.LogWarning(">>>> [DEBUG] 401 Unauthorized detected! Clearing token.");
+                _logger.LogWarning(">>>> [DEBUG] 401 Unauthorized detected! Clearing token and notifying UI.");
                 _tokenProvider.Token = null;
+                _tokenProvider.NotifySessionExpired();
             }
 
             return response;

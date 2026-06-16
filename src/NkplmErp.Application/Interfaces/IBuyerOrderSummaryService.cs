@@ -15,4 +15,5 @@ public interface IBuyerOrderSummaryService
     Task<IEnumerable<OrderViewHeaderDto>> GetOrderViewDataAsync(string orderNo);
     Task<StyleDetailsDto> GetStyleDetailsAsync(string styleNo);
     Task<IEnumerable<BuyerOrderDto>> GetBuyersOrdersAsync(int buyerId, int flag);
+    Task<IEnumerable<OrderPriceAnalysisDto>> GetOrderPriceAnalysisAsync(string orderNo, decimal usdRate);
 }

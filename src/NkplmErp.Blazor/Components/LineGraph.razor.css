@@ -7,14 +7,14 @@
 }
 
 .draw-line {
-    stroke-dasharray: 1000;
-    stroke-dashoffset: 1000;
+    stroke-dasharray: 5000;
+    stroke-dashoffset: 5000;
     animation: dash-draw 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 @keyframes dash-draw {
     from {
-        stroke-dashoffset: 1000;
+        stroke-dashoffset: 5000;
     }
     to {
         stroke-dashoffset: 0;

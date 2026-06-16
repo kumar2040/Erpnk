@@ -9,7 +9,7 @@ function openModal() {
     document.body.style.overflow = 'hidden'; // Body Lock
 }
 
-window.submitToken = function (token) {
+window.submitToken = function (token, returnUrl) {
     console.log("DEBUG: submitToken called");
     const form = document.createElement('form');
     form.method = 'POST';
@@ -19,8 +19,16 @@ window.submitToken = function (token) {
     tokenInput.type = 'hidden';
     tokenInput.name = 'token';
     tokenInput.value = token;
-
     form.appendChild(tokenInput);
+
+    if (returnUrl) {
+        const ru = document.createElement('input');
+        ru.type = 'hidden';
+        ru.name = 'returnUrl';
+        ru.value = returnUrl;
+        form.appendChild(ru);
+    }
+
     document.body.appendChild(form);
     form.submit();
 }

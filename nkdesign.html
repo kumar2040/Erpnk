@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Natureknit – Production Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:    #1a3353;
+    --teal:    #2ab3b1;
+    --teal-lt: #e6f7f7;
+    --sky:     #e8f4fb;
+    --red:     #e05252;
+    --green:   #3dbf8a;
+    --amber:   #f0a500;
+    --bg:      #f4f6f9;
+    --white:   #ffffff;
+    --border:  #dde3ec;
+    --text:    #1e2d3d;
+    --muted:   #7a8fa6;
+    --step-bg: #2ab3b1;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  /* ── NAVBAR ── */
+  nav {
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    height: 56px;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .nav-hamburger { cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
+  .nav-hamburger span { display: block; width: 20px; height: 2px; background: var(--navy); border-radius: 2px; }
+  .nav-logo {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--teal);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; color: #fff; font-size: 14px; letter-spacing: -0.5px;
+  }
+  .nav-brand { font-weight: 700; font-size: 15px; color: var(--navy); letter-spacing: 0.3px; }
+  .nav-spacer { flex: 1; }
+  .nav-date { color: var(--muted); font-size: 13px; font-weight: 500; }
+  .nav-user {
+    display: flex; align-items: center; gap: 8px;
+    font-weight: 600; font-size: 13px; color: var(--navy);
+  }
+  .nav-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--teal); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+  }
+  .nav-bell {
+    position: relative; cursor: pointer;
+    width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; border: 1px solid var(--border);
+  }
+  .nav-bell svg { width: 16px; height: 16px; fill: none; stroke: var(--navy); stroke-width: 2; }
+  .nav-bell-dot {
+    position: absolute; top: 5px; right: 5px;
+    width: 8px; height: 8px; background: var(--red);
+    border-radius: 50%; border: 1.5px solid #fff;
+  }
+  .nav-logout {
+    border: 1.5px solid var(--red); color: var(--red);
+    background: none; padding: 5px 14px; border-radius: 6px;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    letter-spacing: 0.3px; transition: background 0.15s;
+  }
+  .nav-logout:hover { background: #fef2f2; }
+  .nav-chevron { color: var(--muted); font-size: 11px; }
+
+  /* ── MAIN ── */
+  main {
+    padding: 18px 20px 28px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  /* ── ROW ── */
+  .row {
+    display: grid;
+    gap: 14px;
+  }
+  .row-3 { grid-template-columns: 300px 280px 1fr 280px; }
+  .row-3b { grid-template-columns: 1fr 260px; }
+  .col-stack { display: flex; flex-direction: column; gap: 14px; }
+
+  /* ── PANEL ── */
+  .panel {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .panel-header {
+    background: var(--navy);
+    color: #fff;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 36px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .panel-header-left { display: flex; align-items: center; gap: 8px; }
+  .panel-icon { font-size: 13px; opacity: 0.8; }
+  .panel-title { font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .panel-count {
+    background: var(--teal); color: #fff;
+    font-size: 11px; font-weight: 700;
+    padding: 1px 8px; border-radius: 20px;
+  }
+  .panel-expand { cursor: pointer; opacity: 0.7; font-size: 14px; }
+  .panel-body { padding: 0; flex: 1; overflow: auto; }
+
+  /* STEP badge */
+  .step-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--teal); color: #fff;
+    font-size: 10px; font-weight: 700;
+    padding: 2px 8px; border-radius: 20px;
+    letter-spacing: 0.3px;
+  }
+
+  /* ── FORM FIELDS ── */
+  .form-grid {
+    display: flex; flex-direction: column; gap: 0;
+  }
+  .form-field {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    min-height: 64px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .form-field:last-child { border-bottom: none; }
+  .form-label {
+    display: block; font-size: 11px; font-weight: 700;
+    color: #1e2d3d; text-transform: uppercase; letter-spacing: 0.6px;
+    margin-bottom: 5px; padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .form-hint {
+    font-size: 10px; font-weight: 600; background: var(--sky);
+    color: var(--teal); padding: 1px 6px; border-radius: 10px;
+    text-transform: none; letter-spacing: 0;
+  }
+  .form-hint-ot {
+    font-size: 10px; font-weight: 600; background: #fff8e6;
+    color: var(--amber); padding: 1px 6px; border-radius: 10px;
+    text-transform: none; letter-spacing: 0;
+  }
+  .form-select, .form-input {
+    width: 100%; border: 1px solid var(--border); border-radius: 6px;
+    padding: 7px 10px; font-size: 12px; font-family: inherit;
+    color: var(--text); background: var(--white); outline: none;
+    transition: border 0.15s, box-shadow 0.15s;
+    appearance: none; -webkit-appearance: none;
+  }
+  .form-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a8fa6' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+    padding-right: 28px;
+  }
+  .form-select:focus, .form-input:focus {
+    border-color: var(--teal); box-shadow: 0 0 0 3px rgba(42,179,177,0.12);
+  }
+  .form-input.editable {
+    background: var(--sky); border-style: dashed;
+  }
+  .dept-load-wrap { display: flex; align-items: center; gap: 8px; }
+  .dept-input { flex: 1; }
+  .dept-pct-label { font-size: 13px; font-weight: 700; color: var(--amber); min-width: 16px; }
+  .dept-bar-track {
+    margin-top: 7px; height: 6px; background: #eef1f6;
+    border-radius: 3px; overflow: hidden;
+  }
+  .dept-bar-fill {
+    height: 100%; background: var(--amber);
+    border-radius: 3px; transition: width 0.3s;
+  }
+
+  /* ── ORDER MULTI-CHECKBOX DROPDOWN ── */
+  .order-dropdown { position: relative; }
+  .order-dropdown-trigger {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 10px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--white);
+    cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s;
+    font-size: 12px; color: var(--text);
+  }
+  .order-dropdown-trigger:hover,
+  .order-dropdown.open .order-dropdown-trigger {
+    border-color: var(--teal); box-shadow: 0 0 0 3px rgba(42,179,177,0.12);
+  }
+  .order-trigger-text { flex: 1; font-weight: 500; color: var(--text); }
+  .order-trigger-arrow { font-size: 11px; color: var(--muted); transition: transform 0.2s; }
+  .order-dropdown.open .order-trigger-arrow { transform: rotate(180deg); }
+  .order-dropdown-menu {
+    display: none; flex-direction: column; gap: 3px;
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    z-index: 50;
+  }
+  .order-dropdown.open .order-dropdown-menu { display: flex; }
+  .order-checkbox-item {
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px 10px; border-radius: 6px;
+    border: 1px solid var(--border);
+    cursor: pointer; transition: background 0.13s, border-color 0.13s;
+    user-select: none;
+  }
+  .order-checkbox-item:hover { background: var(--sky); border-color: var(--teal); }
+  .order-checkbox-item.checked { background: var(--teal-lt); border-color: var(--teal); }
+  .order-cb {
+    width: 18px; height: 18px; border-radius: 4px;
+    border: 2px solid var(--border); background: var(--white);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: background 0.13s, border-color 0.13s;
+  }
+  .order-checkbox-item.checked .order-cb {
+    background: var(--teal); border-color: var(--teal);
+  }
+  .order-cb-tick {
+    font-size: 11px; color: #fff; font-weight: 700;
+    opacity: 0; transition: opacity 0.13s;
+  }
+  .order-checkbox-item.checked .order-cb-tick { opacity: 1; }
+  .order-cb-name { font-size: 12px; font-weight: 700; color: var(--navy); flex: 1; }
+  .order-cb-qty { font-size: 11px; color: var(--muted); font-weight: 500; }
+
+  /* ── TABLES ── */
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { background: var(--sky); }
+  thead th {
+    padding: 7px 10px; text-align: left;
+    font-size: 11px; font-weight: 700; color: var(--navy);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap; letter-spacing: 0.2px;
+  }
+  tbody tr { border-bottom: 1px solid #f0f2f6; transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--sky); }
+  tbody td { padding: 7px 10px; font-size: 12px; color: var(--text); white-space: nowrap; }
+  tbody tr.highlighted td { background: var(--teal-lt); }
+  tbody tr.highlighted td:first-child { border-left: 3px solid var(--teal); }
+
+  .sn { color: var(--muted); font-size: 11px; font-weight: 600; }
+  .order-no { font-weight: 700; color: var(--navy); }
+  .qty-val { font-weight: 700; }
+
+  .tag {
+    display: inline-block; padding: 1px 7px; border-radius: 10px;
+    font-size: 11px; font-weight: 600;
+  }
+  .tag-teal { background: var(--teal-lt); color: var(--teal); }
+  .tag-amber { background: #fff8e6; color: var(--amber); }
+  .tag-red { background: #fef2f2; color: var(--red); }
+  .tag-green { background: #edfaf4; color: var(--green); }
+
+  /* ── ANALYSE BUTTON ── */
+  .analyse-wrap { padding: 12px 14px; display: flex; justify-content: center; }
+  .btn-analyse {
+    background: var(--teal); color: #fff;
+    border: none; padding: 8px 32px; border-radius: 6px;
+    font-size: 13px; font-weight: 700; cursor: pointer;
+    letter-spacing: 0.5px; transition: background 0.15s;
+    box-shadow: 0 2px 8px rgba(42,179,177,0.3);
+  }
+  .btn-analyse:hover { background: #219e9c; }
+
+  /* ── MACHINE GAUGE ── */
+  .gauge-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 14px; border-bottom: 1px solid #f0f2f6; }
+  .gauge-row:last-child { border-bottom: none; }
+  .gauge-label { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .gauge-bar-wrap { flex: 1; margin: 0 12px; height: 6px; background: #eef1f6; border-radius: 3px; overflow: hidden; }
+  .gauge-bar { height: 100%; background: var(--teal); border-radius: 3px; }
+  .gauge-count { font-size: 13px; font-weight: 700; color: var(--navy); min-width: 24px; text-align: right; }
+
+  /* ── YARN ANALYSIS ── */
+  /* ── PR BADGE ── */
+  .pr-badge {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:22px; height:22px; border-radius:50%;
+    font-size:11px; font-weight:800; letter-spacing:0.2px;
+  }
+  .pr-s { background:#edfaf4; color:var(--green); }
+  .pr-p { background:var(--teal-lt); color:var(--teal); }
+
+  .yarn-avail { color: var(--green); font-weight: 700; }
+  .yarn-req { color: var(--navy); font-weight: 700; }
+  .yarn-low { color: var(--red); font-weight: 700; }
+
+  /* ── MACHINE TABLE ── */
+  .mach-table { width:100%; border-collapse:collapse; }
+  .mach-table thead tr { background: var(--sky); }
+  .mach-table thead th {
+    padding: 7px 10px; text-align: left;
+    font-size: 11px; font-weight: 700; color: var(--navy);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap; letter-spacing: 0.2px;
+  }
+  .mach-table tbody tr { border-bottom: 1px solid #f0f2f6; transition: background 0.1s; }
+  .mach-table tbody tr:last-child { border-bottom: none; }
+  .mach-table tbody tr:hover { background: var(--sky); }
+  .mach-table tbody td { padding: 8px 10px; font-size: 12px; }
+
+  .gauge-chip {
+    display:inline-block; padding:2px 10px; border-radius:20px;
+    font-size:11px; font-weight:800; letter-spacing:0.3px;
+  }
+  .chip-teal { background:var(--teal-lt); color:var(--teal); }
+  .chip-amber { background:#fff8e6; color:var(--amber); }
+
+  .free-badge {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:26px; height:26px; border-radius:50%;
+    font-size:12px; font-weight:800;
+  }
+  .free-ok  { background:#edfaf4; color:var(--green); }
+  .free-low { background:#fff8e6; color:var(--amber); }
+
+  .next-tag {
+    display:inline-block; padding:2px 8px; border-radius:4px;
+    background:var(--sky); color:var(--navy);
+    font-size:11px; font-weight:600;
+  }
+  .est-tag {
+    display:inline-block; padding:2px 8px; border-radius:4px;
+    font-size:11px; font-weight:700;
+  }
+  .est-green { background:#edfaf4; color:var(--green); }
+  .est-amber { background:#fff8e6; color:var(--amber); }
+  .mach-legend { display:flex; align-items:center; gap:4px; font-size:11px; color:var(--muted); font-weight:600; }
+  .mleg { width:10px; height:10px; border-radius:2px; display:inline-block; }
+  .mleg-free { background:var(--green); }
+  .mleg-running { background:var(--teal); }
+  .mleg-maint { background:var(--amber); }
+
+  .mach-summary-bar {
+    display:flex; align-items:center; gap:0;
+    background:var(--sky); border-radius:8px;
+    padding:10px 16px; margin-bottom:14px;
+  }
+  .mach-summary-item { display:flex; align-items:center; gap:6px; flex:1; justify-content:center; }
+  .mach-summary-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .mach-summary-val { font-size:20px; font-weight:800; line-height:1; }
+  .mach-summary-lbl { font-size:11px; color:var(--muted); font-weight:600; }
+  .mach-summary-sep { width:1px; height:32px; background:var(--border); }
+
+  .mach-grid-wrap { display:flex; flex-direction:column; gap:6px; }
+  .mach-gauge-row {
+    display:flex; align-items:center; gap:10px;
+    padding:7px 10px; border-radius:6px;
+    border:1px solid var(--border); background:var(--white);
+    transition: background 0.12s;
+  }
+  .mach-gauge-row:hover { background:var(--sky); }
+  .mach-gauge-tag {
+    font-size:11px; font-weight:800; color:var(--navy);
+    min-width:46px; letter-spacing:0.3px;
+  }
+  .mach-dots { display:flex; flex-wrap:wrap; gap:4px; flex:1; }
+  .mdot {
+    width:14px; height:14px; border-radius:3px; cursor:pointer;
+    transition: transform 0.1s, opacity 0.1s;
+  }
+  .mdot:hover { transform:scale(1.25); opacity:0.85; }
+  .mdot.free    { background:var(--green); }
+  .mdot.running { background:var(--teal); }
+  .mdot.maint   { background:var(--amber); }
+  .mach-gauge-stat { font-size:12px; font-weight:700; color:var(--muted); white-space:nowrap; }
+  .mgs-free { color:var(--green); }
+  .mgs-total { color:var(--navy); }
+
+  /* ── EXTRA WORK ── */
+  .ew-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 14px; border-bottom: 1px solid #f0f2f6; }
+  .ew-row:last-child { border-bottom: none; }
+  .ew-label { font-size: 12px; color: var(--text); }
+  .ew-qty { font-weight: 700; color: var(--navy); font-size: 13px; }
+
+  /* ── OVERHEAD ── */
+  .oh-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); }
+  .oh-cell { background: var(--white); padding: 10px 14px; }
+  .oh-cell.full { grid-column: 1 / -1; }
+  .oh-cell-label { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 3px; }
+  .oh-cell-val { font-size: 15px; font-weight: 700; color: var(--navy); }
+  .oh-input {
+    width: 100%; border: 1px solid var(--border); border-radius: 4px;
+    padding: 4px 8px; font-size: 13px; font-family: inherit; color: var(--text);
+    outline: none; transition: border 0.15s;
+  }
+  .oh-input:focus { border-color: var(--teal); }
+
+  /* ── DEPT LOAD BAR ── */
+  .load-cell { padding: 8px 14px; }
+  .load-label { font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 5px; }
+  .load-bar-wrap { height: 8px; background: #eef1f6; border-radius: 4px; overflow: hidden; }
+  .load-bar { height: 100%; background: var(--amber); border-radius: 4px; width: 30%; }
+  .load-pct { font-size: 13px; font-weight: 700; color: var(--amber); margin-top: 3px; }
+
+  /* ── SYS SUGGEST ── */
+  .suggest-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: #fff8e6; color: var(--amber);
+    font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px;
+  }
+
+  /* ── MACHINE EXPAND MODAL ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(10,20,40,0.55); z-index: 200;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: var(--white); border-radius: 10px;
+    width: 92vw; max-width: 1300px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    overflow: hidden; display: flex; flex-direction: column;
+    max-height: 90vh;
+  }
+  .modal-header {
+    background: var(--navy); color: #fff;
+    padding: 12px 18px; display: flex;
+    align-items: center; justify-content: space-between;
+  }
+  .modal-title { font-size: 13px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+  .modal-close {
+    background: none; border: none; color: #fff;
+    font-size: 16px; cursor: pointer; opacity: 0.7; transition: opacity 0.15s;
+  }
+  .modal-close:hover { opacity: 1; }
+  .modal-body {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 16px; overflow-y: auto; flex: 1;
+    padding: 16px;
+    background: var(--bg);
+  }
+  .modal-grid-wrap {
+    padding: 0; border-right: none;
+    display: flex; flex-direction: column;
+    background: var(--white);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .mg-header-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px; background: var(--sky);
+    border-bottom: 1px solid var(--border);
+  }
+  .mg-section-tag {
+    font-size: 12px; font-weight: 800; padding: 3px 12px;
+    border-radius: 4px; letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .mg-planning { background: var(--navy); color: #fff; }
+  .mg-running  { background: var(--teal); color: #fff; }
+  .mg-po-tag   { font-size: 12px; font-weight: 700; color: var(--navy); }
+  .mg-completion {
+    margin-left: auto; font-size: 11px; font-weight: 700;
+    color: var(--green); background: #edfaf4;
+    padding: 2px 10px; border-radius: 20px;
+  }
+  .mg-table { width: 100%; border-collapse: collapse; }
+  .mg-table thead tr { background: #e8eef6; }
+  .mg-table thead th {
+    padding: 7px 10px; text-align: left;
+    font-size: 11px; font-weight: 700; color: var(--navy);
+    border-bottom: 2px solid var(--border); white-space: nowrap;
+  }
+  .mg-table tbody tr { border-bottom: 1px solid #f0f2f6; }
+  .mg-table tbody tr:hover { background: var(--sky); }
+  .mg-table tbody td { padding: 7px 10px; font-size: 12px; color: var(--text); }
+  .mg-empty td { height: 32px; }
+  .mg-input {
+    width: 60px; border: 1px solid var(--border); border-radius: 4px;
+    padding: 3px 6px; font-size: 12px; font-family: inherit;
+    text-align: center; outline: none; transition: border 0.15s;
+  }
+  .mg-input:focus { border-color: var(--teal); }
+  .mg-note {
+    padding: 10px 14px; font-size: 11px; color: var(--amber);
+    font-weight: 600; border-top: 1px solid var(--border);
+    background: #fffbe6; margin-top: auto;
+  }
+  .pdp-empty {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; padding: 40px 20px; gap: 10px;
+    color: var(--muted);
+  }
+  .pdp-empty-icon { font-size: 28px; opacity: 0.5; }
+  .pdp-empty-text { font-size: 12px; font-weight: 600; text-align: center; }
+  .per-order-block {
+    border-top: 2px solid var(--teal-lt);
+    margin-top: 2px;
+  }
+
+  .req-date-field { background: var(--white); }
+  .req-date-label {
+    color: #1e2d3d !important;
+    background: #ffee00;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.4px;
+    border-bottom: none !important;
+    font-size: 9px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+  }
+  .po-highlight-dark { color: #1e2d3d; font-weight: 800; }
+    color: #fff !important;
+    background: #4caf50;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border-bottom: none;
+  }
+    background: var(--green); color: #fff;
+    font-size: 11px; font-weight: 800;
+    letter-spacing: 0.8px; text-transform: uppercase;
+    padding: 9px 14px; margin: -10px -14px 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  }
+  .per-order-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 14px;
+    background: var(--green);
+  }
+  .per-order-po {
+    font-size: 11px; font-weight: 800; color: #fff;
+    letter-spacing: 0.8px; text-transform: uppercase;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .po-highlight {
+    color: var(--teal); font-weight: 800;
+  }
+  .date-input {
+    width: 100%; border: 1px dashed var(--border); border-radius: 4px;
+    padding: 3px 6px; font-size: 11px; font-family: inherit; color: var(--text);
+    background: var(--sky); outline: none; transition: border 0.15s;
+  }
+  .date-input:focus { border-color: var(--teal); background: #fff; }
+
+  /* column divider label */
+  .col-divider {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--muted); padding: 6px 10px 4px;
+    border-bottom: 1px solid var(--border); background: #fafbfd;
+  }
+</style>
+</head>
+<body>
+
+<!-- ════ NAVBAR ════ -->
+<nav>
+  <div class="nav-hamburger">
+    <span></span><span></span><span></span>
+  </div>
+  <div class="nav-logo">NK</div>
+  <span class="nav-brand">Natureknit</span>
+  <div class="nav-spacer"></div>
+  <span class="nav-date">Friday, 24 Apr, 2026</span>
+  <div class="nav-user">
+    <div class="nav-bell">
+      <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <div class="nav-bell-dot"></div>
+    </div>
+    <div class="nav-avatar">NR</div>
+    <span>Nirajan</span>
+    <span style="font-size:10px;color:var(--muted);font-weight:400">Admin</span>
+    <span class="nav-chevron">▾</span>
+  </div>
+  <button class="nav-logout">⇠ LOGOUT</button>
+</nav>
+
+<!-- ════ MAIN ════ -->
+<main>
+
+  <!-- ── ROW 1 ── -->
+  <div class="row row-3">
+
+    <!-- PANEL: ORDER SELECTION FORM -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-header-left">
+          <span class="panel-icon">🗂</span>
+          <span class="panel-title">Order Selection</span>
+          
+        </div>
+        <span class="panel-expand">⤢</span>
+      </div>
+
+      <div class="panel-body">
+        <div class="form-grid">
+
+          <!-- Month -->
+          <div class="form-field">
+            <label class="form-label">Month</label>
+            <select class="form-select">
+              <option value="">— Select Month —</option>
+              <option value="jan">January</option>
+              <option value="feb">February</option>
+              <option value="mar">March</option>
+              <option value="apr">April</option>
+              <option selected value="may">May</option>
+              <option value="jun">June</option>
+              <option value="jul">July</option>
+              <option value="aug">August</option>
+              <option value="sep">September</option>
+              <option value="oct">October</option>
+              <option value="nov">November</option>
+              <option value="dec">December</option>
+            </select>
+          </div>
+
+          <!-- Order -->
+          <div class="form-field">
+            <label class="form-label">Order <span class="form-hint">Multi-select</span></label>
+            <div class="order-dropdown" id="orderDropdown">
+              <div class="order-dropdown-trigger" onclick="toggleOrderDropdown()">
+                <span class="order-trigger-text" id="orderTriggerText">PO-1890 (Qty: 500)</span>
+                <span class="order-trigger-arrow" id="orderArrow">▾</span>
+              </div>
+              <div class="order-dropdown-menu" id="orderDropdownMenu">
+                <label class="order-checkbox-item checked" onclick="toggleOrderItem(this, event)">
+                  <span class="order-cb"><span class="order-cb-tick">✓</span></span>
+                  <span class="order-cb-name">PO-1890</span>
+                  <span class="order-cb-qty">Qty: 500</span>
+                </label>
+                <label class="order-checkbox-item" onclick="toggleOrderItem(this, event)">
+                  <span class="order-cb"><span class="order-cb-tick">✓</span></span>
+                  <span class="order-cb-name">PO-1897</span>
+                  <span class="order-cb-qty">Qty: 490</span>
+                </label>
+                <label class="order-checkbox-item" onclick="toggleOrderItem(this, event)">
+                  <span class="order-cb"><span class="order-cb-tick">✓</span></span>
+                  <span class="order-cb-name">Po-16547</span>
+                  <span class="order-cb-qty">Qty: 200</span>
+                </label>
+                <label class="order-checkbox-item" onclick="toggleOrderItem(this, event)">
+                  <span class="order-cb"><span class="order-cb-tick">✓</span></span>
+                  <span class="order-cb-name">SND-008</span>
+                  <span class="order-cb-qty">Qty: 140</span>
+                </label>
+                <label class="order-checkbox-item" onclick="toggleOrderItem(this, event)">
+                  <span class="order-cb"><span class="order-cb-tick">✓</span></span>
+                  <span class="order-cb-name">ATM-0098</span>
+                  <span class="order-cb-qty">Qty: 120</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Knit Complete Date (dynamic per order) -->
+          <div id="knitDateFields">
+            <div class="form-field">
+              <label class="form-label">Knit Complete Date</label>
+              <input class="form-input" type="date" value="2026-05-15" />
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label">Department Load</label>
+            <div class="dept-load-wrap">
+              <input class="form-input dept-input" type="number" min="0" max="100" value="30" oninput="updateLoad(this)" />
+              <span class="dept-pct-label">%</span>
+            </div>
+            <div class="dept-bar-track">
+              <div class="dept-bar-fill" id="deptBar" style="width:30%"></div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="analyse-wrap">
+          <button class="btn-analyse" onclick="this.textContent='Analysing…'; setTimeout(()=>this.textContent='Analyse',1500)">Analyse</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANEL: PRODUCTION DATE PLANNING -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-header-left">
+          <span class="panel-icon">📅</span>
+          <span class="panel-title">Production Date Planning</span>
+          
+        </div>
+        <span class="panel-expand">⤢</span>
+      </div>
+      <div class="panel-body" style="flex:1;overflow-y:auto;">
+        <div id="perOrderFields">
+          <div class="pdp-empty">
+            <div class="pdp-empty-icon">📋</div>
+            <div class="pdp-empty-text">Select orders to plan dates</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-stack">
+    <!-- PANEL: AVAILABLE MACHINE GRID -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-header-left">
+          <span class="panel-icon">⚙️</span>
+          <span class="panel-title">Available Machine Grid</span>
+          <span class="panel-count">54 Total</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="panel-expand" onclick="openMachineModal()" style="cursor:pointer;">⤢</span>
+        </div>
+      </div>
+      <div class="panel-body" style="padding:0">
+
+        <!-- Machine Detail Table -->
+        <table class="mach-table">
+          <thead>
+            <tr>
+              <th>Gauge</th>
+              <th>Order Qty</th>
+              <th>Machine</th>
+              <th>Estimated Days</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="highlighted">
+              <td><span class="gauge-chip chip-teal">16GG</span></td>
+              <td class="qty-val">100</td>
+              <td><span class="free-badge free-ok">4</span></td>
+              <td><span class="est-tag est-green">14 Days (May)</span></td>
+            </tr>
+            <tr>
+              <td><span class="gauge-chip chip-teal">12GG</span></td>
+              <td class="qty-val">80</td>
+              <td><span class="free-badge free-ok">5</span></td>
+              <td><span class="est-tag est-amber">6 Days (Apr)</span></td>
+            </tr>
+            <tr>
+              <td><span class="gauge-chip chip-amber">7GG</span></td>
+              <td class="qty-val">75</td>
+              <td><span class="free-badge free-low">2</span></td>
+              <td><span class="est-tag est-amber">9 Days (Apr)</span></td>
+            </tr>
+            <tr>
+              <td><span class="gauge-chip chip-amber">4GG</span></td>
+              <td class="qty-val">120</td>
+              <td><span class="free-badge free-low">4</span></td>
+              <td><input class="date-input" type="text" placeholder="Enter days" /></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PANEL: YARN ANALYSIS -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-header-left">
+          <span class="panel-icon">🧵</span>
+          <span class="panel-title">Yarn Analysis – Selected Order</span>
+          
+        </div>
+        <span class="panel-expand">⤢</span>
+      </div>
+      <div class="panel-body">
+        <table>
+          <thead>
+            <tr>
+              <th>Yarn</th>
+              <th>Color</th>
+              <th>Available</th>
+              <th>Required</th>
+              <th>Yarn Arrival</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>100% cashmere-26/2</td>
+              <td><span class="tag tag-teal">Navy 25025</span></td>
+              <td class="yarn-avail">5</td>
+              <td class="yarn-req">15</td>
+              <td>25-Apr</td>
+            </tr>
+            <tr>
+              <td>100% cashmere-26/2</td>
+              <td><span class="tag tag-amber">Jello 25352</span></td>
+              <td class="yarn-avail">2</td>
+              <td class="yarn-req">8</td>
+              <td>25-Apr</td>
+            </tr>
+            <tr>
+              <td>100% cashmere-26/2</td>
+              <td><span class="tag" style="background:#f3f0fb;color:#7c5cbf">Juliet 25512</span></td>
+              <td class="yarn-avail">1</td>
+              <td class="yarn-req">5</td>
+              <td>25-Apr</td>
+            </tr>
+            <tr>
+              <td>100% cashmere-26/2</td>
+              <td><span class="tag" style="background:#fbe8f0;color:#c45785">Marina 2555</span></td>
+              <td class="yarn-low">0</td>
+              <td class="yarn-req">6</td>
+              <td>25-Apr</td>
+            </tr>
+            <tr>
+              <td>100% cashmere-26/2</td>
+              <td><span class="tag" style="background:#f8f6f2;color:#9e8c6c">Ivory</span></td>
+              <td class="yarn-avail">25</td>
+              <td class="yarn-req">10</td>
+              <td>—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    </div><!-- /col-stack -->
+
+    <!-- PANEL: MAN POWER DETAILS -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-header-left">
+          <span class="panel-icon">👷</span>
+          <span class="panel-title">Man Power Details</span>
+          <span class="panel-count">27 Knitters</span>
+        </div>
+        <span class="panel-expand">⤢</span>
+      </div>
+      <div class="panel-body" style="max-height:520px;overflow-y:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Knitter Name</th>
+              <th>Card No.</th>
+              <th>Working Gauge</th>
+              <th>PR/Salary</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Babita Maharjan</td><td class="sn">020</td><td><span class="gauge-chip chip-teal">12, 14</span></td><td><span class="pr-badge pr-s">S</span></td></tr>
+            <tr><td>Bhagwoti Thapa</td><td class="sn">021</td><td><span class="gauge-chip chip-teal">7, 8</span></td><td><span class="pr-badge pr-p">P</span></td></tr>
+            <tr><td>Anjali Maharjan</td><td class="sn">031</td><td><span class="gauge-chip chip-teal">7, 8, 12</span></td><td><span class="pr-badge pr-s">S</span></td></tr>
+            <tr><td>Shrijana Kuwar</td><td class="sn">034</td><td><span class="gauge-chip chip-teal">7, 8, 12, 16</span></td><td><span class="pr-badge pr-s">S</span></td></tr>
+            <tr><td>Ramita Shrestha</td><td class="sn">037</td><td><span class="gauge-chip chip-teal">16, 12</span></td><td><span class="pr-badge pr-s">S</span></td></tr>
+            <tr><td>Ram Aashish Yadav</td><td class="sn">046</td><td><span class="gauge-chip chip-amber">2.5, 4, 5</span></td><td><span class="pr-badge pr-s">S</span></td></tr>
+            <tr><td>Krishna Kumari Shrestha</td><td class="sn">050</td><td><span class="gauge-chip chip-teal">7, 8, 12, 16</span></td><td><span class="pr-badge pr-s">S</span></td></tr>
+            <tr><td>Kopila Giri</td><td class="sn">152</td><td><span class="gauge-chip chip-teal">5, 7, 8, 12</span></td><td><span class="pr-badge pr-s">S</span></td></tr>
+            <tr><td>Usha Sunuwr</td><td class="sn">156</td><td><span class="gauge-chip chip-teal">12, 16</span></td><td><span class="pr-badge pr-p">P</span></td></tr>
+            <tr><td>Buddha Laxmi Sakhya</td><td class="sn">260</td><td><span class="gauge-chip chip-teal">7, 12, 16</span></td><td><span class="pr-badge pr-s">S</span></td></tr>
+            <tr><td>Ranju Kumari</td><td class="sn">721</td><td><span class="gauge-chip chip-teal">12, 14, 16</span></td><td><span class="pr-badge pr-p">P</span></td></tr>
+            <tr><td>MD. Alam</td><td class="sn">833</td><td><span class="gauge-chip chip-amber">2.5, 4, 5, 7, 8, 16</span></td><td><span class="pr-badge pr-p">P</span></td></tr>
+            <tr><td>Suman Dash</td><td class="sn">1507</td><td><span class="gauge-chip chip-amber">4, 5, 7</span></td><td><span class="pr-badge pr-p">P</span></td></tr>
+            <tr><td>Guddu Sahani</td><td class="sn">1569</td><td><span class="gauge-chip chip-amber">4, 5, 7, 8</span></td><td><span class="pr-badge pr-p">P</span></td></tr>
+            <tr><td>Lila Kant Mandal</td><td class="sn">1601</td><td><span class="gauge-chip chip-teal">4, 5, 7, 12</span></td><td><span class="pr-badge pr-s">S</span></td></tr>
+            <tr><td>Lila Kumari Danuwar</td><td class="sn">1609</td><td><span class="gauge-chip chip-teal">7</span></td><td><span class="pr-badge pr-s">S</span></td></tr>
+            <tr><td>Manika Rai</td><td class="sn">860</td><td><span class="gauge-chip chip-teal">7, 12, 16</span></td><td><span class="pr-badge pr-p">P</span></td></tr>
+            <tr><td>Pabitra Giri</td><td class="sn">144</td><td><span class="gauge-chip chip-teal">7, 12, 14, 16</span></td><td><span class="pr-badge pr-s">S</span></td></tr>
+            <tr><td>Yog Maya Gurung</td><td class="sn">048</td><td><span class="gauge-chip chip-teal">12, 16</span></td><td><span class="pr-badge pr-p">P</span></td></tr>
+            <tr><td>Rita Shrestha</td><td class="sn">1542</td><td><span class="gauge-chip chip-teal">5, 7, 12, 14</span></td><td><span class="pr-badge pr-p">P</span></td></tr>
+            <tr><td>Bikash Kumar Nishad</td><td class="sn">1570</td><td><span class="gauge-chip chip-teal">16</span></td><td><span class="pr-badge pr-p">P</span></td></tr>
+            <tr><td>Sushila Bharati</td><td class="sn">440</td><td><span class="gauge-chip chip-teal">7, 12</span></td><td><span class="pr-badge pr-p">P</span></td></tr>
+            <tr><td>Lalita Chaudhary</td><td class="sn">785</td><td><span class="gauge-chip chip-teal">7, 12</span></td><td><span class="pr-badge pr-p">P</span></td></tr>
+            <tr><td>Yashoda Thapa Magar</td><td class="sn">795</td><td><span class="gauge-chip chip-teal">16, 12</span></td><td><span class="pr-badge pr-p">P</span></td></tr>
+            <tr><td>Sabita Giri</td><td class="sn">256</td><td><span class="gauge-chip chip-teal">7, 12, 16</span></td><td><span class="pr-badge pr-p">P</span></td></tr>
+            <tr><td>Jina Shrestha</td><td class="sn">028</td><td><span class="gauge-chip chip-amber">Neck</span></td><td><span class="pr-badge pr-s">S</span></td></tr>
+            <tr><td>Bijay Lama</td><td class="sn">043</td><td><span class="gauge-chip chip-amber">Neck</span></td><td><span class="pr-badge pr-s">S</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /row 1 -->
+
+  <!-- ── ROW 2 ── -->
+  <div class="row row-3b">
+
+    <!-- PANEL: GAUGE & MACHINE DETAIL -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-header-left">
+          <span class="panel-icon">🔧</span>
+          <span class="panel-title">Gauge &amp; Machine Detail</span>
+          
+        </div>
+        <span class="panel-expand">⤢</span>
+      </div>
+      <div class="panel-body">
+        <table>
+          <thead>
+            <tr>
+              <th>PO</th>
+              <th>Gauge</th>
+              <th>Order Qty</th>
+              <th>Free Mach.</th>
+              <th>Next Mach.</th>
+              <th>Total Mach.</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="highlighted">
+              <td class="order-no" style="font-size:11px">po-19012<br><span style="font-weight:400;color:var(--muted)">(FEB 10–May 25)</span></td>
+              <td><span class="tag tag-teal">16GG</span></td>
+              <td class="qty-val">100</td>
+              <td><span class="free-count free-ok">4</span></td>
+              <td><input class="date-input" type="text" placeholder="date" /></td>
+              <td class="qty-val">6</td>
+            </tr>
+            <tr>
+              <td class="order-no" style="font-size:11px">po-19012<br><span style="font-weight:400;color:var(--muted)">(FEB 10–May 25)</span></td>
+              <td><span class="tag tag-teal">12GG</span></td>
+              <td class="qty-val">80</td>
+              <td><span class="free-count free-ok">5</span></td>
+              <td><input class="date-input" type="text" placeholder="date" /></td>
+              <td class="qty-val">10</td>
+            </tr>
+            <tr>
+              <td class="order-no" style="font-size:11px">po-19012<br><span style="font-weight:400;color:var(--muted)">(FEB 10–May 25)</span></td>
+              <td><span class="tag tag-amber">7GG</span></td>
+              <td class="qty-val">75</td>
+              <td><span class="free-count free-low">2</span></td>
+              <td><input class="date-input" type="text" placeholder="date" /></td>
+              <td class="qty-val">8</td>
+            </tr>
+            <tr>
+              <td class="order-no" style="font-size:11px">po-19012<br><span style="font-weight:400;color:var(--muted)">(FEB 10–May 25)</span></td>
+              <td><span class="tag tag-amber">4GG</span></td>
+              <td class="qty-val">120</td>
+              <td><span class="free-count free-ok">4</span></td>
+              <td><input class="date-input" type="text" placeholder="User editable" /></td>
+              <td class="qty-val">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PANEL: EXTRA WORK + OVERHEAD -->
+    <div class="panel" style="display:flex;flex-direction:column;gap:0;">
+      <!-- Extra Work -->
+      <div class="panel-header" style="background:var(--navy)">
+        <div class="panel-header-left">
+          <span class="panel-icon">➕</span>
+          <span class="panel-title">Extra Work</span>
+          
+        </div>
+        <span class="panel-expand">⤢</span>
+      </div>
+      <div style="border-bottom: 2px solid var(--border);">
+        <div class="col-divider">Extra Work in Selected Order</div>
+        <div class="ew-row">
+          <span class="ew-label">Print</span>
+          <span class="ew-qty">100</span>
+        </div>
+        <div class="ew-row">
+          <span class="ew-label">Embroidery</span>
+          <span class="ew-qty">20</span>
+        </div>
+        <div class="ew-row">
+          <span class="ew-label">Hand Knit</span>
+          <span class="ew-qty">10</span>
+        </div>
+      </div>
+
+      <!-- Overhead Cost -->
+      <div class="panel-header" style="background:var(--navy); margin-top:0;">
+        <div class="panel-header-left">
+          <span class="panel-icon">💰</span>
+          <span class="panel-title">Overhead Cost</span>
+          
+        </div>
+      </div>
+      <div class="oh-grid">
+        <div class="oh-cell">
+          <div class="oh-cell-label">OT Hours</div>
+          <input class="oh-input" type="number" placeholder="Enter hours" />
+        </div>
+        <div class="oh-cell">
+          <div class="oh-cell-label">OT Cost</div>
+          <input class="oh-input" type="number" placeholder="Enter cost" />
+        </div>
+        <div class="oh-cell full">
+          <div class="oh-cell-label">Per kg Overhead Amount</div>
+          <input class="oh-input" type="number" placeholder="Enter amount" />
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /row 2 -->
+
+</main>
+
+<!-- ════ MACHINE EXPAND MODAL ════ -->
+<div id="machineModal" class="modal-overlay" onclick="closeMachineModal(event)">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Machine Planning &amp; Running Detail</span>
+      <button class="modal-close" onclick="document.getElementById('machineModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- LEFT: PLANNING -->
+      <div class="modal-grid-wrap">
+        <div class="mg-header-row">
+          <span class="mg-section-tag mg-planning">Planning</span>
+          <span class="mg-po-tag">PO 1890</span>
+        </div>
+        <table class="mg-table">
+          <thead>
+            <tr>
+              <th>Gauge</th>
+              <th>Qty</th>
+              <th>Machine</th>
+              <th>Next Machine Days</th>
+              <th>OT Hours/day</th>
+              <th>Estimated Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>16</td><td>100</td><td>7</td><td>3 days</td>
+              <td><input class="mg-input" type="number" value="2" min="0" /></td>
+              <td>17-Jul</td>
+            </tr>
+            <tr>
+              <td>12</td><td>80</td><td>8</td><td>2 days</td>
+              <td><input class="mg-input" type="number" value="2" min="0" /></td>
+              <td>18-Jul</td>
+            </tr>
+            <tr>
+              <td>7</td><td>75</td><td>3</td><td>7 days</td>
+              <td><input class="mg-input" type="number" value="2" min="0" /></td>
+              <td>19-Jul</td>
+            </tr>
+            <tr>
+              <td>4</td><td>120</td><td>2</td><td>—</td>
+              <td><input class="mg-input" type="number" value="" placeholder="—" min="0" /></td>
+              <td>—</td>
+            </tr>
+            <tr class="mg-empty"><td colspan="6"></td></tr>
+            <tr class="mg-empty"><td colspan="6"></td></tr>
+          </tbody>
+        </table>
+        <div class="mg-note">⚠ If OT hours increases, estimated date will decrease</div>
+      </div>
+
+      <!-- RIGHT: RUNNING -->
+      <div class="modal-grid-wrap">
+        <div class="mg-header-row">
+          <span class="mg-section-tag mg-running">Running</span>
+          <span class="mg-po-tag">PO 1790</span>
+          <span class="mg-completion">Completion 80%</span>
+        </div>
+        <table class="mg-table">
+          <thead>
+            <tr>
+              <th>Gauge</th>
+              <th>Qty</th>
+              <th>Machine</th>
+              <th>Release Machine On</th>
+              <th>OT Hours/day</th>
+              <th>Estimated Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>16</td><td>50</td><td>8</td><td>3 days</td>
+              <td><input class="mg-input" type="number" value="0" min="0" /></td>
+              <td>12-Jul</td>
+            </tr>
+            <tr>
+              <td>12</td><td>80</td><td>4</td><td>2 days</td>
+              <td><input class="mg-input" type="number" value="0" min="0" /></td>
+              <td>13-Jul</td>
+            </tr>
+            <tr>
+              <td>7</td><td>75</td><td>6</td><td>7 days</td>
+              <td><input class="mg-input" type="number" value="0" min="0" /></td>
+              <td>14-Jul</td>
+            </tr>
+            <tr>
+              <td>4</td><td>120</td><td>7</td><td>—</td>
+              <td><input class="mg-input" type="number" value="" placeholder="—" min="0" /></td>
+              <td>—</td>
+            </tr>
+            <tr class="mg-empty"><td colspan="6"></td></tr>
+            <tr class="mg-empty"><td colspan="6"></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- BOTTOM: YARN STOCK GRID -->
+      <div class="modal-grid-wrap" style="grid-column:1/-1;">
+        <div class="mg-header-row">
+          <span class="mg-section-tag" style="background:#1a3353;color:#fff;">Yarn Stock</span>
+          <span class="mg-po-tag">Stock &amp; Requirement Overview</span>
+        </div>
+        <table class="mg-table">
+          <thead>
+            <tr>
+              <th>S.N</th>
+              <th>Yarn Type</th>
+              <th>No of Styles</th>
+              <th>Gauge</th>
+              <th>Ply</th>
+              <th>Color</th>
+              <th>Total Stock</th>
+              <th>Available</th>
+              <th>Required</th>
+              <th>Pre-booked</th>
+              <th>Buyer</th>
+              <th>Yarn Arrival</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="sn">1</td>
+              <td>100% cashmere-26/2</td>
+              <td>5</td>
+              <td><span class="gauge-chip chip-teal">16</span></td>
+              <td>single</td>
+              <td><span class="tag tag-teal">Navy 25025</span></td>
+              <td class="qty-val">30</td>
+              <td class="yarn-avail">5</td>
+              <td class="yarn-req">15</td>
+              <td class="qty-val">5</td>
+              <td><span class="tag tag-teal">OTO</span></td>
+              <td>25-Apr</td>
+            </tr>
+            <tr>
+              <td class="sn">2</td>
+              <td>100% cashmere-26/2</td>
+              <td>3</td>
+              <td><span class="gauge-chip chip-teal">12</span></td>
+              <td>single</td>
+              <td><span class="tag tag-amber">Jello 25352</span></td>
+              <td class="qty-val">15</td>
+              <td class="yarn-avail">2</td>
+              <td class="yarn-req">8</td>
+              <td class="qty-val">5</td>
+              <td><span class="tag tag-amber">ATML</span></td>
+              <td>25-Apr</td>
+            </tr>
+            <tr>
+              <td class="sn">3</td>
+              <td>100% cashmere-26/2</td>
+              <td>1</td>
+              <td><span class="gauge-chip chip-teal">8</span></td>
+              <td>doule</td>
+              <td><span class="tag" style="background:#f3f0fb;color:#7c5cbf">Juliet 25512</span></td>
+              <td class="qty-val">10</td>
+              <td class="yarn-avail">1</td>
+              <td class="yarn-req">5</td>
+              <td class="sn">—</td>
+              <td class="sn">—</td>
+              <td>25-Apr</td>
+            </tr>
+            <tr>
+              <td class="sn">4</td>
+              <td>100% cashmere-26/2</td>
+              <td>3</td>
+              <td><span class="gauge-chip chip-amber">4</span></td>
+              <td>four</td>
+              <td><span class="tag" style="background:#fbe8f0;color:#c45785">Marina 25592</span></td>
+              <td class="qty-val">10</td>
+              <td class="yarn-low">0</td>
+              <td class="yarn-req">6</td>
+              <td class="sn">—</td>
+              <td class="sn">—</td>
+              <td>25-Apr</td>
+            </tr>
+            <tr>
+              <td class="sn">5</td>
+              <td>100% cashmere-26/2</td>
+              <td class="sn">—</td>
+              <td><span class="gauge-chip chip-amber">2.5</span></td>
+              <td class="sn">—</td>
+              <td><span class="tag" style="background:#f8f6f2;color:#9e8c6c">Ivory</span></td>
+              <td class="qty-val">25</td>
+              <td class="sn">—</td>
+              <td class="yarn-req">10</td>
+              <td class="sn">—</td>
+              <td class="sn">—</td>
+              <td class="sn">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  function selectMonth(btn) {
+    btn.closest('.month-section').querySelectorAll('.month-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  function toggleOrderDropdown() {
+    document.getElementById('orderDropdown').classList.toggle('open');
+  }
+  function toggleOrderItem(el, event) {
+    event.stopPropagation();
+    el.classList.toggle('checked');
+    updateOrderTriggerText();
+    renderPerOrderFields();
+  }
+  function updateOrderTriggerText() {
+    const checked = [...document.querySelectorAll('.order-checkbox-item.checked')];
+    const text = document.getElementById('orderTriggerText');
+    if (checked.length === 0) {
+      text.textContent = '— Select Order —';
+      text.style.color = 'var(--muted)';
+    } else if (checked.length === 1) {
+      const name = checked[0].querySelector('.order-cb-name').textContent;
+      const qty  = checked[0].querySelector('.order-cb-qty').textContent;
+      text.textContent = name + ' (' + qty + ')';
+      text.style.color = 'var(--text)';
+    } else {
+      text.textContent = checked.length + ' orders selected';
+      text.style.color = 'var(--teal)';
+    }
+  }
+  function renderPerOrderFields() {
+    const checked = [...document.querySelectorAll('.order-checkbox-item.checked')];
+    const container = document.getElementById('perOrderFields');
+    const knitContainer = document.getElementById('knitDateFields');
+
+    // Render Knit Complete Date fields
+    knitContainer.innerHTML = '';
+    if (checked.length === 0) {
+      knitContainer.innerHTML =
+        '<div class="form-field">' +
+          '<label class="form-label">Knit Complete Date</label>' +
+          '<input class="form-input" type="date" value="2026-05-15" />' +
+        '</div>';
+    } else {
+      checked.forEach(function(item) {
+        const po = item.querySelector('.order-cb-name').textContent;
+        const field = document.createElement('div');
+        field.className = 'form-field';
+        field.innerHTML =
+          '<label class="form-label">Knit Complete Date – <span class="po-highlight">' + po + '</span></label>' +
+          '<input class="form-input" type="date" value="2026-05-15" />';
+        knitContainer.appendChild(field);
+      });
+    }
+
+    // Render Production Date Planning fields
+    container.innerHTML = '';
+    if (checked.length === 0) {
+      container.innerHTML = '<div class="pdp-empty"><div class="pdp-empty-icon">📋</div><div class="pdp-empty-text">Select orders to plan dates</div></div>';
+      return;
+    }
+    checked.forEach(function(item) {
+      const po = item.querySelector('.order-cb-name').textContent;
+      const block = document.createElement('div');
+      block.className = 'per-order-block';
+      block.innerHTML =
+        '<div class="form-field" style="border-top:none">' +
+          '<label class="form-label">Required Completion Date of <span class="po-highlight">' + po + '</span></label>' +
+          '<input class="form-input editable" type="date" placeholder="Enter date" />' +
+        '</div>' +
+        '<div class="form-field" style="border-top:none">' +
+          '<label class="form-label">OT Hours of <span class="po-highlight">' + po + '</span> </label>' +
+          '<input class="form-input editable" type="number" min="0" placeholder="Enter OT hours" oninput="toggleKnitOT(this)" />' +
+        '</div>' +
+        '<div class="form-field knit-ot-field" style="display:none;">' +
+          '<label class="form-label">Knit Completion Date of <span class="po-highlight">' + po + '</span> <span class="form-hint-ot">with OT</span></label>' +
+          '<input class="form-input" type="date" />' +
+        '</div>' +
+        '<div class="per-order-header">' +
+          '<span class="per-order-po">Production Planning of ' + po + '</span>' +
+        '</div>';
+      container.appendChild(block);
+    });
+  }
+  // close dropdown on outside click
+  document.addEventListener('click', function(e) {
+    const dd = document.getElementById('orderDropdown');
+    if (dd && !dd.contains(e.target)) dd.classList.remove('open');
+  });
+  // init on load
+  renderPerOrderFields();
+  function openMachineModal() {
+    document.getElementById('machineModal').classList.add('open');
+  }
+  function closeMachineModal(e) {
+    if (e.target === document.getElementById('machineModal')) {
+      document.getElementById('machineModal').classList.remove('open');
+    }
+  }
+  function toggleKnitOT(input) {
+    const block = input.closest('.per-order-block');
+    if (!block) return;
+    const kitField = block.querySelector('.knit-ot-field');
+    if (!kitField) return;
+    kitField.style.display = (input.value && input.value > 0) ? '' : 'none';
+  }
+  function updateLoad(input) {
+    const v = Math.min(100, Math.max(0, input.value));
+    document.getElementById('deptBar').style.width = v + '%';
+  }
+</script>
+
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"499e684b7b1043878977050a0a606794","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>

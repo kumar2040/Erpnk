@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Data;
 
 var connectionString = "Server=localhost,1433;Database=NkplmErp;User Id=SA;Password=Password123;MultipleActiveResultSets=True;TrustServerCertificate=True";

@@ -359,15 +359,30 @@
                     <span class="oi oi-fullscreen-enter"></span>
                 </button>
             </div>
-            <div class="flex-1 overflow-auto px-1 pb-1">
-                 
+            <div class="flex-1 overflow-auto px-1 pb-1 flex flex-col items-center justify-center gap-3">
+                <a href="/order-planning" class="flex items-center gap-3 px-8 py-3 text-white font-bold rounded shadow-lg hover:shadow-indigo-500/20 hover:scale-[1.02] transition-all text-xs uppercase tracking-widest border border-white/10"
+                   style="background: linear-gradient(135deg, #002d54 0%, #1e40af 100%); min-width: 250px; justify-content: center;">
+                    <i class="fa-solid fa-calendar-check text-sm"></i>
+                    Go to Order Planning
+                </a>
+                <a href="/for-master-planing" class="flex items-center gap-3 px-8 py-3 text-white font-bold rounded shadow-lg hover:shadow-teal-500/20 hover:scale-[1.02] transition-all text-xs uppercase tracking-widest border border-white/10"
+                   style="background: linear-gradient(135deg, #115e59 0%, #2ab3b1 100%); min-width: 250px; justify-content: center;">
+                    <i class="fa-solid fa-user-gear text-sm"></i>
+                    Master Dash
+                </a>
+                <a href="/knit-gantt-chart" class="flex items-center gap-3 px-8 py-3 text-white font-bold rounded shadow-lg hover:shadow-amber-500/20 hover:scale-[1.02] transition-all text-xs uppercase tracking-widest border border-white/10"
+                   style="background: linear-gradient(135deg, #92400e 0%, #f0a500 100%); min-width: 250px; justify-content: center;">
+                    <i class="fa-solid fa-chart-gantt text-sm"></i>
+                    Machine Load
+                </a>
+                <p class="text-[10px] text-slate-400 font-medium italic">Production Schedule Management</p>
             </div>
         </div>
 
     </div>
 </div>
 
-<DataModal @bind-IsVisible="showModal" Title="Order Status Details" IsLoading="false" FullScreen="true">
+<DataModal @bind-IsVisible="showModal" Title="Order Status Details" IsLoading="false" MaxWidth="95vw" FullScreen="true">
     <ChildContent>
         <div class="max-h-[85vh] overflow-y-auto">
             <!-- Header if needed -->
@@ -544,7 +559,7 @@
     Title="Production Flow"
     IsLoading="false" FullScreen="false" MaxWidth="95vw" ZIndex="2200">
     <ChildContent>
-        <div class="max-w mx-auto">
+        <div class="w-full h-full min-w-0">
     
             <div class="flex flex-col md:flex-row gap-4 p-2">
     
@@ -642,7 +657,7 @@
                                     <button @onclick="() => showMoreOrdersMenu = !showMoreOrdersMenu"
                                             class="py-3 px-4 text-[11px] font-black text-indigo-600 hover:bg-indigo-50 transition-colors flex items-center gap-2 @(isAnyOverflowSelected ? "bg-indigo-50" : "")">
                                         More+
-                                        <i class="fa-solid fa-chevron-down text-[9px] @(showMoreOrdersMenu ? "rotate-180" : "") transition-transform"></i>
+                                        <span class="oi oi-chevron-bottom text-[8px] @(showMoreOrdersMenu ? "rotate-180" : "") transition-transform"></span>
                                         @if (isAnyOverflowSelected)
                                         {
                                             <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600"></div>
@@ -659,7 +674,7 @@
                                                     <span>@order</span>
                                                     @if (order == SelectedFlowOrderNo)
                                                     {
-                                                        <i class="fa-solid fa-check text-[10px]"></i>
+                                                        <span class="oi oi-check text-[9px]"></span>
                                                     }
                                                 </button>
                                             }
@@ -682,7 +697,10 @@
                             </div>
                         </div>
                     }
-                    <ProductionFlow Items="@ProductionFlowList" />
+                    <ProductionFlow Items="@ProductionFlowList" 
+                                    OnShowOrderDetails="ShowOrderDetails"
+                                    OnShowOrderAnalysis="ShowOrderAnalysis"
+                                    OnStyleSelected="ShowStyleDetails" />
                 </div>
             </div>
     
@@ -692,20 +710,7 @@
 </DataModal>
 
 <DataModal @bind-IsVisible="showHistoryModal" Title="@($"Order History - {SelectedBuyerName}")" IsLoading="false" ZIndex="2400">
-    <HeaderExtra>
-        <button @onclick="() => isHistoryGridView = !isHistoryGridView" 
-                class="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-none border border-blue-200 bg-white shadow-sm hover:bg-blue-50 transition-all text-blue-700 ml-4"
-                title="@(isHistoryGridView ? "Switch to Graph View" : "Switch to Table View")">
-            @if (isHistoryGridView)
-            {
-                <i class="fa-solid fa-chart-line"></i>
-            }
-            else
-            {
-                <i class="fa-solid fa-table-list"></i>
-            }
-        </button>
-    </HeaderExtra>
+     
     <ChildContent>
         <div class="bg-white flex-1 min-w-0 bg-white rounded-none shadow border border-gray-200">  
             <div class="p-1">
@@ -717,26 +722,77 @@
                 else
                 {
          
-                  <div class="flex flex-row bg-blue-50/40 rounded-none border-l-4 border-l-blue-500 border border-blue-100 px-4 py-2 mb-4 shadow-sm overflow-hidden items-center justify-between">
-                    <div class="flex items-center gap-6">
-                        <div class="flex items-center gap-2">
-                            <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">1st P.O:</span>
-                            <span class="text-[12px] font-black text-slate-900">@SelectedBuyerProfile?.JoinedDate</span>
+                  <div class="flex flex-row bg-blue-50/40 rounded-none border-l-4 border-l-blue-500 border border-blue-100 px-4 py-2 mb-2 shadow-sm items-center justify-between relative z-10">
+                    <div class="flex items-center gap-4">
+                        <button @onclick="() => isHistoryGridView = !isHistoryGridView" 
+                                class="w-8 h-8 flex items-center justify-center bg-white text-indigo-600 rounded-none shadow-sm border border-indigo-100 hover:bg-red-600 hover:text-white transition-all group"
+                                title="@(isHistoryGridView ? "Switch to Graph View" : "Switch to Table View")">
+                            <i class="fa-solid @(isHistoryGridView ? "fa-arrow-up-right-dots text-red-600" : "fa-table-list")"></i>
+                        </button>
+                        <div class="flex items-center gap-6">
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">1st P.O:</span>
+                                <span class="text-[12px] font-black text-slate-900">@SelectedBuyerProfile?.JoinedDate</span>
+                            </div>
+                            <div class="w-px h-4 bg-blue-200"></div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Recent P.O:</span>
+                                <span class="text-[12px] font-black text-slate-900">@SelectedBuyerProfile?.RecentDate</span>
+                            </div>
                         </div>
-                        <div class="w-px h-4 bg-blue-200"></div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Recent P.O:</span>
-                            <span class="text-[12px] font-black text-slate-900">@SelectedBuyerProfile?.RecentDate</span>
-                        </div>
-                    </div>
-                
-                    <div class="flex items-center">
+                    <div class="flex items-center gap-1">
                       <a href="mailto:@SelectedBuyerProfile?.CustomerEmail" 
-                         class="w-7 h-7 flex items-center justify-center bg-white text-blue-600 text-xs hover:bg-blue-600 hover:text-white transition-all shadow-sm border border-blue-200" 
+                         class="w-8 h-8 flex items-center justify-center bg-white text-blue-600 text-xs hover:bg-blue-600 hover:text-white transition-all shadow-sm border border-blue-200" 
                          title="Send Email">
                         <i class="fa-solid fa-envelope"></i>
                       </a>
+                      
+                      @if (!isHistoryGridView)
+                      {
+                        <div class="relative">
+                            <button @onclick="() => showHistoryFilterDropdown = !showHistoryFilterDropdown" 
+                                    class="w-8 h-8 flex items-center justify-center bg-white text-slate-600 rounded-none shadow-sm border border-slate-200 hover:bg-slate-50 transition-all ml-1"
+                                    title="Filter Categories">
+                                <i class="fa-solid fa-filter text-xs"></i>
+                            </button>
+                            
+                            @if (showHistoryFilterDropdown)
+                            {
+                                <div class="absolute top-full right-0 mt-1 w-40 bg-white shadow-xl border border-slate-200 z-[9999] py-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                    <div class="px-3 py-1 mb-1 border-b border-slate-100">
+                                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Categories</span>
+                                    </div>
+                                    <button class="w-full text-left px-4 py-2 text-[11px] font-bold hover:bg-slate-50 flex items-center gap-3 group" @onclick='() => ToggleHistoryFilter("All")'>
+                                        <i class="fa-solid @(showHistoryAll ? "fa-square-check text-[#2e2b8e]" : "fa-square text-slate-300") text-[14px]"></i>
+                                        <span class="@(showHistoryAll ? "text-[#2e2b8e]" : "text-slate-600")">All</span>
+                                    </button>
+                                    <button class="w-full text-left px-4 py-2 text-[11px] font-bold hover:bg-slate-50 flex items-center gap-3 group" @onclick='() => ToggleHistoryFilter("Knit")'>
+                                        <i class="fa-solid @(showHistoryKnit ? "fa-square-check text-red-600" : "fa-square text-slate-300") text-[14px]"></i>
+                                        <span class="@(showHistoryKnit ? "text-red-600" : "text-slate-600")">Knit</span>
+                                    </button>
+                                    <button class="w-full text-left px-4 py-2 text-[11px] font-bold hover:bg-slate-50 flex items-center gap-3 group" @onclick='() => ToggleHistoryFilter("Weave")'>
+                                        <i class="fa-solid @(showHistoryWeave ? "fa-square-check text-blue-600" : "fa-square text-slate-300") text-[14px]"></i>
+                                        <span class="@(showHistoryWeave ? "text-blue-600" : "text-slate-600")">Weave</span>
+                                    </button>
+                                    <button class="w-full text-left px-4 py-2 text-[11px] font-bold hover:bg-slate-50 flex items-center gap-3 group" @onclick='() => ToggleHistoryFilter("Silk")'>
+                                        <i class="fa-solid @(showHistorySilk ? "fa-square-check text-emerald-600" : "fa-square text-slate-300") text-[14px]"></i>
+                                        <span class="@(showHistorySilk ? "text-emerald-600" : "text-slate-600")">Silk</span>
+                                    </button>
+                                    <button class="w-full text-left px-4 py-2 text-[11px] font-bold hover:bg-slate-50 flex items-center gap-3 group" @onclick='() => ToggleHistoryFilter("Linen")'>
+                                        <i class="fa-solid @(showHistoryLinen ? "fa-square-check text-amber-600" : "fa-square text-slate-300") text-[14px]"></i>
+                                        <span class="@(showHistoryLinen ? "text-amber-600" : "text-slate-600")">Linen</span>
+                                    </button>
+                                    <button class="w-full text-left px-4 py-2 text-[11px] font-bold hover:bg-slate-50 flex items-center gap-3 group" @onclick='() => ToggleHistoryFilter("Other")'>
+                                        <i class="fa-solid @(showHistoryOther ? "fa-square-check text-[#8b5cf6]" : "fa-square text-slate-300") text-[14px]"></i>
+                                        <span class="@(showHistoryOther ? "text-[#8b5cf6]" : "text-slate-600")">Other</span>
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                      }
                     </div>
+                    </div>
+                    
                 </div>
                   }
                 </div>
@@ -766,7 +822,7 @@
         
                         <div class="bg-white rounded-none shadow-sm border border-slate-200 quick-grid-container" style="max-height: calc(100vh - 200px);">
                             <QuickGrid Items="@SelectedBuyerHistory" class="quick-grid w-full" style="table-layout: fixed;">
-                                <PropertyColumn Property="@(h => h.SN)" Title="SN" Sortable="true" Align="Align.Center" Class="col-sn" />
+                                <PropertyColumn Property="@(h => h.SN)" Title="SN"   Align="Align.Center" Class="col-sn" />
                                 <TemplateColumn Title="Year" Align="Align.Center" Class="col-year">
                                     <button type="button" class="text-blue-600 hover:text-blue-800 hover:underline text-left text-xs font-bold" @onclick="() => ShowYearlyHistory(context)">
                                         @context.Year
@@ -803,12 +859,10 @@
                     else
                     {
                         <div class="h-[350px]">
-                            <LineGraph Title="@($"Production Trend: {SelectedBuyerName}")" 
-                                       DataPoints="@BuyerHistoryGraphData" 
-                                       XLabel="Year"
-                                       YLabel="TOTAL QTY"
-                                       StrokeColor="#2e2b8e" 
-                                       FillColor="#2e2b8e" />
+                            <MultiLineGraph Title="@($"Production Trend: {SelectedBuyerName}")" 
+                                           Series="@BuyerHistoryMultiGraphData" 
+                                           XLabel="Year"
+                                           YLabel="TOTAL QTY" />
                         </div>
                     }
                 }
@@ -825,20 +879,7 @@
     </ChildContent>
 </DataModal>
 <DataModal @bind-IsVisible="showYearHistoryModal" Title="@($"Year History - {SelectedBuyerName} ({SelectedYear})")" IsLoading="false" ZIndex="2600">
-    <HeaderExtra>
-        <button @onclick="() => isYearHistoryGridView = !isYearHistoryGridView" 
-                class="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-none border border-blue-200 bg-white shadow-sm hover:bg-blue-50 transition-all text-blue-700 ml-4"
-                title="@(isYearHistoryGridView ? "Switch to Graph View" : "Switch to Table View")">
-            @if (isYearHistoryGridView)
-            {
-                <i class="fa-solid fa-chart-line"></i>
-            }
-            else
-            {
-                <i class="fa-solid fa-table-list"></i>
-            }
-        </button>
-    </HeaderExtra>
+     
     <ChildContent>
         <div class="bg-white flex-1 min-w-0 bg-white rounded-none shadow border border-gray-200 overflow-hidden">  
             <div class="p-1">
@@ -849,27 +890,78 @@
                 }
                 else
                 {
-                   <div class="flex flex-row bg-blue-50/40 rounded-none border-l-4 border-l-blue-500 border border-blue-100 px-4 py-2 mb-4 shadow-sm overflow-hidden items-center justify-between">
-                    <div class="flex items-center gap-6">
-                        <div class="flex items-center gap-2">
-                            <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">1st P.O:</span>
-                            <span class="text-[12px] font-black text-slate-900">@SelectedBuyerProfile?.JoinedDate</span>
+                   <div class="flex flex-row bg-blue-50/40 rounded-none border-l-4 border-l-blue-500 border border-blue-100 px-4 py-2 mb-2 shadow-sm items-center justify-between relative z-10">
+                    <div class="flex items-center gap-4">
+                        <button @onclick="() => isYearHistoryGridView = !isYearHistoryGridView" 
+                                class="w-8 h-8 flex items-center justify-center bg-white text-indigo-600 rounded-none shadow-sm border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all group"
+                                title="@(isYearHistoryGridView ? "Switch to Graph View" : "Switch to Table View")">
+                            <i class="fa-solid @(isYearHistoryGridView ? "fa-arrow-up-right-dots text-red-600" : "fa-table-list")"></i>
+                        </button>
+                        <div class="flex items-center gap-6">
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">1st P.O:</span>
+                                <span class="text-[12px] font-black text-slate-900">@SelectedBuyerProfile?.JoinedDate</span>
+                            </div>
+                            <div class="w-px h-4 bg-blue-200"></div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Recent P.O:</span>
+                                <span class="text-[12px] font-black text-slate-900">@SelectedBuyerProfile?.RecentDate</span>
+                            </div>
                         </div>
-                        <div class="w-px h-4 bg-blue-200"></div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Recent P.O:</span>
-                            <span class="text-[12px] font-black text-slate-900">@SelectedBuyerProfile?.RecentDate</span>
-                        </div>
-                    </div>
-                
-                    <div class="flex items-center">
-                         <a href="mailto:@SelectedBuyerProfile?.CustomerEmail" 
-                         class="w-7 h-7 flex items-center justify-center bg-white text-blue-600 text-xs hover:bg-blue-600 hover:text-white transition-all shadow-sm border border-blue-200" 
-                         title="Send Email">
+                        <div class="flex items-center gap-1">
+                        <a href="mailto:@SelectedBuyerProfile?.CustomerEmail" 
+                        class="w-8 h-8 flex items-center justify-center bg-white text-blue-600 text-xs hover:bg-blue-600 hover:text-white transition-all shadow-sm border border-blue-200" 
+                        title="Send Email">
                         <i class="fa-solid fa-envelope"></i>
                       </a>
-                    
+                      
+                      @if (!isYearHistoryGridView)
+                      {
+                        <div class="relative">
+                            <button @onclick="() => showYearHistoryFilterDropdown = !showYearHistoryFilterDropdown" 
+                                    class="w-8 h-8 flex items-center justify-center bg-white text-slate-600 rounded-none shadow-sm border border-slate-200 hover:bg-slate-50 transition-all ml-1"
+                                    title="Filter Categories">
+                                <i class="fa-solid fa-filter text-xs"></i>
+                            </button>
+                            
+                            @if (showYearHistoryFilterDropdown)
+                            {
+                                <div class="absolute top-full right-0 mt-1 w-40 bg-white shadow-xl border border-slate-200 z-[9999] py-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                    <div class="px-3 py-1 mb-1 border-b border-slate-100">
+                                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Categories</span>
+                                    </div>
+                                    <button class="w-full text-left px-4 py-2 text-[11px] font-bold hover:bg-slate-50 flex items-center gap-3 group" @onclick='() => ToggleYearHistoryFilter("All")'>
+                                        <i class="fa-solid @(showYearAll ? "fa-square-check text-[#2e2b8e]" : "fa-square text-slate-300") text-[14px]"></i>
+                                        <span class="@(showYearAll ? "text-[#2e2b8e]" : "text-slate-600")">All</span>
+                                    </button>
+                                    <button class="w-full text-left px-4 py-2 text-[11px] font-bold hover:bg-slate-50 flex items-center gap-3 group" @onclick='() => ToggleYearHistoryFilter("Knit")'>
+                                        <i class="fa-solid @(showYearKnit ? "fa-square-check text-red-600" : "fa-square text-slate-300") text-[14px]"></i>
+                                        <span class="@(showYearKnit ? "text-red-600" : "text-slate-600")">Knit</span>
+                                    </button>
+                                    <button class="w-full text-left px-4 py-2 text-[11px] font-bold hover:bg-slate-50 flex items-center gap-3 group" @onclick='() => ToggleYearHistoryFilter("Weave")'>
+                                        <i class="fa-solid @(showYearWeave ? "fa-square-check text-blue-600" : "fa-square text-slate-300") text-[14px]"></i>
+                                        <span class="@(showYearWeave ? "text-blue-600" : "text-slate-600")">Weave</span>
+                                    </button>
+                                    <button class="w-full text-left px-4 py-2 text-[11px] font-bold hover:bg-slate-50 flex items-center gap-3 group" @onclick='() => ToggleYearHistoryFilter("Silk")'>
+                                        <i class="fa-solid @(showYearSilk ? "fa-square-check text-emerald-600" : "fa-square text-slate-300") text-[14px]"></i>
+                                        <span class="@(showYearSilk ? "text-emerald-600" : "text-slate-600")">Silk</span>
+                                    </button>
+                                    <button class="w-full text-left px-4 py-2 text-[11px] font-bold hover:bg-slate-50 flex items-center gap-3 group" @onclick='() => ToggleYearHistoryFilter("Linen")'>
+                                        <i class="fa-solid @(showYearLinen ? "fa-square-check text-amber-600" : "fa-square text-slate-300") text-[14px]"></i>
+                                        <span class="@(showYearLinen ? "text-amber-600" : "text-slate-600")">Linen</span>
+                                    </button>
+                                    <button class="w-full text-left px-4 py-2 text-[11px] font-bold hover:bg-slate-50 flex items-center gap-3 group" @onclick='() => ToggleYearHistoryFilter("Other")'>
+                                        <i class="fa-solid @(showYearOther ? "fa-square-check text-[#8b5cf6]" : "fa-square text-slate-300") text-[14px]"></i>
+                                        <span class="@(showYearOther ? "text-[#8b5cf6]" : "text-slate-600")">Other</span>
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                      }
                     </div>
+                    </div>
+                
+                    
                 </div>
                 }
                 </div>
@@ -930,12 +1022,10 @@
                     else
                     {
                         <div class="h-[350px]">
-                            <LineGraph Title="@($"Monthly Trend: {SelectedBuyerName} ({SelectedYear})")"
-                                       DataPoints="@YearHistoryGraphData"
-                                       XLabel="Month"
-                                       YLabel="QUANTITY"
-                                       StrokeColor="#2e2b8e"
-                                       FillColor="#2e2b8e" />
+                            <MultiLineGraph Title="@($"Monthly Trend: {SelectedBuyerName} ({SelectedYear})")"
+                                           Series="@YearHistoryMultiGraphData"
+                                           XLabel="Month"
+                                           YLabel="QUANTITY" />
                         </div>
                     }
                 }
@@ -1030,6 +1120,265 @@
                 <div class="py-12 text-center text-gray-400">
                     <span class="oi oi-inbox text-3xl block mb-2 opacity-10"></span>
                     <p class="text-xs font-medium">No running orders found</p>
+                </div>
+            }
+        </div>
+    </ChildContent>
+</DataModal>
+
+<!-- STYLE DETAILS POPUP -->
+<DataModal @bind-IsVisible="IsStyleModalVisible" 
+           Title="@($"Style Details - {SelectedStyleNo}")"
+           BadgeText="@SelectedStyleDetails?.GeneralInfo?.StyleId.ToString()"
+           IsLoading="IsLoadingStyleDetails"
+           MaxWidth="1200px"
+           ZIndex="2700">
+    <ChildContent>
+        <div class="flex-1 w-full relative min-h-[500px] bg-white overflow-y-auto" style="height: calc(90vh - 100px);">
+            @if (SelectedStyleDetails != null && !IsLoadingStyleDetails)
+            {
+                <div class="p-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <!-- Left Column: Image & Basic Info -->
+                        <div class="space-y-6">
+                            <div class="bg-slate-50 border border-slate-200 aspect-square rounded-none flex items-center justify-center relative group overflow-hidden">
+                                    <div class="flex flex-col items-center gap-3 opacity-20">
+                                        <i class="fa-solid fa-image text-5xl"></i>
+                                        <span class="text-[10px] font-black uppercase tracking-widest">Image Details</span>
+                                    </div>
+                            </div>
+
+                            <div class="bg-white border border-slate-200 p-5 rounded-none">
+                                <h3 class="text-xs font-black text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                    <span class="w-1.5 h-1.5 bg-indigo-600"></span>
+                                    Identity Details
+                                </h3>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between items-center text-xs">
+                                        <span class="text-slate-400 font-bold uppercase tracking-tighter">Style Number</span>
+                                        <span class="font-black text-slate-900">@SelectedStyleDetails?.GeneralInfo?.StyleNo</span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-xs">
+                                        <span class="text-slate-400 font-bold uppercase tracking-tighter">Product</span>
+                                        <span class="font-black text-slate-900">@SelectedStyleDetails?.GeneralInfo?.StylePrint</span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-xs">
+                                        <span class="text-slate-400 font-bold uppercase tracking-tighter">Composition</span>
+                                        <span class="font-black text-slate-900">@SelectedStyleDetails?.GeneralInfo?.Yarn</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column: Tech Specs -->
+                        <div class="space-y-6">
+                            <div class="bg-indigo-950 text-white p-5 rounded-none shadow-xl shadow-indigo-900/10">
+                                <h3 class="text-xs font-black uppercase tracking-widest mb-4 opacity-60">Technical Specifications</h3>
+                                <div class="grid grid-cols-2 gap-x-8 gap-y-4">
+                                    <div>
+                                        <span class="block text-[10px] opacity-40 font-black uppercase mb-1">Gauge</span>
+                                        <span class="text-lg font-black tracking-tight">@SelectedStyleDetails?.GeneralInfo?.StyleGuage</span>
+                                    </div>
+                                    <div>
+                                        <span class="block text-[10px] opacity-40 font-black uppercase mb-1">Net Weight</span>
+                                        <span class="text-lg font-black tracking-tight">@SelectedStyleDetails?.GeneralInfo?.NetWet</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            else if (IsLoadingStyleDetails)
+            {
+                <div class="p-6 space-y-6">
+                    <Skeleton Type="Skeleton.SkeletonType.Rectangle" Height="300px" />
+                    <Skeleton Type="Skeleton.SkeletonType.Table" Rows="5" />
+                </div>
+            }
+        </div>
+    </ChildContent>
+</DataModal>
+
+<!-- ORDER DETAIL POPUP (HOISTED FOR SEPARATION) -->
+<DataModal @bind-IsVisible="IsOrderDetailVisible" 
+           Title="@($"Order Details - {SelectedOrderNo}")"
+           IsLoading="IsLoadingOrderDetail"
+           MaxWidth="1200px"
+           ZIndex="2500">
+    <ChildContent>
+        <div class="flex-1 w-full relative min-h-[500px] bg-white" style="height: calc(90vh - 120px);">
+            @if (IsOrderDetailVisible && !IsLoadingOrderDetail)
+            {
+                <div class="absolute inset-2 sm:inset-4 flex flex-col overflow-hidden">
+                    <div class="bg-white rounded-none border border-slate-200 p-3 flex flex-wrap lg:flex-nowrap justify-between items-center gap-4 shrink-0 mb-4">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-indigo-50 rounded-none flex items-center justify-center border border-indigo-100">
+                                <i class="fa-solid fa-file-invoice text-indigo-500 text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-black text-slate-900 uppercase tracking-tight">Order Information</h3>
+                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Summary View</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-6 divide-x divide-slate-100">
+                            <div class="px-4">
+                                <span class="block text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">Total Pieces</span>
+                                <span class="block text-lg font-black text-slate-900 tabular-nums">@SelectedOrderDetails.Sum(x => x.Qty).ToString("N0")</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-none border border-slate-200 quick-grid-container flex-1 flex flex-col overflow-hidden min-h-0">
+                        <div class="flex-1 min-h-0 overflow-y-auto">
+                            <QuickGrid Items="@SelectedOrderDetails.AsQueryable()" class="quick-grid w-full">
+                                <PropertyColumn Property="@(x => x.SN)" Title="S.N" Class="col-sn-ov" />
+                                <PropertyColumn Property="@(x => x.StyleNo)" Title="Style" Sortable="true" Class="col-style-ov font-black text-slate-800" />
+                                <PropertyColumn Property="@(x => x.ProductName)" Title="Product" Sortable="true" Class="col-product-ov text-slate-600" />
+                                <PropertyColumn Property="@(x => x.Color)" Title="Color" Sortable="true" Class="col-color-ov" />
+                                <PropertyColumn Property="@(x => x.Guage)" Title="Gg" Align="Align.Center" Class="col-guage-ov" />
+                                <PropertyColumn Property="@(x => x.Ply)" Title="Ply" Align="Align.Center" Class="col-ply-ov" />
+                                <PropertyColumn Property="@(x => x.Yarn)" Title="Yarn" Class="col-yarn-ov text-[10px]" />
+                                
+                                @foreach (var size in sizeHeaders)
+                                {
+                                    <TemplateColumn Title="@size" Align="Align.Center" Class="col-size-ov">
+                                        @{
+                                            var val = context.Sizes.TryGetValue(size, out var v) ? v : 0;
+                                            <span class="@(val > 0 ? "font-bold text-slate-900" : "text-slate-300")">@(val > 0 ? val.ToString("N0") : "-")</span>
+                                        }
+                                    </TemplateColumn>
+                                }
+
+                                <PropertyColumn Property="@(x => x.Qty)" Title="Pieces" Sortable="true" Align="Align.Center" Format="N0" Class="col-pieces-ov font-black text-indigo-600 bg-indigo-50/30" />
+                                <PropertyColumn Property="@(x => x.KnSl)" Title="Kn/Sl" Class="col-knsl-ov text-slate-600" />
+                                <PropertyColumn Property="@(x => x.DaysRequired)" Title="Days Req" Align="Align.Center" Class="col-daysreq-ov font-semibold text-indigo-600" />
+                            </QuickGrid>
+
+                            <div class="footer-container shrink-0">
+                                <table class="grand-total-table w-full">
+                                    <tr>
+                                        <td class="col-sn-ov"></td>
+                                        <td class="col-style-ov"></td>
+                                        <td class="col-product-ov"></td>
+                                        <td class="col-color-ov"></td>
+                                        <td class="col-guage-ov"></td>
+                                        <td class="col-ply-ov"></td>
+                                        <td class="col-yarn-ov footer-label font-black text-right pr-4 uppercase tracking-widest text-[#002d54]">Grand Totals</td>
+                                        @foreach (var size in sizeHeaders)
+                                        {
+                                            <td class="footer-val-size col-size-ov text-center">@SelectedOrderDetails.Sum(x => x.Sizes.TryGetValue(size, out var val) ? val : 0)</td>
+                                        }
+                                        <td class="footer-val-total col-pieces-ov text-center font-black text-slate-900 bg-slate-100">@SelectedOrderDetails.Sum(x => x.Qty)</td>
+                                        <td class="col-knsl-ov"></td>
+                                        <td class="col-daysreq-ov"></td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            else if (IsLoadingOrderDetail)
+            {
+                <div class="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-50">
+                    <div class="flex flex-col items-center gap-3">
+                        <div class="w-12 h-12 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
+                        <p class="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Loading Data</p>
+                    </div>
+                </div>
+            }
+        </div>
+    </ChildContent>
+</DataModal>
+
+<!-- PRICE ANALYSIS POPUP (HOISTED FOR SEPARATION) -->
+<DataModal @bind-IsVisible="IsAnalysisPopupVisible" 
+           Title="@($"Price Analysis - {SelectedOrderNo}")"
+           IsLoading="IsLoadingAnalysis"
+           MaxWidth="1200px"
+           ZIndex="3000">
+    <ChildContent>
+        <div class="flex-1 w-full relative min-h-[500px] bg-white" style="height: calc(90vh - 120px);">
+            @if (IsAnalysisPopupVisible && !IsLoadingAnalysis)
+            {
+                <div class="absolute inset-2 sm:inset-4 flex flex-col overflow-hidden">
+                    <div class="bg-white rounded-none border border-slate-200 quick-grid-container flex-1 flex flex-col overflow-hidden min-h-0 @(IsAnalysisUnmasked ? "" : "blur-md pointer-events-none") transition-all duration-500">
+                        <div class="flex-1 min-h-0 overflow-y-auto">
+                            <QuickGrid Items="@AnalysisItems.AsQueryable()" class="quick-grid w-full">
+                                <PropertyColumn Property="@(x => x.SN)" Title="S.N" Class="col-sn-an" />
+                                <PropertyColumn Property="@(x => x.ProductName)" Title="Product" Class="col-style-an font-black text-slate-800" />
+                                <PropertyColumn Property="@(x => x.StyleGuage)" Title="Gg" Align="Align.Center" Class="col-guage-an" />
+                                <PropertyColumn Property="@(x => x.StylePly)" Title="Ply" Align="Align.Center" Class="col-ply-an" />
+                                <PropertyColumn Property="@(x => x.YarnInfo)" Title="Yarn" Class="col-yarn-an" />
+                                <PropertyColumn Property="@(x => x.NetWet)" Title="Wt" Align="Align.Right" Class="col-wt-an" />
+                                <PropertyColumn Property="@(x => x.TotalQuantity)" Title="Qty" Align="Align.Center" Format="N0" Class="col-qty-an" />
+                                <PropertyColumn Property="@(x => x.OverratePerPcUsd)" Title="Overhead" Align="Align.Right" Format="C2" Class="col-overhead-an" />
+                                <PropertyColumn Property="@(x => x.FinalCostPerPcUsd)" Title="Cost/Pc" Align="Align.Right" Format="C2" Class="col-prod-cost-an font-bold text-emerald-600" />
+                                <PropertyColumn Property="@(x => x.TotalRevenueUsd)" Title="Revenue" Align="Align.Right" Format="C2" Class="col-value-an font-black text-slate-900 bg-slate-50" />
+                            </QuickGrid>
+
+                            <div class="footer-container shrink-0 relative @(IsAnalysisUnmasked ? "" : "pointer-events-none") z-10">
+                                <table class="grand-total-table w-full">
+                                    <tr>
+                                        <td class="col-sn-an"></td>
+                                        <td class="col-style-an"></td>
+                                        <td class="col-guage-an"></td>
+                                        <td class="col-ply-an"></td>
+                                        <td class="col-yarn-an"></td>
+                                        <td class="col-wt-an"></td>
+                                        <td class="col-qty-an footer-val-total text-center font-bold">@AnalysisItems.Sum(x => (decimal)x.TotalQuantity).ToString("N0")</td>
+                                        <td class="col-overhead-an"></td>
+                                        <td class="col-prod-cost-an footer-label font-black text-right pr-4 uppercase tracking-widest text-[#002d54]">Total Value</td>
+                                        <td class="col-value-an footer-val-total text-right font-black text-emerald-700 bg-emerald-50">@AnalysisItems.Sum(x => x.TotalRevenueUsd).ToString("C2")</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (!IsAnalysisUnmasked)
+                {
+                    <div class="absolute inset-0 z-[4000] flex items-center justify-center bg-white/60 backdrop-blur-md">
+                        <div class="bg-white p-8 rounded-3xl shadow-2xl border border-slate-200 flex flex-col items-center gap-6 max-w-sm w-full mx-4 transform transition-all duration-300 scale-100 shadow-indigo-100">
+                            <div class="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center">
+                                <i class="fa-solid fa-lock text-indigo-600 text-2xl"></i>
+                            </div>
+                            <div class="text-center">
+                                <h3 class="text-lg font-black text-slate-900">Protected Content</h3>
+                                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Security PIN Required</p>
+                            </div>
+                            
+                            <div class="w-full space-y-4">
+                                <input type="password" 
+                                       class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl text-center text-2xl font-black tracking-[0.5em] focus:border-indigo-500 focus:bg-white outline-none transition-all"
+                                       placeholder="••••"
+                                       @bind="AnalysisPinInput"
+                                       @onkeyup="@(e => e.Key == "Enter" ? VerifyAnalysisPin() : Task.CompletedTask)" />
+                                
+                                @if (!string.IsNullOrEmpty(AnalysisPinError))
+                                {
+                                    <p class="text-center text-[10px] font-black text-red-500 uppercase tracking-wider">@AnalysisPinError</p>
+                                }
+
+                                <button class="w-full py-4 bg-slate-900 text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-200"
+                                        @onclick="VerifyAnalysisPin">
+                                    Unlock Data
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+            else if (IsLoadingAnalysis)
+            {
+                <div class="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-50">
+                    <div class="flex flex-col items-center gap-3">
+                        <div class="w-12 h-12 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
+                        <p class="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Analyzing Data</p>
+                    </div>
                 </div>
             }
         </div>

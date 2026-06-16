@@ -1,0 +1,633 @@
+@page "/for-master-planing"
+@using NkplmErp.Shared.DTOs
+@using NkplmErp.Blazor.Services.ProductionPlanning
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@namespace NkplmErp.Blazor.Pages
+
+<style>
+    :root {
+        --navy:   #1a3353;
+        --teal:   #2ab3b1;
+        --sky:    #e8f4fb;
+        --bg:     #f4f6f9;
+        --border: #dde3ec;
+        --muted:  #7a8fa6;
+    }
+
+    .mp-page {
+        background-color: var(--bg) !important;
+        color: #222 !important;
+        font-family: 'Inter', system-ui, sans-serif !important;
+        font-size: 13px !important;
+        min-height: 100%;
+    }
+
+    .mp-panel {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .mp-header {
+        background: linear-gradient(90deg, var(--navy) 0%, #234a73 100%);
+        color: #fff;
+        padding: 11px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 3px solid var(--teal);
+    }
+    .mp-header .title { display: flex; align-items: center; gap: 8px; }
+    .mp-header .title i { color: var(--teal); }
+    .mp-count { background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.2); border-radius: 20px;
+        padding: 4px 12px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+
+    .mp-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+    }
+
+    .mp-table thead th {
+        background: var(--navy);
+        color: #fff;
+        font-weight: 700;
+        padding: 6px 8px;
+        text-align: left;
+        white-space: nowrap;
+        position: sticky;
+        top: 0;
+        z-index: 5;
+    }
+
+    .mp-table tbody td {
+        padding: 5px 8px;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+    }
+
+    .mp-table tbody tr:hover { background: var(--sky); }
+
+    .mp-split {
+        display: grid;
+        grid-template-columns: minmax(320px, 420px) 1fr;
+        gap: 12px;
+        align-items: start;
+    }
+    .mp-left, .mp-right { min-height: 200px; }
+
+    /* Tablet / small laptop: stack the two panels, left list on top. */
+    @@media (max-width: 900px) {
+        .mp-split { grid-template-columns: 1fr; }
+        .mp-left .mp-scroll { max-height: 38vh !important; }
+        .mp-right .mp-scroll { max-height: none !important; }
+
+        /* Keep Prev/Next reachable: pin the nav bar to the bottom of the screen */
+        .mp-navbar {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 60;
+            box-shadow: 0 -4px 12px rgba(26,51,83,.15);
+        }
+        .mp-right { padding-bottom: 56px; }
+    }
+
+    /* Phone: tighter padding and smaller controls. */
+    @@media (max-width: 560px) {
+        .mp-page { font-size: 12px !important; }
+        .mp-detail-head { gap: 6px; }
+        .mp-search .mp-input { width: 150px !important; }
+        .mp-datewin { font-size: 11px; padding: 4px 8px; }
+    }
+
+    .mp-leftctrl {
+        background: #f8fafc;
+        border-bottom: 1px solid var(--border);
+        padding: 7px 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: nowrap;
+    }
+    .mp-leftctrl .mp-search { padding: 3px 8px; }
+    .mp-leftctrl .mp-datewin { padding: 4px 8px; font-size: 11px; }
+    .mp-leftctrl .mp-ic { padding: 5px 9px; }
+
+    .mp-row { cursor: pointer; }
+    /* Knitter already assigned: green row (selected teal state still wins) */
+    .mp-row-assigned { background: #e3f7ec !important; box-shadow: inset 3px 0 0 #3dbf8a; }
+    .mp-row-assigned td { color: #14532d !important; }
+    .mp-row-active { background: var(--teal) !important; }
+    .mp-row-active td { color: #fff !important; }
+
+    .mp-detail-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: nowrap;            /* always one row, no scrollbar */
+        gap: 6px;
+        padding: 6px 10px;
+        border-bottom: 1px solid var(--border);
+        background: #f8fafc;
+        font-size: 11px;
+        min-height: 48px;
+        box-sizing: border-box;
+        overflow: hidden;
+        white-space: nowrap;
+    }
+    .mp-detail-head .mp-stats { flex-wrap: nowrap; flex: 1 1 auto; min-width: 0; overflow: hidden; }
+    .mp-detail-head .mp-knit { display: flex; align-items: center; gap: 5px; flex: 0 0 auto; }
+    .mp-lbl {
+        color: var(--muted);
+        font-size: 9px;
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: .04em;
+    }
+
+    /* Right header stats: subtle focus — bold navy values with light dividers */
+    .mp-stat {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 4px;
+        padding: 0 9px;
+        border-left: 1px solid var(--border);
+    }
+    .mp-stat:first-child { border-left: none; padding-left: 0; }
+    .mp-stat b { color: var(--navy); font-weight: 800; font-size: 12px; }
+
+    .mp-size { text-align: right; font-variant-numeric: tabular-nums; }
+    .mp-size-zero { color: #c5ccd6; }
+    /* Right detail table: size columns centered so header, body and footer line up */
+    .mp-right .mp-size { text-align: center; }
+
+    .mp-table tfoot td {
+        padding: 6px 8px;
+        background: var(--sky);
+        border-top: 2px solid var(--navy);
+        position: sticky;
+        bottom: 0;
+        white-space: nowrap;
+    }
+
+    .mp-input {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 5px 8px;
+        font-size: 12px;
+        color: #222;
+    }
+
+    .mp-btn {
+        border: none;
+        background: var(--navy);
+        color: #fff;
+        border-radius: 6px;
+        padding: 6px 14px;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .mp-btn-light {
+        background: #fff;
+        color: var(--navy);
+        border: 1px solid var(--border);
+    }
+
+    .mp-search {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 2px 8px;
+        background: #fff;
+        color: var(--muted);
+    }
+    .mp-search .mp-input { outline: none; }
+
+    .mp-datewin {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--navy);
+        background: var(--sky);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 5px 10px;
+        white-space: nowrap;
+    }
+
+    .mp-navbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 9px 12px;
+        border-top: 1px solid var(--border);
+        background: #f8fafc;
+    }
+    .mp-navpos { font-size: 11px; font-weight: 700; color: var(--muted); }
+    .mp-btn:disabled, .mp-btn-light:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* Status filter chips + window toggle */
+    .mp-chipbar { display: flex; align-items: center; gap: 5px; padding: 6px 10px; background: #f8fafc; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .mp-chip { border: 1px solid var(--border); background: #fff; color: var(--navy); border-radius: 20px; padding: 3px 10px; font-size: 10px; font-weight: 700; cursor: pointer; }
+    .mp-chip.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+    .mp-chip.chip-green.on { background: #2f9e44; border-color: #2f9e44; }
+
+    /* Unassigned: draw the eye to the knitter dropdown */
+    .mp-need-knitter { border-color: var(--amber, #f0a500) !important; box-shadow: 0 0 0 2px rgba(240,165,0,.18); }
+    .mp-warn { color: #b45309; font-size: 10px; font-weight: 800; white-space: nowrap; }
+
+    /* Tiny second line inside left-list cells (end date / assigned knitter) */
+    .mp-subline { font-size: 9px; color: var(--muted); font-weight: 600; line-height: 1.2; margin-top: 1px; }
+    .mp-subline-knitter { color: #14532d; }
+    .mp-row-active .mp-subline, .mp-row-active .mp-subline-knitter { color: rgba(255,255,255,.85); }
+
+    .mp-done { display: inline-flex; align-items: center; background: #e3f7ec; color: #14532d; border: 1px solid #b7e4c7; border-radius: 20px; padding: 4px 12px; font-size: 11px; font-weight: 800; }
+
+    /* Print: show ONLY the roster sheet */
+    .mp-print-only { display: none; }
+    @@media print {
+        .mp-page > *:not(.mp-print-only) { display: none !important; }
+        .mp-print-only { display: block !important; }
+        .mp-page { background: #fff !important; }
+        .mp-print-only table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .mp-print-only th, .mp-print-only td { border: 1px solid #999; padding: 6px 8px; text-align: left; }
+        .mp-print-only th { background: #eee; }
+        .mp-print-only h2 { font-size: 16px; margin: 0 0 4px; }
+        .mp-print-only .sub { font-size: 11px; color: #555; margin-bottom: 10px; }
+    }
+
+    /* Confirmation modal */
+    .mp-modal-overlay {
+        position: fixed; inset: 0; background: rgba(15,23,42,.45); backdrop-filter: blur(2px);
+        display: flex; align-items: center; justify-content: center; z-index: 9999;
+    }
+    .mp-modal {
+        width: 100%; max-width: 420px; margin: 16px; background: #fff; border-radius: 12px; overflow: hidden;
+        box-shadow: 0 20px 50px rgba(15,23,42,.3); animation: mpPop .15s ease-out;
+    }
+    @@keyframes mpPop { from { transform: scale(.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .mp-modal-head {
+        background: linear-gradient(90deg, var(--navy), #234a73); color: #fff; padding: 12px 16px;
+        font-weight: 800; font-size: 13px; display: flex; align-items: center; gap: 8px;
+        border-bottom: 3px solid var(--teal);
+    }
+    .mp-modal-head i { color: var(--teal); }
+    .mp-modal-body { padding: 16px; font-size: 13px; color: #222; }
+    .mp-modal-info { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 12px; }
+    .mp-modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); background: #fafbfc; }
+    .mp-modal-foot .mp-btn, .mp-modal-foot .mp-btn-light { padding: 8px 18px; font-size: 12px; }
+    .mp-modal-wide { max-width: 860px; }
+</style>
+
+<div class="mp-page p-3">
+    <div class="mp-panel mb-3">
+        <div class="mp-header">
+            <div class="title">
+                <i class="fa-solid fa-user-gear"></i>
+                <span class="font-bold uppercase tracking-wide" style="font-size:12px;">Master Planning &mdash; Knitter Assignment</span>
+            </div>
+            <span class="mp-count">@VisibleGroups.Count machines</span>
+        </div>
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="mp-panel flex items-center justify-center py-10" style="color:var(--muted);">
+            <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading...
+        </div>
+    }
+    else if (!Rows.Any())
+    {
+        <div class="mp-panel flex flex-col items-center py-10" style="color:var(--muted);">
+            <i class="fa-solid fa-inbox text-2xl mb-2"></i>
+            <span class="text-[12px] font-bold uppercase">No planned data found</span>
+        </div>
+    }
+    else
+    {
+        <div class="mp-split">
+            <!-- LEFT: distinct Order / Gauge / Machine + Qty -->
+            <div class="mp-panel mp-left">
+                <div class="mp-leftctrl">
+                    <div class="mp-search" style="flex:1 1 90px; min-width:0;">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input class="mp-input" style="flex:1; min-width:0; border:none; padding-left:4px;"
+                               placeholder="Search..."
+                               value="@GridSearch" @oninput="OnSearchInput" />
+                    </div>
+                    <button class="mp-btn mp-btn-light mp-ic" title="Previous day" @onclick="PrevDay">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <span class="mp-datewin">@WindowLabel</span>
+                    <button class="mp-btn mp-ic" title="Next day" @onclick="NextDay">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                    <button class="mp-btn mp-btn-light mp-ic" title="Today" @onclick="GoToday">Today</button>
+                </div>
+                <div class="mp-chipbar">
+                    <button class="mp-chip @(AssignFilter == "All" ? "on" : "")" @onclick='() => SetAssignFilter("All")'>All (@BaseVisibleGroups.Count)</button>
+                    <button class="mp-chip @(AssignFilter == "Unassigned" ? "on" : "")" @onclick='() => SetAssignFilter("Unassigned")'>Unassigned (@UnassignedCount)</button>
+                    <button class="mp-chip chip-green @(AssignFilter == "Assigned" ? "on" : "")" @onclick='() => SetAssignFilter("Assigned")'>Assigned (@AssignedCount)</button>
+                    <span class="ml-auto flex items-center gap-1">
+                        <button class="mp-chip @(WindowDays == 2 ? "on" : "")" title="2-day window" @onclick="() => SetWindowDays(2)">2d</button>
+                        <button class="mp-chip @(WindowDays == 7 ? "on" : "")" title="7-day window" @onclick="() => SetWindowDays(7)">7d</button>
+                        <button class="mp-chip" title="Print roster" @onclick="PrintRoster"><i class="fa-solid fa-print"></i></button>
+                        <button class="mp-chip" title="Assignment history (last 30 days)" @onclick="OpenHistory"><i class="fa-solid fa-clock-rotate-left"></i></button>
+                    </span>
+                </div>
+                <div class="mp-scroll" style="overflow:auto; max-height: calc(100vh - 250px);">
+                    <table class="mp-table">
+                        <thead>
+                            <tr>
+                                <th>Start</th>
+                                <th>Order</th>
+                                <th>Gauge</th>
+                                <th>Machine</th>
+                                <th class="mp-size">Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!VisibleGroups.Any())
+                            {
+                                <tr><td colspan="5" class="text-center py-4" style="color:var(--muted);">No machines for @WindowLabel</td></tr>
+                            }
+                            @foreach (var g in VisibleGroups)
+                            {
+                                var assignedLabel = GetAssignedKnitterLabel(g);
+                                var busyTo = GroupBusyTo(g);
+                                <tr class="mp-row @(assignedLabel != null ? "mp-row-assigned" : "") @(g.Key == SelectedGroupKey ? "mp-row-active" : "")"
+                                    title="@(assignedLabel != null ? $"Assigned knitter: {assignedLabel}" : "")"
+                                    @onclick="() => SelectGroup(g)">
+                                    <td>
+                                        @(g.StartDate?.ToString("dd-MMM"))
+                                        @if (busyTo != null)
+                                        {
+                                            <div class="mp-subline">&rarr; @busyTo?.ToString("dd-MMM")</div>
+                                        }
+                                    </td>
+                                    <td class="font-bold text-navy">@g.OrderNo</td>
+                                    <td>@g.Guage</td>
+                                    <td>
+                                        <span class="font-bold">@g.Machine</span>
+                                        @if (assignedLabel != null)
+                                        {
+                                            <div class="mp-subline mp-subline-knitter"><i class="fa-solid fa-user-check mr-0.5"></i>@assignedLabel</div>
+                                        }
+                                    </td>
+                                    <td class="mp-size font-bold">@g.Qty.ToString("N0")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- RIGHT: detail of the selected machine -->
+            <div class="mp-panel mp-right">
+                @if (SelectedGroup is null)
+                {
+                    <div class="flex flex-col items-center py-10" style="color:var(--muted);">
+                        <i class="fa-solid fa-arrow-pointer text-2xl mb-2"></i>
+                        <span class="text-[12px] font-bold uppercase">Select a machine on the left</span>
+                    </div>
+                }
+                else
+                {
+                    var sg = SelectedGroup;
+                    <div class="mp-detail-head">
+                        <div class="mp-stats flex items-center flex-wrap">
+                            <span class="mp-stat"><span class="mp-lbl">Order</span><b>@sg.OrderNo</b></span>
+                            <span class="mp-stat"><span class="mp-lbl">Gauge</span><b>@sg.Guage</b></span>
+                            <span class="mp-stat"><span class="mp-lbl">Machine</span><b>@sg.Machine</b></span>
+                            <span class="mp-stat"><span class="mp-lbl">Total</span><b>@sg.Qty.ToString("N0")</b></span>
+                            <span class="mp-stat"><span class="mp-lbl">Busy</span><b>@(GroupBusyFrom(sg)?.ToString("dd-MMM-yyyy")) &rarr; @(GroupBusyTo(sg)?.ToString("dd-MMM-yyyy"))</b></span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="mp-lbl">Knitter</span>
+                            @{
+                                var gaugeKnitters = KnittersForGauge(sg.Guage);
+                                var selectedKnitter = SelectedKnitter.TryGetValue(sg.Key, out var cn) ? cn : "";
+                                var groupStatus = GetGroupStatus(sg);
+                            }
+                            <select class="mp-input @(groupStatus == "Unassigned" ? "mp-need-knitter" : "")" style="min-width:150px; max-width:190px;"
+                                    title="@(groupStatus == "Unassigned" ? "Not assigned — select a knitter" : "")"
+                                    value="@selectedKnitter"
+                                    @key="@($"{sg.Key}-{KnitterSelectVersion}")"
+                                    @onchange="(e) => OnKnitterSelected(sg.Key, e.Value?.ToString())">
+                                <option value="">-- Select Knitter --</option>
+                                @foreach (var k in gaugeKnitters)
+                                {
+                                    var busyTill = GetKnitterBusyTill(k.CardNo, sg);
+                                    <option value="@k.CardNo" disabled="@(busyTill != null)">@k.KnitterName (@k.CardNo)@(busyTill != null ? $" — busy till {busyTill:dd-MMM}" : "")</option>
+                                }
+                            </select>
+                            @if (groupStatus == "Unassigned")
+                            {
+                                <button class="mp-btn" style="background:var(--teal); padding:6px 10px;" title="Not assigned — auto-suggest the best free knitter" @onclick="() => SuggestKnitter(sg)">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                </button>
+                            }
+                            @if (groupStatus == "Assigned")
+                            {
+                                <button class="mp-btn mp-btn-light" title="Remove this knitter" @onclick="() => UnassignKnitter(sg)">
+                                    <i class="fa-solid fa-user-xmark"></i>
+                                </button>
+                                <button class="mp-btn" style="background:#2f9e44;" title="Mark work completed" @onclick="() => CompleteAssignment(sg)">
+                                    <i class="fa-solid fa-check mr-1"></i> Complete
+                                </button>
+                            }
+                            else if (groupStatus == "Completed")
+                            {
+                                <span class="mp-done"><i class="fa-solid fa-circle-check mr-1"></i>Completed</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="mp-scroll" style="overflow:auto; max-height: calc(100vh - 300px);">
+                        <table class="mp-table">
+                            <thead>
+                                <tr>
+                                    <th class="text-center" style="width:40px;">S.N</th>
+                                    <th>Style</th>
+                                    <th>Color</th>
+                                    @foreach (var c in SizeColumns)
+                                    {
+                                        <th class="mp-size">@c.Key</th>
+                                    }
+                                    <th class="mp-size">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{ int snDetail = 1; }
+                                @foreach (var r in sg.Details)
+                                {
+                                    <tr>
+                                        <td class="text-center" style="color:var(--muted);">@(snDetail++)</td>
+                                        <td class="font-bold">@r.Style</td>
+                                        <td>@r.Color</td>
+                                        @foreach (var c in SizeColumns)
+                                        {
+                                            var v = c.Get(r);
+                                            <td class="mp-size @(v == 0 ? "mp-size-zero" : "")">@(v == 0 ? "" : v.ToString("N0"))</td>
+                                        }
+                                        <td class="mp-size font-bold">@RowTotal(r).ToString("N0")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr class="mp-foot">
+                                    <td class="font-bold" colspan="3">Total</td>
+                                    @foreach (var c in SizeColumns)
+                                    {
+                                        var ct = GroupSizeTotal(sg, c.Get);
+                                        <td class="mp-size font-bold @(ct == 0 ? "mp-size-zero" : "")">@(ct == 0 ? "" : ct.ToString("N0"))</td>
+                                    }
+                                    <td class="mp-size font-bold">@sg.Qty.ToString("N0")</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <!-- Prev / Next machine navigation -->
+                    <div class="mp-navbar">
+                        <button class="mp-btn mp-btn-light" @onclick="SelectPrevGroup" disabled="@(!CanPrev)">
+                            <i class="fa-solid fa-chevron-left mr-1"></i> Previous
+                        </button>
+                        <span class="mp-navpos">@(CurrentIndex + 1) / @VisibleGroups.Count</span>
+                        <button class="mp-btn" @onclick="SelectNextGroup" disabled="@(!CanNext)">
+                            Next <i class="fa-solid fa-chevron-right ml-1"></i>
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Print-only roster sheet -->
+    <div class="mp-print-only">
+        <h2>Knitter Roster &mdash; @WindowLabel</h2>
+        <div class="sub">Printed @DateTime.Now.ToString("dd-MMM-yyyy HH:mm") &middot; @BaseVisibleGroups.Count machines</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>S.N</th><th>Start</th><th>Order</th><th>Gauge</th><th>Machine</th><th>Qty</th><th>Knitter</th><th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ int snPrint = 1; }
+                @foreach (var g in BaseVisibleGroups)
+                {
+                    <tr>
+                        <td>@(snPrint++)</td>
+                        <td>@(g.StartDate?.ToString("dd-MMM"))</td>
+                        <td>@g.OrderNo</td>
+                        <td>@g.Guage</td>
+                        <td>@g.Machine</td>
+                        <td>@g.Qty.ToString("N0")</td>
+                        <td>@(GetAssignedKnitterLabel(g) ?? "—")</td>
+                        <td>@GetGroupStatus(g)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (ShowHistory)
+    {
+        <div class="mp-modal-overlay" @onclick="CloseHistory">
+            <div class="mp-modal mp-modal-wide" @onclick:stopPropagation="true">
+                <div class="mp-modal-head">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Assignment History (last 30 days)
+                    <button class="ml-auto" style="background:none;border:none;color:#fff;cursor:pointer;" @onclick="CloseHistory"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="mp-modal-body" style="max-height:60vh; overflow:auto; padding:0;">
+                    @if (IsLoadingHistory)
+                    {
+                        <div class="flex items-center justify-center py-8 mp-empty"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading...</div>
+                    }
+                    else if (!HistoryRows.Any())
+                    {
+                        <div class="flex items-center justify-center py-8 mp-empty">No assignments in the last 30 days</div>
+                    }
+                    else
+                    {
+                        <table class="mp-table">
+                            <thead>
+                                <tr>
+                                    <th>Assigned</th>
+                                    <th>Machine</th>
+                                    <th>Gauge</th>
+                                    <th>Knitter</th>
+                                    <th class="mp-size">Qty</th>
+                                    <th>Plan Window</th>
+                                    <th>Status</th>
+                                    <th>By</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var h in HistoryRows)
+                                {
+                                    <tr>
+                                        <td>@(h.AssignedDate?.ToString("dd-MMM HH:mm"))</td>
+                                        <td class="font-bold" style="color:var(--navy);">@h.Machine</td>
+                                        <td>@h.Gauge</td>
+                                        <td>@h.KnitterName (@h.CardNo)</td>
+                                        <td class="mp-size">@h.Qty.ToString("N0")</td>
+                                        <td>@(h.StartDate?.ToString("dd-MMM")) &rarr; @(h.EndDate?.ToString("dd-MMM"))</td>
+                                        <td>
+                                            @if (string.Equals(h.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span class="mp-done" style="padding:2px 8px; font-size:10px;">Completed @(h.CompletedDate?.ToString("dd-MMM"))</span>
+                                            }
+                                            else
+                                            {
+                                                <span>@h.Status</span>
+                                            }
+                                        </td>
+                                        <td>@h.AssignedBy</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (ShowKnitterConfirm)
+    {
+        <div class="mp-modal-overlay" @onclick="CancelKnitterAssignment">
+            <div class="mp-modal" @onclick:stopPropagation="true">
+                <div class="mp-modal-head">
+                    <i class="fa-solid fa-user-check"></i> Confirm Knitter Assignment
+                </div>
+                <div class="mp-modal-body">
+                    <p style="margin:0 0 10px;">
+                        Assign <b class="text-navy">@PendingKnitterName (@PendingCardNo)</b> to this machine plan?
+                    </p>
+                    @if (PendingGroup is not null)
+                    {
+                        var pg = PendingGroup;
+                        <div class="mp-modal-info">
+                            <div><span class="mp-lbl">Order</span> <b>@pg.OrderNo</b> &nbsp; <span class="mp-lbl">Gauge</span> <b>@pg.Guage</b> &nbsp; <span class="mp-lbl">Machine</span> <b>@pg.Machine</b></div>
+                            <div class="mt-1"><span class="mp-lbl">Start</span> <b>@(pg.StartDate?.ToString("dd-MMM-yyyy"))</b> &nbsp; <span class="mp-lbl">Lines</span> <b>@pg.Details.Count</b> &nbsp; <span class="mp-lbl">Total</span> <b>@pg.Qty.ToString("N0")</b></div>
+                        </div>
+                    }
+                </div>
+                <div class="mp-modal-foot">
+                    <button class="mp-btn mp-btn-light" @onclick="CancelKnitterAssignment" disabled="@IsSavingKnitter">Cancel</button>
+                    <button class="mp-btn" @onclick="ConfirmKnitterAssignment" disabled="@IsSavingKnitter">
+                        @if (IsSavingKnitter)
+                        {
+                            <i class="fa-solid fa-spinner fa-spin mr-1"></i>
+                        }
+                        Continue
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>

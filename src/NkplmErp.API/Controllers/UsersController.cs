@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,11 +14,18 @@ namespace NkplmErp.API.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly IRoleManagementService _roleService;
 
-    public UsersController(IUserService userService)
+    public UsersController(IUserService userService, IRoleManagementService roleService)
     {
         _userService = userService;
+        _roleService = roleService;
     }
+
+    private string GetCurrentUserId() =>
+        User.FindFirstValue(ClaimTypes.NameIdentifier)
+        ?? User.FindFirstValue("sub")
+        ?? throw new UnauthorizedAccessException("User identity not found in token.");
 
     /// <summary>
     /// Get all users
@@ -25,6 +33,11 @@ public class UsersController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAllUsers()
     {
+        var userId = GetCurrentUserId();
+        var callerPerms = await _roleService.GetUserPermissionsAsync(userId);
+        if (!callerPerms.CanView("Users"))
+            return Forbid();
+
         var users = await _userService.GetAllUsersAsync();
         return Ok(users);
     }
@@ -35,6 +48,11 @@ public class UsersController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetUserById(string id)
     {
+        var userId = GetCurrentUserId();
+        var callerPerms = await _roleService.GetUserPermissionsAsync(userId);
+        if (!callerPerms.CanView("Users"))
+            return Forbid();
+
         var user = await _userService.GetUserByIdAsync(id);
         if (user == null)
         {
@@ -50,20 +68,25 @@ public class UsersController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateUser([FromBody] CreateUserDto dto)
     {
+        var userId = GetCurrentUserId();
+        var callerPerms = await _roleService.GetUserPermissionsAsync(userId);
+        if (!callerPerms.CanEdit("Users"))
+            return Forbid();
+
         if (!ModelState.IsValid)
         {
             return BadRequest(ModelState);
         }
 
-        var (success, message, userId) = await _userService.CreateUserAsync(dto);
+        var (success, message, newUserId) = await _userService.CreateUserAsync(dto);
         
         if (!success)
         {
             return BadRequest(new { message });
         }
 
-        var user = await _userService.GetUserByIdAsync(userId!);
-        return CreatedAtAction(nameof(GetUserById), new { id = userId }, user);
+        var user = await _userService.GetUserByIdAsync(newUserId!);
+        return CreatedAtAction(nameof(GetUserById), new { id = newUserId }, user);
     }
 
     /// <summary>
@@ -72,6 +95,11 @@ public class UsersController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateUser(string id, [FromBody] UpdateUserDto dto)
     {
+        var userId = GetCurrentUserId();
+        var callerPerms = await _roleService.GetUserPermissionsAsync(userId);
+        if (!callerPerms.CanEdit("Users"))
+            return Forbid();
+
         if (!ModelState.IsValid)
         {
             return BadRequest(ModelState);
@@ -94,6 +122,11 @@ public class UsersController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteUser(string id)
     {
+        var userId = GetCurrentUserId();
+        var callerPerms = await _roleService.GetUserPermissionsAsync(userId);
+        if (!callerPerms.CanDelete("Users"))
+            return Forbid();
+
         var (success, message) = await _userService.DeleteUserAsync(id);
         
         if (!success)
@@ -110,6 +143,11 @@ public class UsersController : ControllerBase
     [HttpPost("{id}/reset-password")]
     public async Task<IActionResult> ResetPassword(string id, [FromBody] string newPassword)
     {
+        var userId = GetCurrentUserId();
+        var callerPerms = await _roleService.GetUserPermissionsAsync(userId);
+        if (!callerPerms.CanEdit("Users"))
+            return Forbid();
+
         if (string.IsNullOrWhiteSpace(newPassword))
         {
             return BadRequest(new { message = "Password cannot be empty." });
@@ -131,6 +169,11 @@ public class UsersController : ControllerBase
     [HttpGet("{id}/roles")]
     public async Task<IActionResult> GetUserRoles(string id)
     {
+        var userId = GetCurrentUserId();
+        var callerPerms = await _roleService.GetUserPermissionsAsync(userId);
+        if (!callerPerms.CanView("Users"))
+            return Forbid();
+
         var roles = await _userService.GetUserRolesAsync(id);
         return Ok(roles);
     }
@@ -141,6 +184,11 @@ public class UsersController : ControllerBase
     [HttpPut("{id}/roles")]
     public async Task<IActionResult> UpdateUserRoles(string id, [FromBody] IEnumerable<string> roles)
     {
+        var userId = GetCurrentUserId();
+        var callerPerms = await _roleService.GetUserPermissionsAsync(userId);
+        if (!callerPerms.CanEdit("Users"))
+            return Forbid();
+
         var (success, message) = await _userService.UpdateUserRolesAsync(id, roles);
         
         if (!success)

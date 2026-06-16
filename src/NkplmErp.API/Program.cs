@@ -9,6 +9,7 @@ using NkplmErp.Domain.Common;
 using NkplmErp.Domain.Entities;
 using NkplmErp.Infrastructure.Logging;
 using NkplmErp.Infrastructure.Persistence;
+using NkplmErp.Infrastructure.Services;
 using NkplmErp.Security.Authentication;
 using NkplmErp.Security.Authorization;
 using NkplmErp.Security.DeviceFingerprint;
@@ -91,6 +92,8 @@ builder.Services.AddScoped<IWebAuthnService, WebAuthnService>();
 builder.Services.AddScoped<NkplmErp.Application.Interfaces.IUserService, NkplmErp.Application.Services.UserService>();
 builder.Services.AddScoped<IBuyerOrderSummaryService, NkplmErp.Infrastructure.Services.BuyerOrderSummaryService>();
 builder.Services.AddScoped<ILookupService, NkplmErp.Infrastructure.Services.LookupService>();
+builder.Services.AddScoped<IProductionPlanningService, NkplmErp.Infrastructure.Services.ProductionPlanningService>();
+builder.Services.AddScoped<IRoleManagementService, RoleManagementService>();
 
 builder.Services.AddMemoryCache();
 builder.Services.AddFido2(options =>

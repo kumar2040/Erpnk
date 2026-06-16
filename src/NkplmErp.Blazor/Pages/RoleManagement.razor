@@ -1,0 +1,264 @@
+@page "/role-management"
+@using NkplmErp.Shared.DTOs
+@using NkplmErp.Blazor.Services.RoleManagement
+
+<PageTitle>Role Management — NKPLM ERP</PageTitle>
+
+<div class="rm-container">
+
+    <!-- ===================== HEADER ===================== -->
+    <div class="rm-header">
+        <div class="rm-header-left">
+            <span class="rm-shield-icon">🔐</span>
+            <div>
+                <h1 class="rm-title">Role Management</h1>
+                <p class="rm-subtitle">Zero Trust Access Control — Define roles, assign permissions per page, assign users</p>
+            </div>
+        </div>
+        @if (!string.IsNullOrEmpty(StatusMessage))
+        {
+            <div class="rm-toast @(IsError ? "rm-toast-error" : "rm-toast-success")">
+                @StatusMessage
+            </div>
+        }
+    </div>
+
+    <!-- ===================== 3-PANEL LAYOUT ===================== -->
+    <div class="rm-panels">
+
+        <!-- ===== PANEL 1: ROLES ===== -->
+        <div class="rm-panel">
+            <div class="rm-panel-header">
+                <span class="rm-panel-icon">🎭</span>
+                <span class="rm-panel-title">Roles</span>
+                <button class="rm-btn rm-btn-primary rm-btn-sm" @onclick="ShowAddRoleForm" id="btn-add-role">+ Add Role</button>
+            </div>
+            <div class="rm-panel-body">
+
+                <!-- Add/Edit Role Form -->
+                @if (ShowRoleForm)
+                {
+                    <div class="rm-form-card">
+                        <div class="rm-form-row">
+                            <label>Role Name *</label>
+                            <input class="rm-input" @bind="EditRole.RoleName" placeholder="e.g. Gyatri Supervisor" id="input-role-name" />
+                        </div>
+                        <div class="rm-form-row">
+                            <label>Description</label>
+                            <input class="rm-input" @bind="EditRole.Description" placeholder="Optional description" id="input-role-desc" />
+                        </div>
+                        <div class="rm-form-row">
+                            <label>Assigned Gauge / Factory / Master (optional)</label>
+                            <input class="rm-input" @bind="EditRole.AssignedGauge"
+                                   placeholder="Knit: 7 · Weave: Gyatri Pashmina · Silk/Linen/Other: t1 — empty = all"
+                                   id="input-role-gauge" />
+                        </div>
+                        <div class="rm-form-actions">
+                            <button class="rm-btn rm-btn-success" @onclick="SaveRole" id="btn-save-role">💾 Save</button>
+                            <button class="rm-btn rm-btn-ghost" @onclick="CancelRoleForm" id="btn-cancel-role">Cancel</button>
+                        </div>
+                    </div>
+                }
+
+                <!-- Roles Table -->
+                @if (IsLoadingRoles)
+                {
+                    <div class="rm-loading">Loading roles...</div>
+                }
+                else if (!Roles.Any())
+                {
+                    <div class="rm-empty">No roles found. Click "+ Add Role" to create one.</div>
+                }
+                else
+                {
+                    <div class="rm-table-wrap">
+                        <table class="rm-table">
+                            <thead>
+                                <tr>
+                                    <th>Role Name</th>
+                                    <th>Users</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var role in Roles)
+                                {
+                                    <tr class="@(SelectedRole?.RoleId == role.RoleId ? "rm-row-selected" : "")"
+                                        @onclick="() => SelectRole(role)">
+                                        <td>
+                                            <span class="rm-role-dot rm-dot-admin"></span>
+                                            @role.RoleName
+                                            @if (!string.IsNullOrEmpty(role.AssignedGauge))
+                                            {
+                                                <span class="rm-badge rm-badge-restricted" title="Role is restricted to this gauge">G:@role.AssignedGauge</span>
+                                            }
+                                        </td>
+                                        <td><span class="rm-count">@role.UserCount</span></td>
+                                        <td class="rm-actions-cell" @onclick:stopPropagation="true">
+                                            <button class="rm-btn rm-btn-icon" title="Edit" @onclick="() => EditRoleAction(role)" id="btn-edit-@role.RoleId">✏️</button>
+                                            <button class="rm-btn rm-btn-icon rm-btn-danger" title="Delete" @onclick="() => DeleteRole(role.RoleId)" id="btn-del-@role.RoleId">🗑️</button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- ===== PANEL 2: PAGE PERMISSIONS ===== -->
+        <div class="rm-panel rm-panel-wide">
+            <div class="rm-panel-header">
+                <span class="rm-panel-icon">📋</span>
+                <span class="rm-panel-title">
+                    Page Permissions
+                    @if (SelectedRole != null)
+                    {
+                        <span class="rm-panel-subtitle">— @SelectedRole.RoleName</span>
+                    }
+                </span>
+                @if (SelectedRole != null)
+                {
+                    <button class="rm-btn rm-btn-success rm-btn-sm" @onclick="SaveAllPermissions" id="btn-save-perms">💾 Save Permissions</button>
+                }
+            </div>
+            <div class="rm-panel-body">
+                @if (SelectedRole == null)
+                {
+                    <div class="rm-empty rm-empty-center">
+                        <span style="font-size:2rem;">👈</span>
+                        <p>Select a role to manage its page permissions</p>
+                    </div>
+                }
+                else if (IsLoadingPermissions)
+                {
+                    <div class="rm-loading">Loading permissions...</div>
+                }
+                else
+                {
+                    <div class="rm-perm-help">
+                        <span>🔒 Zero Trust: permissions are enforced on the server. Unchecked items block API calls, not just UI. Changes take effect at each user's next login.</span>
+                    </div>
+                    <div class="rm-table-wrap">
+                        <table class="rm-table rm-perm-table">
+                            <thead>
+                                <tr>
+                                    <th>Page / Module</th>
+                                    <th class="rm-th-center">
+                                        <span class="rm-perm-label rm-view">👁 View</span>
+                                    </th>
+                                    <th class="rm-th-center">
+                                        <span class="rm-perm-label rm-edit">✏️ Edit</span>
+                                    </th>
+                                    <th class="rm-th-center">
+                                        <span class="rm-perm-label rm-delete">🗑 Delete</span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var perm in Permissions)
+                                {
+                                    <tr>
+                                        <td>
+                                            <span class="rm-page-key">@perm.PageName</span>
+                                            <span class="rm-page-badge">@perm.PageKey</span>
+                                        </td>
+                                        <td class="rm-th-center">
+                                            <input type="checkbox" class="rm-checkbox"
+                                                   checked="@perm.CanView"
+                                                   @onchange="e => SetViewPermission(perm, (bool)(e.Value ?? false))"
+                                                   id="chk-view-@perm.AppPageId" />
+                                        </td>
+                                        <td class="rm-th-center">
+                                            <input type="checkbox" class="rm-checkbox"
+                                                   checked="@perm.CanEdit"
+                                                   @onchange="e => SetEditPermission(perm, (bool)(e.Value ?? false))"
+                                                   id="chk-edit-@perm.AppPageId" />
+                                        </td>
+                                        <td class="rm-th-center">
+                                            <input type="checkbox" class="rm-checkbox"
+                                                   checked="@perm.CanDelete"
+                                                   @onchange="e => SetDeletePermission(perm, (bool)(e.Value ?? false))"
+                                                   id="chk-del-@perm.AppPageId" />
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- ===== PANEL 3: USER ASSIGNMENT ===== -->
+        <div class="rm-panel">
+            <div class="rm-panel-header">
+                <span class="rm-panel-icon">👥</span>
+                <span class="rm-panel-title">
+                    Users
+                    @if (SelectedRole != null)
+                    {
+                        <span class="rm-panel-subtitle">— @SelectedRole.RoleName</span>
+                    }
+                </span>
+            </div>
+            <div class="rm-panel-body">
+                @if (SelectedRole == null)
+                {
+                    <div class="rm-empty rm-empty-center">
+                        <span style="font-size:2rem;">👈</span>
+                        <p>Select a role to manage user assignments</p>
+                    </div>
+                }
+                else if (IsLoadingUsers)
+                {
+                    <div class="rm-loading">Loading users...</div>
+                }
+                else
+                {
+                    <!-- Assign new user -->
+                    <div class="rm-assign-form">
+                        <select class="rm-input" @bind="SelectedUserIdToAssign" id="sel-user-assign">
+                            <option value="">— Select user to assign —</option>
+                            @foreach (var u in AllUsers.Where(u => u.RoleId == null || u.RoleId != SelectedRole.RoleId))
+                            {
+                                <option value="@u.UserId">@u.FullName (@u.Email)</option>
+                            }
+                        </select>
+                        <button class="rm-btn rm-btn-primary rm-btn-sm" @onclick="AssignUser" id="btn-assign-user">+ Assign</button>
+                    </div>
+
+                    <!-- Assigned users list -->
+                    @if (!UsersInRole.Any())
+                    {
+                        <div class="rm-empty">No users assigned to this role yet.</div>
+                    }
+                    else
+                    {
+                        <div class="rm-user-list">
+                            @foreach (var user in UsersInRole)
+                            {
+                                <div class="rm-user-card">
+                                    <div class="rm-user-avatar">@(user.FullName.Length > 0 ? user.FullName[0].ToString().ToUpper() : "?")</div>
+                                    <div class="rm-user-info">
+                                        <span class="rm-user-name">@user.FullName</span>
+                                        <span class="rm-user-email">@user.Email</span>
+                                        @if (!string.IsNullOrEmpty(user.AssignedGauge))
+                                        {
+                                            <span class="rm-badge rm-badge-restricted">Gauge: @user.AssignedGauge</span>
+                                        }
+                                    </div>
+                                    <button class="rm-btn rm-btn-icon rm-btn-danger" title="Remove"
+                                            @onclick="() => RemoveUserFromRole(user.UserId)"
+                                            id="btn-remove-user-@user.UserId">✕</button>
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+
+    </div>
+</div>

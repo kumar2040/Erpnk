@@ -17,6 +17,39 @@ public class MonthlyOrderDetailDto
     public int Year { get; set; }
     public DateTime MonthStartDate { get; set; }
     public DateTime OrderLDate { get; set; }
+    // Order entry date (mapped when the proc returns it); used for the 65% knit-deadline check.
+    public DateTime? OrderEntryDate { get; set; }
+    // Tagged client-side from order-collection types: does this order have Sample / Production work?
+    public bool IsSample { get; set; }
+    public bool IsProduction { get; set; }
+}
+
+// Order -> collection type flags (tbl_order_collection: type 's' = Sample, else Production).
+public class OrderCollectionTypeDto
+{
+    public string OrderNo { get; set; } = string.Empty;
+    public bool IsSample { get; set; }
+    public bool IsProduction { get; set; }
+}
+
+// Result of updating a saved size line (server clamps over-allocation).
+public class SizeLineUpdateResultDto
+{
+    public bool Success { get; set; }
+    public decimal FinalQty { get; set; }
+    public bool WasClamped { get; set; }
+    public decimal MaxAllowed { get; set; }
+}
+
+// One editable size line of a saved machine plan.
+public class PlanSizeLineEditDto
+{
+    public int SizeLineId { get; set; }
+    public int? OrderId { get; set; }
+    public string StyleNo { get; set; } = string.Empty;
+    public string Color { get; set; } = string.Empty;
+    public string Size { get; set; } = string.Empty;
+    public decimal Qty { get; set; }
 }
 public class OrderProductionStatusDto
 {
@@ -109,6 +142,7 @@ public class MachinePlanningStatusDto
 public class OrderDetailByGuageDto
 {
     public string OrderNo { get; set; } = string.Empty;
+    public int OrderId { get; set; }
     public DateTime ShippingDate { get; set; }
     public string StyleNo { get; set; } = string.Empty;
     public string OrderColor { get; set; } = string.Empty;
@@ -119,6 +153,17 @@ public class OrderDetailByGuageDto
     public double RequireDays { get; set; }
     public string PrintStatus { get; set; } = string.Empty;
     public string EmbdStatus { get; set; } = string.Empty;
+
+    // Size-wise quantities (populated by sp_getOrdersdateByGuage flag = 2)
+    public decimal XXXS { get; set; }
+    public decimal XXS { get; set; }
+    public decimal S { get; set; }
+    public decimal M { get; set; }
+    public decimal L { get; set; }
+    public decimal XL { get; set; }
+    public decimal XXL { get; set; }
+    public decimal XXXL { get; set; }
+    public decimal OSFA { get; set; }
 }
 
 public class OrderAnalysisDetailedDto
@@ -173,6 +218,12 @@ public class FabricMasterWorkloadDto
     public decimal NewOrderQty { get; set; }
     public decimal? BacklogDaysByCapacity { get; set; }
     public decimal? NewOrderDaysByCapacity { get; set; }
+    
+    // New fields mapped from the updated fabricAnalysisPlan procedure
+    public string? MasterId { get; set; }
+    public decimal? ActivePlanQty { get; set; }
+    public int? RunningMachines { get; set; }
+    public DateTime? MasterFreeDate { get; set; }
 }
 
 public class FabricBalanceDto
@@ -215,11 +266,117 @@ public class SavePlanRequestDto
     public string KnitType { get; set; } = string.Empty;
     public string UserId { get; set; } = string.Empty;
     public DateTime CreatedDate { get; set; }
+
+    // Optional style/color/size breakdown for this machine plan row (Knit).
+    public List<PlanSizeLineDto>? SizeLines { get; set; }
+
+    // Machine name (e.g. KN-56) and numeric id (e.g. 25) for the Machine / MachineID columns.
+    public string? MachineNo { get; set; }
+    public int? MachineId { get; set; }
+
+    // Overtime / Saturday-working flags applied to this plan row.
+    public bool IsOvertime { get; set; }
+    public decimal OvertimeHours { get; set; }
+    public bool WorkSaturday { get; set; }
+}
+
+// One style/color/size allocation line attached to a machine plan row.
+public class PlanSizeLineDto
+{
+    public int OrderId { get; set; }
+    public string StyleNo { get; set; } = string.Empty;
+    public string Color { get; set; } = string.Empty;
+    public string Size { get; set; } = string.Empty;
+    public decimal Qty { get; set; }
+}
+
+// A knitter available for a gauge (KnittersGauges joined to Knitters by CardNo).
+public class KnitterDto
+{
+    public string CardNo { get; set; } = string.Empty;
+    public string KnitterName { get; set; } = string.Empty;
+    public string Gauge { get; set; } = string.Empty;
+    public decimal? GaugeValue { get; set; }
+}
+
+// A busy window for a knitter (a plan they're already assigned to).
+public class KnitterBusyDto
+{
+    public string CardNo { get; set; } = string.Empty;
+    public int PlanId { get; set; }          // MasterPlanChildId of the busy plan
+    public DateTime FromDate { get; set; }
+    public DateTime ToDate { get; set; }
+    public string Status { get; set; } = "Assigned"; // Assigned / Completed
+}
+
+// One audit row of knitter assignment history (per machine plan + knitter).
+public class KnitterAssignmentHistoryDto
+{
+    public int PlanId { get; set; }
+    public int? OrderId { get; set; }
+    public string Gauge { get; set; } = string.Empty;
+    public string Machine { get; set; } = string.Empty;
+    public string CardNo { get; set; } = string.Empty;
+    public string KnitterName { get; set; } = string.Empty;
+    public decimal Qty { get; set; }
+    public DateTime? StartDate { get; set; }
+    public DateTime? EndDate { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string AssignedBy { get; set; } = string.Empty;
+    public DateTime? AssignedDate { get; set; }
+    public DateTime? CompletedDate { get; set; }
+}
+
+// Request to assign a knitter to a machine plan (fans out to its size lines).
+public class SaveKnitterAssignmentRequestDto
+{
+    public int MasterPlanDetailId { get; set; }
+    public string CardNo { get; set; } = string.Empty;
+    public string? KnitterName { get; set; }
+    public string? AssignedBy { get; set; }
+}
+
+// One day of the CEO Planing Report (factory-wide load vs capacity).
+public class PlaningReportDayDto
+{
+    public DateTime Date { get; set; }
+    public int BusyMachines { get; set; }
+    public decimal LoadQty { get; set; }
+    public int TotalMachines { get; set; }
+    public int TotalKnitters { get; set; }
+    public string DayName { get; set; } = string.Empty;
+    public bool IsSaturday { get; set; }
+}
+
+// One pivoted row for the Master Planning page (MasterPlan + MasterPlanDetail + MasterPlanDetailSize).
+public class MasterPlanningRowDto
+{
+    public string OrderNo { get; set; } = string.Empty;
+    public string Guage { get; set; } = string.Empty;
+    public string Machine { get; set; } = string.Empty;
+    public int? MachineID { get; set; }
+    public string Style { get; set; } = string.Empty;
+    public string Color { get; set; } = string.Empty;
+    public decimal XXXS { get; set; }
+    public decimal XXS { get; set; }
+    public decimal XS { get; set; }
+    public decimal S { get; set; }
+    public decimal M { get; set; }
+    public decimal L { get; set; }
+    public decimal XL { get; set; }
+    public decimal XXL { get; set; }
+    public decimal XXXL { get; set; }
+    public decimal OSFA { get; set; }
+    public DateTime? StartDate { get; set; }
+    public DateTime? EndDate { get; set; }
+    public int PlanID { get; set; }
+    public int OrderRowId { get; set; }
 }
 
 public class PlannedDataDto
 {
     public int MasterPlanChildId { get; set; }
+    public int OrderId { get; set; }
     public DateTime StartDate { get; set; }
     public string Gauge { get; set; } = string.Empty;
     public string Mc { get; set; } = string.Empty;
@@ -235,6 +392,7 @@ public class WeaveFactorySummaryDto
     public decimal TotalMachineLoadQty { get; set; }
     public int TotalMachinesAllocated { get; set; }
     public double ReqMachineDays { get; set; }
+    public DateTime? FreeDate { get; set; }
     public string YarnStatus { get; set; } = string.Empty;
 }
 
@@ -256,6 +414,10 @@ public class WeavePrintEmbroiderySummaryDto
     public string StyleNo { get; set; } = string.Empty;
     public int Qty { get; set; }
     public int TotalReceived { get; set; }
+    public double StyleTarget { get; set; }
+    public string StylePrintStatus { get; set; } = string.Empty;
+    public string StyleEmbdStatus { get; set; } = string.Empty;
+    public double StyleReqMachineDays { get; set; }
 }
 
 public class WeaveAnalysisPlanDto
@@ -264,4 +426,37 @@ public class WeaveAnalysisPlanDto
     public List<WeaveYarnStatusDto> YarnStatuses { get; set; } = new();
     public List<WeavePrintEmbroiderySummaryDto> PrintEmbroiderySummaries { get; set; } = new();
 }
+
+public class KnitGanttChartDto
+{
+    public int MasterPlanChildId { get; set; }
+    public string OrderNo { get; set; } = string.Empty;
+    public string OrderType { get; set; } = string.Empty;
+    public string ProductionType { get; set; } = string.Empty;
+    public string OrderStatus { get; set; } = string.Empty;
+    public string Guage { get; set; } = string.Empty;
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public int MachineCount { get; set; }
+    public int Qty { get; set; }
+    public string PlaningStatus { get; set; } = string.Empty;
+    public DateTime EntryDate { get; set; }
+    public string CreatedBy { get; set; } = string.Empty;
+    public string Machine { get; set; } = string.Empty;
+    public int? MachineID { get; set; }
+}
+
+public class MachinePlaningDto
+{
+    public int Machine_ID { get; set; }
+    public string MachineNo { get; set; } = string.Empty;
+    public double? Gauge { get; set; }
+    public string Size { get; set; } = string.Empty;
+    public DateTime FreeDate { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string OrderNo { get; set; } = string.Empty;
+    public int? PlannedQty { get; set; }
+    public string PlaningStatus { get; set; } = string.Empty;
+}
+
 

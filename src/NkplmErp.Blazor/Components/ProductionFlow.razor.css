@@ -3,6 +3,10 @@
     position: relative;
     display: flex;
     flex-direction: column;
+    flex: 1;
+    /* Stretch to fill parent flex container */
+    min-height: 0;
+    /* Important for flex scrolling */
     overflow: hidden;
     border-radius: 0;
     border: 1px solid #e2e8f0;
@@ -10,7 +14,7 @@
 }
 
 /* Scrollable body area inside QuickGrid */
-::deep .quick-grid-container>div.overflow-y-auto {
+::deep .quick-grid-container div.overflow-y-auto {
     flex: 1;
     min-height: 0;
     scrollbar-width: thin;
@@ -61,6 +65,14 @@
     vertical-align: middle;
 }
 
+::deep th.text-right {
+    text-align: right !important;
+}
+
+::deep th.text-right .col-header-content {
+    justify-content: flex-end !important;
+}
+
 ::deep .quick-grid tr:hover td {
     background-color: #f8fafc !important;
 }
@@ -95,14 +107,87 @@
     /* Matches Tailwind pr-6 */
 }
 
+/* ── Order Price Analysis Column Widths ── */
+::deep .col-sn-an {
+    width: 45px;
+    min-width: 45px;
+    text-align: center;
+}
+
+::deep .col-style-an {
+    width: 140px;
+    min-width: 140px;
+}
+
+::deep .col-qty-an {
+    width: 60px;
+    min-width: 60px;
+    text-align: center;
+}
+
+::deep .col-guage-an {
+    width: 60px;
+    min-width: 60px;
+    text-align: center;
+}
+
+::deep .col-ply-an {
+    width: 50px;
+    min-width: 50px;
+    text-align: center;
+}
+
+::deep .col-yarn-an {
+    width: 160px;
+    min-width: 160px;
+}
+
+::deep .col-wt-an {
+    width: 70px;
+    min-width: 70px;
+    text-align: right;
+}
+
+::deep .col-overhead-an {
+    width: 85px;
+    min-width: 85px;
+    text-align: right;
+}
+
+::deep .col-prod-cost-an {
+    width: 95px;
+    min-width: 95px;
+    text-align: right;
+}
+
+::deep .col-total-cost-an {
+    width: 105px;
+    min-width: 105px;
+    text-align: right;
+}
+
+::deep .col-s-price-an {
+    width: 95px;
+    min-width: 95px;
+    text-align: right;
+}
+
+::deep .col-profit-an {
+    width: 105px;
+    min-width: 105px;
+    text-align: right;
+}
+
 /* ── Sticky Grand-Total Footer ── */
 ::deep .footer-container {
-    position: sticky;
-    bottom: 0;
+    position: relative;
     z-index: 35;
     background: #f8fafc;
-    /* Matches .grand-total-table td background */
+    border-top: 2px solid #e2e8f0;
+    /* Slightly thicker to demarcate grid end */
     box-shadow: 0 -4px 6px -1px rgb(0 0 0 / 0.05);
+    flex-shrink: 0;
+    /* Don't allow the footer to shrink */
 }
 
 ::deep .grand-total-table {
@@ -177,6 +262,10 @@
     height: 6px;
 }
 
+.analysis-modal .modal-body {
+    background-color: #fff;
+}
+
 .timeline-scroll-container::-webkit-scrollbar-track {
     background: #f1f5f9;
 }
@@ -195,4 +284,12 @@
     background: #94a3b8;
 }
 
-
+.txtblack {
+    color: #333 !important;
+}
+
+.col-title-text {
+    text-overflow: initial !important;
+    overflow: visible !important;
+    white-space: nowrap;
+}
