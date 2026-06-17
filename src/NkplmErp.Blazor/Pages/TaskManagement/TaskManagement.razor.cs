@@ -25,7 +25,7 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
         private List<TaskCardItem> todotasks = new();
         private List<TaskCardItem> inprogresstasks = new();
         private List<TaskCardItem> completedtasks = new();
-        private List<TaskCardItem> overduetasks = new();   // no SP flag yet
+        private List<TaskCardItem> overduetasks = new();   // SP flag "O"
         private List<TaskCardItem> onholdtasks = new();     // no SP flag yet
 
         // ---- Computed counts for the stat cards ----
@@ -44,7 +44,10 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
         }
 
         // ======================================================================
-        // Load the three columns from the API (S / P / C)
+        // Load the board columns from the API (S / P / C / O).
+        // All four honour the selected date window by overlap. For Overdue the SP
+        // adds a one-day grace at the window start so a task that ended just before
+        // the window -- e.g. yesterday, on today's daily view -- still shows up.
         // ======================================================================
         private async Task LoadBoardAsync()
         {
@@ -54,10 +57,12 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
             var scheduled = await TaskManager.GetTasksAsync("S", start, end, orderNo);
             var progress = await TaskManager.GetTasksAsync("P", start, end, orderNo);
             var completed = await TaskManager.GetTasksAsync("C", start, end, orderNo);
+            var overdue = await TaskManager.GetTasksAsync("O", start, end, orderNo);
 
             todotasks = scheduled.Select(Map).ToList();
             inprogresstasks = progress.Select(Map).ToList();
             completedtasks = completed.Select(Map).ToList();
+            overduetasks = overdue.Select(Map).ToList();
 
             StateHasChanged();
         }

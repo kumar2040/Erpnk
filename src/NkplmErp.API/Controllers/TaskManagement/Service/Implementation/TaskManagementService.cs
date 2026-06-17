@@ -19,11 +19,13 @@ namespace NkplmErp.API.Controllers.TaskManagement.Service.Implementation
         public async Task<IEnumerable<TaskManagementResponseModel>> GetTasksAsync(
             string flag, DateTime? startDate, DateTime? endDate, string? orderNo)
         {
-            // Only S / P / C are valid; default to Scheduled for anything else.
+            // Only S / P / C / O are valid; default to Scheduled for anything else.
+            //   S = Scheduled, P = In Progress, C = Completed, O = Overdue.
             var safeFlag = flag?.Trim().ToUpperInvariant() switch
             {
                 "P" => "P",
                 "C" => "C",
+                "O" => "O",
                 _ => "S"
             };
 

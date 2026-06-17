@@ -1,9 +1,8 @@
 namespace NkplmErp.API.Controllers.TaskManagement.Model
 {
     // Request shape for the task board. Flag selects the column:
-    //   S = Scheduled, P = In Progress, C = Completed.
-    // StartDate/EndDate are reserved for date-range filtering once the SP
-    // accepts them; unused for now.
+    //   S = Scheduled, P = In Progress, C = Completed, O = Overdue.
+    // StartDate/EndDate are the selected period (the O flag overlaps this window like S/P/C).
     public class TaskManagementRequestModel
     {
         public string Flag { get; set; } = "S";

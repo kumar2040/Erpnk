@@ -13,7 +13,8 @@ namespace NkplmErp.API.Controllers.TaskManagement
     {
         private readonly ITaskManagementService _taskManagementService = taskManagementService;
 
-        // GET api/v1/TaskManagement?flag=S|P|C&startDate=2026-06-16&endDate=2026-06-16&orderNo=Nksh26
+        // GET api/v1/TaskManagement?flag=S|P|C|O&startDate=2026-06-16&endDate=2026-06-16&orderNo=Nksh26
+        // flag: S Scheduled, P In Progress, C Completed, O Overdue (Overdue overlaps the date range like S/P/C, +1-day grace at the start).
         [HttpGet]
         public async Task<IActionResult> GetTasks(
             [FromQuery] string flag = "S",
