@@ -101,13 +101,6 @@
                 </div>
             </div>
 
-            <div class="stat-card stat-completed" @onclick="() => ShowBubble(3)">
-                <div class="stat-content d-flex justify-content-between">
-                    <div class="stat-label">Completed</div>
-                    <div class="stat-value">@Completed</div>
-                </div>
-            </div>
-
             <div class="stat-card stat-hold" @onclick="() => ShowBubble(5)">
                 <div class="stat-content d-flex justify-content-between">
                     <div class="stat-label">On Hold</div>
@@ -119,6 +112,13 @@
                 <div class="stat-content d-flex justify-content-between">
                     <div class="stat-label">Work Load</div>
                     <div class="stat-value">@Workload</div>
+                </div>
+            </div>
+
+            <div class="stat-card stat-completed" @onclick="() => ShowBubble(3)">
+                <div class="stat-content d-flex justify-content-between">
+                    <div class="stat-label">Completed</div>
+                    <div class="stat-value">@Completed</div>
                 </div>
             </div>
 
