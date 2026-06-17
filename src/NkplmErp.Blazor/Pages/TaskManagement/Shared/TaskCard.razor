@@ -1,0 +1,79 @@
+@namespace NkplmErp.Blazor.Pages.TaskManagement.Shared
+
+<div class="TaskBox @BoxClass" data-status="@DataStatus">
+    <div class="@HeadClass">
+        @if (UsesCountBadge)
+        {
+            <div class="taskFirst">
+                <svg class="tc-ic tc-ic-18 me-1 text-black" viewBox="0 0 24 24"><path d="@HeaderIconPath" /></svg>
+                <span class="text-black ms-2" style="font-size:12px;">@Title</span>
+            </div>
+            <div class="TaskCount">
+                <span class="text-black">@Count</span>
+            </div>
+        }
+        else
+        {
+            <div class="taskFirst d-flex">
+                <svg class="tc-ic tc-ic-18 me-1 text-black" viewBox="0 0 24 24"><path d="@HeaderIconPath" /></svg>
+                <div class="d-flex justify-content-between gap-4">
+                    <span class="text-black ms-2" style="font-size:12px;">@Title</span>
+                    <span class="text-black">@Count</span>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (Items != null && Items.Any())
+    {
+        @foreach (var item in Items)
+        {
+            <div class="boxBody" data-task-id="@item.TaskId" data-task-time="@item.TaskEndDate"
+                 @onclick="() => OnItemClick.InvokeAsync(item.TaskId)">
+
+                <div class="d-flex flex-wrap justify-content-between align-items-center my-2">
+                    <div class="d-flex align-items-center">
+                        <svg class="bolt-icon tc-ic me-1" viewBox="0 0 24 24"><path d="M12 2.02c-5.51 0-9.98 4.47-9.98 9.98s4.47 9.98 9.98 9.98 9.98-4.47 9.98-9.98S17.51 2.02 12 2.02zM11.48 20v-6.26H8L13 4v6.26h3.35L11.48 20z" /></svg>
+                        <span class="fw-bold task-item OvRemarks" style="font-size:13px; color:var(--color-primary);">@item.OrderNo</span>
+                    </div>
+
+                    <div class="d-flex align-items-center text-muted small me-3">
+                        <svg class="tc-ic tc-ic-16 me-1" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" /></svg>
+                        <span class="fw-bold">@(item.MachineCount ?? 0) machine@((item.MachineCount ?? 0) == 1 ? "" : "s")</span>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center text-muted small mt-2 mb-2">
+                    <svg class="tc-ic tc-ic-16 me-1" viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z" /></svg>
+                    <span class="dueDate">@item.TaskStartDate.ToString("dd MMM, yyyy") - @item.TaskEndDate.ToString("dd MMM, yyyy")</span>
+                </div>
+
+                <div class="excludeClick d-flex flex-wrap align-items-center justify-content-between my-2">
+                    <div class="d-flex align-items-center">
+                        @if (item.RecurringTypeId != 0)
+                        {
+                            <span class="@FlatClass my-1 me-1">
+                                <svg class="tc-ic tc-ic-14 me-1 text-black" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" /></svg>
+                                @item.StatusName
+                            </span>
+                        }
+                        @if (item.PriorityId != 0)
+                        {
+                            <span class="@PriorityClass(item.PriorityId) me-2">
+                                <svg class="tc-ic tc-ic-14 me-1" viewBox="0 0 24 24"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z" /></svg>
+                                @item.PriorityName
+                            </span>
+                        }
+                        @if (item.Qty.HasValue)
+                        {
+                            <span class="qty my-1 me-1">
+                                <svg class="tc-ic tc-ic-14 me-1" viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3zm-1 14-4-4 1.4-1.4L11 13.2l5.6-5.6L18 9l-7 7z" /></svg>
+                                Qty @item.Qty
+                            </span>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

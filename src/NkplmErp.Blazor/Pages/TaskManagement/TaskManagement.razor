@@ -1,0 +1,189 @@
+@page "/task"
+@using NkplmErp.Blazor.Pages.TaskManagement.Shared
+
+<div class="main-body">
+    <div class="page-header-container">
+        <div class="header-row">
+            <div class="page-title-section">
+                <h1 class="page-title">Task Management</h1>
+            </div>
+
+            <div class="compact-filters">
+                <div class="filter-item">
+                    <select class="compact-select" value="@selectedOption" @onchange="OnDateRangeChange" style="height:32px">
+                        <option value="1">Daily</option>
+                        <option value="2">Weekly</option>
+                        <option value="3">Fortnightly</option>
+                        <option value="4">Monthly</option>
+                    </select>
+                </div>
+
+                <div class="filter-item">
+                    @if (selectedOption == "1")
+                    {
+                        <div class="compact-date-picker">
+                            <button class="compact-nav-btn" @onclick='() => ChangeDate("prev")'>
+                                <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" /></svg>
+                            </button>
+                            <input type="date" class="compact-date-input"
+                                   value="@selectedDate.ToString("yyyy-MM-dd")" @onchange="OnDateChanged" />
+                            <button class="compact-nav-btn" @onclick='() => ChangeDate("next")'>
+                                <svg viewBox="0 0 24 24"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" /></svg>
+                            </button>
+                        </div>
+                    }
+                    else if (selectedOption == "2")
+                    {
+                        <div class="compact-date-range">
+                            <button class="compact-nav-btn" @onclick='() => RightWeekDate("prev")'>
+                                <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" /></svg>
+                            </button>
+                            <div class="compact-range-display">
+                                <span>@selectedDate.ToString("MMM dd") - @selectedDate.AddDays(6).ToString("MMM dd")</span>
+                            </div>
+                            <button class="compact-nav-btn" @onclick='() => RightWeekDate("next")'>
+                                <svg viewBox="0 0 24 24"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" /></svg>
+                            </button>
+                        </div>
+                    }
+                    else if (selectedOption == "3")
+                    {
+                        <div class="compact-date-range">
+                            <button class="compact-nav-btn" @onclick='() => RightWeekDate("prev")'>
+                                <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" /></svg>
+                            </button>
+                            <div class="compact-range-display">
+                                <span>@selectedDate.ToString("MMM dd") - @selectedDate.AddDays(13).ToString("MMM dd")</span>
+                            </div>
+                            <button class="compact-nav-btn" @onclick='() => RightWeekDate("next")'>
+                                <svg viewBox="0 0 24 24"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" /></svg>
+                            </button>
+                        </div>
+                    }
+                    else if (selectedOption == "4")
+                    {
+                        <div class="compact-month-picker">
+                            <button class="compact-nav-btn" @onclick='() => ChangeMonth("prev")'>
+                                <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" /></svg>
+                            </button>
+                            <div class="compact-month-display">
+                                <span>@selectedDate.ToString("MMM yyyy")</span>
+                            </div>
+                            <button class="compact-nav-btn" @onclick='() => ChangeMonth("next")'>
+                                <svg viewBox="0 0 24 24"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" /></svg>
+                            </button>
+                        </div>
+                    }
+                </div>
+
+                <div class="filter-item">
+                    <div class="compact-staff-wrapper">
+                        <input type="text" class="compact-search" placeholder="Search Order No"
+                               value="@selectedOrderNo" @onchange="OnOrderNoChanged" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats cards -->
+        <div class="stats-grid">
+            <div class="stat-card stat-scheduled" @onclick="() => ShowBubble(1)">
+                <div class="stat-content d-flex justify-content-between">
+                    <div class="stat-label">Scheduled</div>
+                    <div class="stat-value">@Scheduled</div>
+                </div>
+            </div>
+
+            <div class="stat-card stat-progress" @onclick="() => ShowBubble(2)">
+                <div class="stat-content d-flex justify-content-between">
+                    <div class="stat-label">In Progress</div>
+                    <div class="stat-value">@InProgress</div>
+                </div>
+            </div>
+
+            <div class="stat-card stat-completed" @onclick="() => ShowBubble(3)">
+                <div class="stat-content d-flex justify-content-between">
+                    <div class="stat-label">Completed</div>
+                    <div class="stat-value">@Completed</div>
+                </div>
+            </div>
+
+            <div class="stat-card stat-hold" @onclick="() => ShowBubble(5)">
+                <div class="stat-content d-flex justify-content-between">
+                    <div class="stat-label">On Hold</div>
+                    <div class="stat-value">@OnHoldCount</div>
+                </div>
+            </div>
+
+            <div class="stat-card stat-workload" @onclick="() => ShowBubble(6)">
+                <div class="stat-content d-flex justify-content-between">
+                    <div class="stat-label">Work Load</div>
+                    <div class="stat-value">@Workload</div>
+                </div>
+            </div>
+
+            <div class="stat-card stat-overdue" @onclick="() => ShowBubble(4)">
+                <div class="stat-content d-flex justify-content-between">
+                    <div class="stat-label">OverDue</div>
+                    <div class="stat-value">@OverDue</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="containers">
+        <section>
+            <div class="row g-3 my-3">
+                @if (Box1)
+                {
+                    <div class="col-md-6 col-lg-4">
+                        <TaskCard Title="Scheduled"
+                                  Variant="TaskVariant.Todo"
+                                  Items="todotasks"
+                                  OnItemClick="OnItemClicked" />
+                    </div>
+                }
+
+                @if (Box2)
+                {
+                    <div class="col-md-6 col-lg-4">
+                        <TaskCard Title="In Progress"
+                                  Variant="TaskVariant.Progress"
+                                  Items="inprogresstasks"
+                                  OnItemClick="OnItemClicked" />
+                    </div>
+                }
+
+                @if (Box3)
+                {
+                    <div class="col-md-6 col-lg-4">
+                        <TaskCard Title="Completed"
+                                  Variant="TaskVariant.Complete"
+                                  Items="completedtasks"
+                                  OnItemClick="OnItemClicked" />
+                    </div>
+                }
+
+                @if (Box4)
+                {
+                    <div class="col-md-6 col-lg-4">
+                        <TaskCard Title="Over Due"
+                                  Variant="TaskVariant.Due"
+                                  Items="overduetasks"
+                                  OnItemClick="OnItemClicked" />
+                    </div>
+                }
+
+                @if (Box5)
+                {
+                    <div class="col-md-6 col-lg-4">
+                        <TaskCard Title="On Hold"
+                                  Variant="TaskVariant.OnHold"
+                                  Items="onholdtasks"
+                                  OnItemClick="OnItemClicked" />
+                    </div>
+                }
+            </div>
+        </section>
+    </div>
+</div>
