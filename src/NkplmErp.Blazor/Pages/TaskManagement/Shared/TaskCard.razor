@@ -34,12 +34,15 @@
                 <div class="d-flex flex-wrap justify-content-between align-items-center my-2">
                     <div class="d-flex align-items-center">
                         <svg class="bolt-icon tc-ic me-1" viewBox="0 0 24 24"><path d="M12 2.02c-5.51 0-9.98 4.47-9.98 9.98s4.47 9.98 9.98 9.98 9.98-4.47 9.98-9.98S17.51 2.02 12 2.02zM11.48 20v-6.26H8L13 4v6.26h3.35L11.48 20z" /></svg>
-                        <span class="fw-bold task-item OvRemarks" style="font-size:13px; color:var(--color-primary);">@item.OrderNo</span>
+                        <span class="fw-bold task-item OvRemarks" style="font-size:13px; color:var(--color-primary);">@item.OrderNo@(string.IsNullOrWhiteSpace(item.Guage) ? "" : $" ({item.Guage})")</span>
                     </div>
 
-                    <div class="d-flex align-items-center text-muted small me-3">
-                        <span class="fw-bold">@(item.MachineCount ?? 0)</span>
-                    </div>
+                    @if (item.MachineCount.HasValue)
+                    {
+                        <div class="d-flex align-items-center text-muted small me-3">
+                            <span class="fw-bold">@item.MachineCount</span>
+                        </div>
+                    }
                 </div>
 
                 <div class="d-flex align-items-center text-muted small mt-2 mb-2">

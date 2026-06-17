@@ -10,6 +10,10 @@ namespace NkplmErp.Blazor.Pages.TaskManagement.Shared
         // Order number (knitting) — shown on the card body line.
         public string? OrderNo { get; set; }
 
+        // Resolved gauge / tailor name (from the SP). Shown beside the order
+        // number as "OrderNo (Guage)" when present.
+        public string? Guage { get; set; }
+
         // true  -> show the team name, false -> show the staff name
         public bool IsTeam { get; set; }
         public string? StaffName { get; set; }

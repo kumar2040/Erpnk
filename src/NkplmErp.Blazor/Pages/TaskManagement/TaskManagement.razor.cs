@@ -86,6 +86,7 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
             TaskId = r.TaskId,
             TaskName = string.IsNullOrWhiteSpace(r.OrderNo) ? "(no order)" : r.OrderNo,
             OrderNo = r.OrderNo,
+            Guage = r.Guage,
             MachineCount = r.MachineCount,
             Assignee = !string.IsNullOrWhiteSpace(r.ProductionType) ? r.ProductionType : r.FactoryType,
             TaskStartDate = r.StartDate ?? DateTime.Now,
