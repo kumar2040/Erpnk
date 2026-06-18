@@ -1,0 +1,131 @@
+@namespace NkplmErp.Blazor.Components
+
+@* Reusable date-range picker: presets + dual-calendar custom range.
+   Usage:
+     <DateRangePicker @bind-StartDate="StartDateFilter" @bind-EndDate="EndDateFilter"
+                      OnRangeChanged="FetchData" InitialPreset="30days" /> *@
+
+<div class="flex items-center gap-2 min-w-[280px] relative">
+    <label class="form-label whitespace-nowrap" style="margin-bottom:0;padding-bottom:0;border-bottom:none;flex-shrink:0;">@Label</label>
+    <button type="button" @onclick="ToggleDropdown"
+            class="form-input flex items-center justify-between gap-2 h-8 text-left bg-white hover:bg-slate-50 border border-slate-300 rounded px-2.5 py-1 text-[12px] font-semibold text-navy shadow-sm transition-colors cursor-pointer select-none">
+        <span class="flex items-center gap-1.5">
+            <span class="text-teal text-[13px]">📅</span>
+            <span>@GetLabel()</span>
+        </span>
+        <span class="text-[8px] text-slate-400">▼</span>
+    </button>
+
+    @if (IsOpen)
+    {
+        <div class="fixed inset-0 z-40 bg-transparent" @onclick="Cancel"></div>
+        <div class="absolute right-0 top-full mt-1 z-50 transition-all duration-150"
+             style="width: @(ActiveViewMode == "custom" ? "540px" : "150px"); filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1)) drop-shadow(0 4px 6px rgba(0,0,0,0.05));">
+            <div class="absolute -top-1 w-2.5 h-2.5 bg-white border-t border-l border-slate-200 transform rotate-45 right-12 z-0"></div>
+            <div class="bg-white border border-slate-200 rounded-md relative z-10 flex flex-col overflow-hidden">
+                <div class="flex">
+                    <!-- Preset sidebar -->
+                    <div class="w-[140px] @(ActiveViewMode == "custom" ? "border-r border-slate-100" : "") flex flex-col py-1 bg-slate-50 flex-shrink-0">
+                        @foreach (var p in Presets)
+                        {
+                            <button type="button" @onclick="() => ApplyPreset(p.Key)"
+                                    class="w-full text-left px-3 py-1.5 text-[11px] font-semibold transition-colors block cursor-pointer @(ActiveViewMode == p.Key ? "bg-[#0284c7] text-white" : "text-navy hover:bg-slate-100")">
+                                @p.Label
+                            </button>
+                        }
+                        <button type="button" @onclick="SelectCustom"
+                                class="w-full text-left px-3 py-1.5 text-[11px] font-semibold border-t border-slate-100 transition-colors block cursor-pointer @(ActiveViewMode == "custom" ? "bg-[#0284c7] text-white" : "text-navy hover:bg-slate-100")">
+                            Custom Range
+                        </button>
+                    </div>
+
+                    @if (ActiveViewMode == "custom")
+                    {
+                        <div class="flex-1 p-2 flex flex-col gap-1.5 bg-white">
+                            <div class="flex items-center justify-between px-1 mb-1">
+                                <button type="button" @onclick="PrevMonth" class="p-1 hover:bg-slate-100 rounded text-slate-600 font-bold cursor-pointer text-[11px]">&lt;</button>
+                                <div class="flex flex-1 justify-around text-[11px] font-bold text-slate-700">
+                                    <span>@LeftCalendarMonth?.ToString("MMM yyyy")</span>
+                                    <span>@LeftCalendarMonth?.AddMonths(1).ToString("MMM yyyy")</span>
+                                </div>
+                                <button type="button" @onclick="NextMonth" class="p-1 hover:bg-slate-100 rounded text-slate-600 font-bold cursor-pointer text-[11px]">&gt;</button>
+                            </div>
+                            <div class="flex gap-3">
+                                @{ var leftMonth = LeftCalendarMonth ?? DateTime.Today; }
+                                @{ var rightMonth = (LeftCalendarMonth ?? DateTime.Today).AddMonths(1); }
+
+                                <!-- Left month -->
+                                <div class="flex-1">
+                                    <div class="grid grid-cols-7 gap-y-0.5 text-center">
+                                        @foreach (var dayLabel in DayLabels)
+                                        {
+                                            <span class="text-[9px] font-bold text-slate-400 py-0.5">@dayLabel</span>
+                                        }
+                                        @foreach (var day in GetCalendarDaysList(leftMonth.Year, leftMonth.Month))
+                                        {
+                                            var isCurrentMonth = day.Month == leftMonth.Month;
+                                            var isSelected = IsDaySelected(day);
+                                            var isInRange = IsDayInRange(day);
+                                            var isToday = day == DateTime.Today;
+                                            <button type="button" @onclick="() => OnDayClick(day)" @onmouseover="() => OnDayHover(day)"
+                                                    class="text-[9px] font-semibold h-5 w-5 rounded flex items-center justify-center cursor-pointer transition-colors m-auto
+                                                           @(isSelected ? "bg-[#0284c7] text-white" : isInRange ? "bg-sky-100 text-sky-800 rounded-none w-full" : isCurrentMonth ? "text-slate-700 hover:bg-slate-100" : "text-slate-300 hover:bg-slate-50")
+                                                           @(isToday && !isSelected ? "border border-[#0284c7]" : "")">
+                                                @day.Day
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+
+                                <!-- Right month -->
+                                <div class="flex-1">
+                                    <div class="grid grid-cols-7 gap-y-0.5 text-center">
+                                        @foreach (var dayLabel in DayLabels)
+                                        {
+                                            <span class="text-[9px] font-bold text-slate-400 py-0.5">@dayLabel</span>
+                                        }
+                                        @foreach (var day in GetCalendarDaysList(rightMonth.Year, rightMonth.Month))
+                                        {
+                                            var isCurrentMonth = day.Month == rightMonth.Month;
+                                            var isSelected = IsDaySelected(day);
+                                            var isInRange = IsDayInRange(day);
+                                            var isToday = day == DateTime.Today;
+                                            <button type="button" @onclick="() => OnDayClick(day)" @onmouseover="() => OnDayHover(day)"
+                                                    class="text-[9px] font-semibold h-5 w-5 rounded flex items-center justify-center cursor-pointer transition-colors m-auto
+                                                           @(isSelected ? "bg-[#0284c7] text-white" : isInRange ? "bg-sky-100 text-sky-800 rounded-none w-full" : isCurrentMonth ? "text-slate-700 hover:bg-slate-100" : "text-slate-300 hover:bg-slate-50")
+                                                           @(isToday && !isSelected ? "border border-[#0284c7]" : "")">
+                                                @day.Day
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                @if (ActiveViewMode == "custom")
+                {
+                    <div class="border-t border-slate-100 p-2 bg-slate-50 flex items-center justify-between">
+                        <div class="text-[11px] font-semibold text-slate-600 pl-2">
+                            @if (TempStartDate != null)
+                            {
+                                <span>@TempStartDate.Value.ToString("MM/dd/yyyy")</span>
+                                @if (TempEndDate != null)
+                                {
+                                    <span> - @TempEndDate.Value.ToString("MM/dd/yyyy")</span>
+                                }
+                            }
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" @onclick="Cancel"
+                                    class="px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-200 border border-slate-300 rounded cursor-pointer transition-colors bg-white">Cancel</button>
+                            <button type="button" @onclick="ApplyCustom"
+                                    class="px-3.5 py-1 text-[11px] font-bold text-white bg-[#0284c7] hover:bg-[#0270ad] rounded cursor-pointer transition-colors shadow-sm">Apply</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
