@@ -18,6 +18,8 @@ module.exports = {
                 'bg-dark': '#0f172a',
                 'text-muted': '#94a3b8',
                 'primary': '#00396A', // 👈 your color
+                'navy': '#002d54',     // text-navy (date picker / dashboards)
+                'teal': '#0d9488',     // text-teal accent
             },
             backdropBlur: {
                 glass: '12px',

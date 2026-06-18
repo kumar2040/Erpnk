@@ -474,9 +474,12 @@ BEGIN
         WHERE mpd.[Guage] IS NOT NULL
           AND LTRIM(RTRIM(mpd.[Guage])) <> ''
           AND (@EffectiveFactory IS NULL OR LOWER(mpd.[factory_type]) = LOWER(@EffectiveFactory))
-          -- only sub-categories with at least one row overlapping the selected window
-          AND (@StartDate IS NULL OR mpd.[EndDate]   >= CAST(@StartDate AS DATE))
-          AND (@EndDate   IS NULL OR mpd.[StartDate] <  DATEADD(DAY, 1, CAST(@EndDate AS DATE)))
+          -- Match the board's LOOSEST date rule. All columns require StartDate <= window end,
+          -- but In Progress and On Hold filter on the START date ONLY (no end-date cut-off).
+          -- Using window OVERLAP here would drop the chips whenever the visible rows are
+          -- In Progress / On Hold whose end date falls before the window start (e.g. June
+          -- tasks shown in a September window). So filter on the start date only.
+          AND (@EndDate IS NULL OR mpd.[StartDate] < DATEADD(DAY, 1, CAST(@EndDate AS DATE)))
         ORDER BY [SubCategory];
     END
 

@@ -1,0 +1,423 @@
+@* Reusable date-RANGE picker (presets + dual-calendar custom range), the same UI used in
+   KnitGanttChart. The selected window is exposed via @bind-StartDate / @bind-EndDate, and
+   OnChanged fires when the user applies a preset or a custom range so the parent reloads.
+   The parent seeds the initial StartDate/EndDate (this component is a controlled component). *@
+
+<!-- Date Range Selector -->
+<div class="flex items-center gap-2 min-w-[280px]">
+    <label class="form-label whitespace-nowrap" style="margin-bottom: 0; padding-bottom: 0; border-bottom: none; flex-shrink: 0;">Date Range</label>
+    <div class="relative">
+    <button type="button" @onclick="ToggleDateDropdown"
+            class="form-input flex items-center justify-between gap-2 h-8 text-left bg-white hover:bg-slate-50 border border-slate-300 rounded px-2.5 py-1 text-[12px] font-semibold text-navy shadow-sm transition-colors cursor-pointer select-none">
+        <span class="flex items-center gap-1.5">
+            <span class="text-teal text-[13px]">📅</span>
+            <span>@GetDateRangeLabel()</span>
+        </span>
+        <span class="text-[8px] text-slate-400">▼</span>
+    </button>
+
+    @if (IsDateDropdownOpen)
+    {
+        <!-- Invisible backdrop to catch clicks outside the dropdown -->
+        <div class="fixed inset-0 z-40 bg-transparent" @onclick="CancelDateTime"></div>
+        <div class="absolute left-0 top-full mt-1 z-50 transition-all duration-150"
+             style="width: @(ActiveViewMode == "custom" ? "540px" : "150px"); filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1)) drop-shadow(0 4px 6px rgba(0,0,0,0.05));">
+
+            <!-- Arrow pointer near the trigger (left-anchored so the panel opens rightward) -->
+            <div class="absolute -top-1 w-2.5 h-2.5 bg-white border-t border-l border-slate-200 transform rotate-45 left-12 z-0"></div>
+
+            <!-- Menu content (flex container) -->
+            <div class="bg-white border border-slate-200 rounded-md relative z-10 flex flex-col overflow-hidden">
+
+                <div class="flex">
+                    <!-- Left Preset Sidebar (Compact width) -->
+                    <div class="w-[140px] @(ActiveViewMode == "custom" ? "border-r border-slate-100" : "") flex flex-col py-1 bg-slate-50 flex-shrink-0">
+                        <button type="button" @onclick='() => ApplyPreset("today")'
+                                class="w-full text-left px-3 py-1.5 text-[11px] font-semibold transition-colors block cursor-pointer @(ActiveViewMode == "today" ? "bg-[#0284c7] text-white" : "text-navy hover:bg-slate-100")">
+                            Today
+                        </button>
+
+                        <button type="button" @onclick='() => ApplyPreset("yesterday")'
+                                class="w-full text-left px-3 py-1.5 text-[11px] font-semibold transition-colors block cursor-pointer @(ActiveViewMode == "yesterday" ? "bg-[#0284c7] text-white" : "text-navy hover:bg-slate-100")">
+                            Yesterday
+                        </button>
+
+                        <button type="button" @onclick='() => ApplyPreset("thisweek")'
+                                class="w-full text-left px-3 py-1.5 text-[11px] font-semibold transition-colors block cursor-pointer @(ActiveViewMode == "thisweek" ? "bg-[#0284c7] text-white" : "text-navy hover:bg-slate-100")">
+                            This Week
+                        </button>
+
+                        <button type="button" @onclick='() => ApplyPreset("last7days")'
+                                class="w-full text-left px-3 py-1.5 text-[11px] font-semibold transition-colors block cursor-pointer @(ActiveViewMode == "last7days" ? "bg-[#0284c7] text-white" : "text-navy hover:bg-slate-100")">
+                            Last 7 Days
+                        </button>
+
+                        <button type="button" @onclick='() => ApplyPreset("30days")'
+                                class="w-full text-left px-3 py-1.5 text-[11px] font-semibold transition-colors block cursor-pointer @(ActiveViewMode == "30days" ? "bg-[#0284c7] text-white" : "text-navy hover:bg-slate-100")">
+                            30 Days
+                        </button>
+
+                        <button type="button" @onclick='() => ApplyPreset("thismonth")'
+                                class="w-full text-left px-3 py-1.5 text-[11px] font-semibold transition-colors block cursor-pointer @(ActiveViewMode == "thismonth" ? "bg-[#0284c7] text-white" : "text-navy hover:bg-slate-100")">
+                            This Month
+                        </button>
+
+                        <button type="button" @onclick='() => ApplyPreset("lastmonth")'
+                                class="w-full text-left px-3 py-1.5 text-[11px] font-semibold transition-colors block cursor-pointer @(ActiveViewMode == "lastmonth" ? "bg-[#0284c7] text-white" : "text-navy hover:bg-slate-100")">
+                            Last Month
+                        </button>
+
+                        <button type="button" @onclick='() => SelectPreset("custom")'
+                                class="w-full text-left px-3 py-1.5 text-[11px] font-semibold border-t border-slate-100 transition-colors block cursor-pointer @(ActiveViewMode == "custom" ? "bg-[#0284c7] text-white" : "text-navy hover:bg-slate-100")">
+                            Custom Range
+                        </button>
+                    </div>
+
+                    @if (ActiveViewMode == "custom")
+                    {
+                        <!-- Right Calendar Grids (Compact and elegant) -->
+                        <div class="flex-1 p-2 flex flex-col gap-1.5 bg-white">
+                            <!-- Header Navigation with MMM yyyy formatting to prevent overlap -->
+                            <div class="flex items-center justify-between px-1 mb-1">
+                                <button type="button" @onclick="PrevMonth" class="p-1 hover:bg-slate-100 rounded text-slate-600 font-bold cursor-pointer text-[11px]">
+                                    &lt;
+                                </button>
+                                <div class="flex flex-1 justify-around text-[11px] font-bold text-slate-700">
+                                    <span>@LeftCalendarMonth?.ToString("MMM yyyy")</span>
+                                    <span>@LeftCalendarMonth?.AddMonths(1).ToString("MMM yyyy")</span>
+                                </div>
+                                <button type="button" @onclick="NextMonth" class="p-1 hover:bg-slate-100 rounded text-slate-600 font-bold cursor-pointer text-[11px]">
+                                    &gt;
+                                </button>
+                            </div>
+
+                            <!-- The Calendars -->
+                            <div class="flex gap-3">
+                                <!-- Left Month Grid -->
+                                <div class="flex-1">
+                                    <div class="grid grid-cols-7 gap-y-0.5 text-center">
+                                        @foreach (var dayLabel in new[] { "Su", "Mo", "Tu", "We", "Th", "Fr", "Sa" })
+                                        {
+                                            <span class="text-[9px] font-bold text-slate-400 py-0.5">@dayLabel</span>
+                                        }
+                                        @foreach (var day in GetCalendarDaysList((LeftCalendarMonth ?? DateTime.Today).Year, (LeftCalendarMonth ?? DateTime.Today).Month))
+                                        {
+                                            var isCurrentMonth = day.Month == (LeftCalendarMonth ?? DateTime.Today).Month;
+                                            var isSelected = IsDaySelected(day);
+                                            var isInRange = IsDayInRange(day);
+                                            var isToday = day == DateTime.Today;
+
+                                            <button type="button" @onclick="() => OnDayClick(day)" @onmouseover="() => OnDayHover(day)"
+                                                    class="text-[9px] font-semibold h-5 w-5 rounded flex items-center justify-center cursor-pointer transition-colors m-auto
+                                                           @(isSelected ? "bg-[#0284c7] text-white" : isInRange ? "bg-sky-100 text-sky-800 rounded-none w-full" : isCurrentMonth ? "text-slate-700 hover:bg-slate-100" : "text-slate-300 hover:bg-slate-50")
+                                                           @(isToday && !isSelected ? "border border-[#0284c7]" : "")">
+                                                @day.Day
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+
+                                <!-- Right Month Grid -->
+                                <div class="flex-1">
+                                    <div class="grid grid-cols-7 gap-y-0.5 text-center">
+                                         @foreach (var dayLabel in new[] { "Su", "Mo", "Tu", "We", "Th", "Fr", "Sa" })
+                                         {
+                                             <span class="text-[9px] font-bold text-slate-400 py-0.5">@dayLabel</span>
+                                         }
+                                         @{ var rightMonth = (LeftCalendarMonth ?? DateTime.Today).AddMonths(1); }
+                                         @foreach (var day in GetCalendarDaysList(rightMonth.Year, rightMonth.Month))
+                                         {
+                                             var isCurrentMonth = day.Month == rightMonth.Month;
+                                             var isSelected = IsDaySelected(day);
+                                             var isInRange = IsDayInRange(day);
+                                             var isToday = day == DateTime.Today;
+
+                                             <button type="button" @onclick="() => OnDayClick(day)" @onmouseover="() => OnDayHover(day)"
+                                                     class="text-[9px] font-semibold h-5 w-5 rounded flex items-center justify-center cursor-pointer transition-colors m-auto
+                                                            @(isSelected ? "bg-[#0284c7] text-white" : isInRange ? "bg-sky-100 text-sky-800 rounded-none w-full" : isCurrentMonth ? "text-slate-700 hover:bg-slate-100" : "text-slate-300 hover:bg-slate-50")
+                                                            @(isToday && !isSelected ? "border border-[#0284c7]" : "")">
+                                                 @day.Day
+                                             </button>
+                                         }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                @if (ActiveViewMode == "custom")
+                {
+                    <!-- Footer actions (only shown for Custom Range) -->
+                    <div class="border-t border-slate-100 p-2 bg-slate-50 flex items-center justify-between">
+                        <div class="text-[11px] font-semibold text-slate-600 pl-2">
+                            @if (TempStartDate != null)
+                            {
+                                <span>@TempStartDate.Value.ToString("MM/dd/yyyy")</span>
+                                @if (TempEndDate != null)
+                                {
+                                    <span> - @TempEndDate.Value.ToString("MM/dd/yyyy")</span>
+                                }
+                            }
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" @onclick="CancelDateTime"
+                                    class="px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-200 border border-slate-300 rounded cursor-pointer transition-colors bg-white">
+                                Cancel
+                            </button>
+                            <button type="button" @onclick="ApplyDateTime"
+                                    class="px-3.5 py-1 text-[11px] font-bold text-white bg-[#0284c7] hover:bg-[#0270ad] rounded cursor-pointer transition-colors shadow-sm">
+                                Apply
+                            </button>
+                        </div>
+                    </div>
+                }
+
+            </div>
+        </div>
+    }
+    </div>
+</div>
+
+@code {
+    // The selected window. Controlled by the parent via @bind-StartDate / @bind-EndDate.
+    [Parameter] public DateTime? StartDate { get; set; }
+    [Parameter] public EventCallback<DateTime?> StartDateChanged { get; set; }
+
+    [Parameter] public DateTime? EndDate { get; set; }
+    [Parameter] public EventCallback<DateTime?> EndDateChanged { get; set; }
+
+    // Fired after a preset/custom range is applied so the parent can reload its data.
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    // Which preset the dropdown highlights / the custom-calendar mode. Owned internally.
+    // Defaults to "today" to line up with a parent that seeds a today/today window.
+    private string ActiveViewMode { get; set; } = "today";
+
+    private bool IsDateDropdownOpen { get; set; } = false;
+
+    // Dual-calendar picker temporary state.
+    private DateTime? TempStartDate { get; set; }
+    private DateTime? TempEndDate { get; set; }
+    private int DateSelectionStep { get; set; } = 0;
+    private DateTime? LeftCalendarMonth { get; set; }
+    private DateTime? HoveredDate { get; set; }
+
+    private void ToggleDateDropdown()
+    {
+        if (IsDateDropdownOpen)
+            IsDateDropdownOpen = false;
+        else
+            OpenDateDropdown();
+    }
+
+    private void OpenDateDropdown()
+    {
+        IsDateDropdownOpen = true;
+        TempStartDate = StartDate;
+        TempEndDate = EndDate;
+        DateSelectionStep = 0;
+        LeftCalendarMonth = new DateTime((TempStartDate ?? DateTime.Today).Year, (TempStartDate ?? DateTime.Today).Month, 1);
+    }
+
+    private string GetDateRangeLabel()
+    {
+        if (StartDate == null || EndDate == null)
+            return "Select Date Range";
+
+        return $"{StartDate.Value.ToString("MMMM dd, yyyy")} – {EndDate.Value.ToString("MMMM dd, yyyy")}";
+    }
+
+    private void PrevMonth()
+    {
+        if (LeftCalendarMonth != null)
+            LeftCalendarMonth = LeftCalendarMonth.Value.AddMonths(-1);
+    }
+
+    private void NextMonth()
+    {
+        if (LeftCalendarMonth != null)
+            LeftCalendarMonth = LeftCalendarMonth.Value.AddMonths(1);
+    }
+
+    private void OnDayClick(DateTime date)
+    {
+        if (DateSelectionStep == 0)
+        {
+            TempStartDate = date;
+            TempEndDate = null;
+            DateSelectionStep = 1;
+            ActiveViewMode = "custom";
+        }
+        else
+        {
+            if (date < TempStartDate)
+            {
+                TempStartDate = date;
+                TempEndDate = null;
+                DateSelectionStep = 1;
+            }
+            else
+            {
+                TempEndDate = date;
+                DateSelectionStep = 0;
+            }
+        }
+    }
+
+    private void OnDayHover(DateTime date)
+    {
+        if (DateSelectionStep == 1)
+            HoveredDate = date;
+    }
+
+    private bool IsDaySelected(DateTime date) => date == TempStartDate || date == TempEndDate;
+
+    private bool IsDayInRange(DateTime date)
+    {
+        if (TempStartDate == null) return false;
+
+        if (TempEndDate != null)
+            return date > TempStartDate && date < TempEndDate;
+
+        if (DateSelectionStep == 1 && HoveredDate != null && HoveredDate > TempStartDate)
+            return date > TempStartDate && date < HoveredDate;
+
+        return false;
+    }
+
+    private List<DateTime> GetCalendarDaysList(int year, int month)
+    {
+        var firstDay = new DateTime(year, month, 1);
+        var startOfWeek = firstDay.AddDays(-(int)firstDay.DayOfWeek);
+
+        var days = new List<DateTime>();
+        for (int i = 0; i < 42; i++)
+        {
+            days.Add(startOfWeek.AddDays(i));
+        }
+        return days;
+    }
+
+    // A sidebar preset is clicked -> compute its window, close, push to parent, reload.
+    private async Task ApplyPreset(string preset)
+    {
+        ActiveViewMode = preset;
+        IsDateDropdownOpen = false;
+        UpdateDatesForViewMode();
+        await CommitAsync();
+    }
+
+    // "Custom Range" -> open the calendars seeded from the current selection (no apply yet).
+    private void SelectPreset(string preset)
+    {
+        ActiveViewMode = preset;
+        UpdateTempDatesForPreset();
+        DateSelectionStep = 0;
+
+        if (TempStartDate != null)
+            LeftCalendarMonth = new DateTime(TempStartDate.Value.Year, TempStartDate.Value.Month, 1);
+    }
+
+    private void UpdateTempDatesForPreset()
+    {
+        var today = DateTime.Today;
+        if (ActiveViewMode == "today")
+        {
+            TempStartDate = today;
+            TempEndDate = today;
+        }
+        else if (ActiveViewMode == "yesterday")
+        {
+            TempStartDate = today.AddDays(-1);
+            TempEndDate = today.AddDays(-1);
+        }
+        else if (ActiveViewMode == "thisweek")
+        {
+            TempStartDate = today.AddDays(-(int)today.DayOfWeek);
+            TempEndDate = TempStartDate.Value.AddDays(6);
+        }
+        else if (ActiveViewMode == "last7days")
+        {
+            TempStartDate = today.AddDays(-6);
+            TempEndDate = today;
+        }
+        else if (ActiveViewMode == "30days")
+        {
+            TempStartDate = today;
+            TempEndDate = today.AddMonths(1);
+        }
+        else if (ActiveViewMode == "thismonth")
+        {
+            TempStartDate = new DateTime(today.Year, today.Month, 1);
+            TempEndDate = TempStartDate.Value.AddMonths(1).AddDays(-1);
+        }
+        else if (ActiveViewMode == "lastmonth")
+        {
+            TempStartDate = new DateTime(today.Year, today.Month, 1).AddMonths(-1);
+            TempEndDate = TempStartDate.Value.AddMonths(1).AddDays(-1);
+        }
+    }
+
+    private void CancelDateTime()
+    {
+        IsDateDropdownOpen = false;
+    }
+
+    // Apply the custom-range selection.
+    private async Task ApplyDateTime()
+    {
+        StartDate = TempStartDate;
+        EndDate = TempEndDate;
+        IsDateDropdownOpen = false;
+        await CommitAsync();
+    }
+
+    private void UpdateDatesForViewMode()
+    {
+        var today = DateTime.Today;
+        if (ActiveViewMode == "today")
+        {
+            StartDate = today;
+            EndDate = today;
+        }
+        else if (ActiveViewMode == "yesterday")
+        {
+            StartDate = today.AddDays(-1);
+            EndDate = today.AddDays(-1);
+        }
+        else if (ActiveViewMode == "thisweek")
+        {
+            StartDate = today.AddDays(-(int)today.DayOfWeek);
+            EndDate = StartDate.Value.AddDays(6);
+        }
+        else if (ActiveViewMode == "last7days")
+        {
+            StartDate = today.AddDays(-6);
+            EndDate = today;
+        }
+        else if (ActiveViewMode == "30days")
+        {
+            StartDate = today;
+            EndDate = today.AddMonths(1);
+        }
+        else if (ActiveViewMode == "thismonth")
+        {
+            StartDate = new DateTime(today.Year, today.Month, 1);
+            EndDate = StartDate.Value.AddMonths(1).AddDays(-1);
+        }
+        else if (ActiveViewMode == "lastmonth")
+        {
+            StartDate = new DateTime(today.Year, today.Month, 1).AddMonths(-1);
+            EndDate = StartDate.Value.AddMonths(1).AddDays(-1);
+        }
+    }
+
+    // Push the new window to the parent (via @bind) and notify it to reload.
+    private async Task CommitAsync()
+    {
+        await StartDateChanged.InvokeAsync(StartDate);
+        await EndDateChanged.InvokeAsync(EndDate);
+        await OnChanged.InvokeAsync();
+    }
+}

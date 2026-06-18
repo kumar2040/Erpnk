@@ -10,8 +10,10 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
         [Inject] private ITaskManagementManager TaskManager { get; set; } = default!;
 
         // ---- Filter state ----
-        private string selectedOption = "1";          // 1 Daily, 2 Weekly, 3 Fortnightly, 4 Monthly
-        private DateTime selectedDate = DateTime.Now;
+        // Selected date window (the CompactDateRangeFilter binds these). Seeded in
+        // OnInitializedAsync to today/today — the same window as the old Daily/today default.
+        private DateTime? selectedStartDate;
+        private DateTime? selectedEndDate;
         private string selectedOrderNo = "";          // order-no search (empty = all)
 
         // ---- Factory / gauge scope ----
@@ -63,6 +65,11 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
             // Default view: Scheduled + In Progress + Completed + Over Due (On Hold hidden).
             ShowBubble(6);
 
+            // Default window = today/today (same as the old Daily/today default; equals the
+            // date picker's "Today" preset).
+            selectedStartDate = DateTime.Today;
+            selectedEndDate = DateTime.Today;
+
             // Resolve the user's factory scope. A gauge-restricted user is pinned to their
             // own factory_type; an admin starts on "all factories" (null) and may change it.
             scope = await TaskManager.GetScopeAsync();
@@ -82,7 +89,8 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
         {
             var token = ++_loadSeq;   // newest load wins; a stale in-flight load is discarded below
 
-            var (start, end) = GetDateRange();
+            var start = selectedStartDate;
+            var end = selectedEndDate;
 
             // Refresh the cascading sub-category options for the active factory + date window
             // (numeric -> "general", tailor code -> name). A factory change clears the selection
@@ -117,17 +125,6 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
 
             StateHasChanged();
         }
-
-        // Turn the period selector + selected date into a [start, end] window.
-        //   1 Daily, 2 Weekly (+6d), 3 Fortnightly (+13d), 4 Monthly (whole month)
-        private (DateTime start, DateTime end) GetDateRange() => selectedOption switch
-        {
-            "2" => (selectedDate, selectedDate.AddDays(6)),
-            "3" => (selectedDate, selectedDate.AddDays(13)),
-            "4" => (new DateTime(selectedDate.Year, selectedDate.Month, 1),
-                    new DateTime(selectedDate.Year, selectedDate.Month, 1).AddMonths(1).AddDays(-1)),
-            _ => (selectedDate, selectedDate) // Daily
-        };
 
         // Map a production plan line onto the generic card model.
         // Knitting view: OrderNo = title, machine COUNT where the staff name used
@@ -166,24 +163,12 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
         }
 
         // ======================================================================
-        // Filter / date controls. Each change recomputes the window and reloads
-        // the board from the API. (Staff is not an SP parameter yet, so it only
-        // updates state.)
+        // Filter controls. Each change recomputes the window and reloads the board.
         // ======================================================================
-        private async Task OnDateRangeChange(ChangeEventArgs e)
-        {
-            selectedOption = e.Value?.ToString() ?? "1";
-            await LoadBoardAsync();
-        }
-
-        private async Task OnDateChanged(ChangeEventArgs e)
-        {
-            if (DateTime.TryParse(e.Value?.ToString(), out var d))
-            {
-                selectedDate = d;
-            }
-            await LoadBoardAsync();
-        }
+        // Raised by the CompactDateRangeFilter component after a preset/custom range is
+        // applied. selectedStartDate/selectedEndDate are already updated via @bind, so
+        // LoadBoardAsync() just reloads with the new window.
+        private Task OnFilterChanged() => LoadBoardAsync();
 
         private async Task OnOrderNoChanged(ChangeEventArgs e)
         {
@@ -216,24 +201,6 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
         {
             if (!selectedSubCategories.Remove(sub))   // present -> remove; absent -> add
                 selectedSubCategories.Add(sub);
-            await LoadBoardAsync();
-        }
-
-        private async Task ChangeDate(string dir)
-        {
-            selectedDate = dir == "prev" ? selectedDate.AddDays(-1) : selectedDate.AddDays(1);
-            await LoadBoardAsync();
-        }
-
-        private async Task RightWeekDate(string dir)
-        {
-            selectedDate = dir == "prev" ? selectedDate.AddDays(-7) : selectedDate.AddDays(7);
-            await LoadBoardAsync();
-        }
-
-        private async Task ChangeMonth(string dir)
-        {
-            selectedDate = dir == "prev" ? selectedDate.AddMonths(-1) : selectedDate.AddMonths(1);
             await LoadBoardAsync();
         }
 
