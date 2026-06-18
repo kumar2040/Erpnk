@@ -15,11 +15,18 @@ namespace NkplmErp.API.Controllers.TaskManagement.Service.Interface
         //   restricted user — the SP locks the scope to that user's AssignedGauge.
         // userId: the current user. The SP reads identity.Users.AssignedGauge for this id and
         //   enforces the factory scope (null/blank gauge = super admin = all factories).
+        // subCategories: pipe-delimited gauge sub-methods ('general'|text); null/empty/'all' = no
+        //   sub-filter. A numeric gauge maps to 'general', any other gauge to its text.
         Task<IEnumerable<TaskManagementResponseModel>> GetTasksAsync(
-            string flag, DateTime? startDate, DateTime? endDate, string? orderNo, string? factoryType, string? userId);
+            string flag, DateTime? startDate, DateTime? endDate, string? orderNo, string? factoryType, string? subCategories, string? userId);
 
         // Distinct factory_type values present in MasterPlanDetail (for the admin dropdown).
         Task<IEnumerable<string>> GetFactoryTypesAsync();
+
+        // Distinct gauge sub-categories for the given factory within the date window
+        // (numeric -> 'general', tailor code -> tailor name, else the gauge text). The SP
+        // scopes this to the user's gauge for restricted users and to the [start,end] window.
+        Task<IEnumerable<string>> GetSubCategoriesAsync(string? factoryType, DateTime? startDate, DateTime? endDate, string userId);
 
         // The current user's resolved gauge from identity.Users.AssignedGauge
         // (null/empty = super admin / unrestricted).

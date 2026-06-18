@@ -74,8 +74,9 @@ alter PROCEDURE [dbo].[spTaskManagement]
     @StartDate   DATETIME      = NULL,
     @EndDate     DATETIME      = NULL,
     @OrderNo     NVARCHAR(50)  = NULL,  -- optional: contains-match on OrderNo (NULL/'' = all)
-    @FactoryType NVARCHAR(100) = NULL,  -- admin's factory dropdown pick (ignored for restricted users)
-    @UserId      NVARCHAR(450) = NULL   -- current user; their identity.Users.AssignedGauge locks the scope
+    @FactoryType   NVARCHAR(100) = NULL,  -- admin's factory dropdown pick (ignored for restricted users)
+    @UserId        NVARCHAR(450) = NULL,  -- current user; their identity.Users.AssignedGauge locks the scope
+    @SubCategories NVARCHAR(MAX) = NULL   -- pipe-delimited gauge sub-methods ('general'|text); NULL/''/'all' = no sub-filter
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -94,6 +95,22 @@ BEGIN
     -- NULL here means "no factory filter" (show all factories).
     DECLARE @EffectiveFactory NVARCHAR(100) =
         COALESCE(@UserGauge, NULLIF(LTRIM(RTRIM(@FactoryType)), ''));
+
+    -- ---- Cascading sub-category (gauge method) multi-select ----
+    -- @SubCategories: pipe-delimited list (e.g. 'general|T2'). For each row a numeric
+    -- gauge maps to 'general'; any other gauge maps to its trimmed text. NULL / '' /
+    -- 'all' means no sub-filter. Split ONCE into a session-local table variable: no
+    -- shared-lock/deadlock surface, and STRING_SPLIT is parameterised (no dynamic SQL).
+    DECLARE @SubList TABLE (val NVARCHAR(100));
+    IF (@SubCategories IS NOT NULL
+        AND LTRIM(RTRIM(@SubCategories)) <> ''
+        AND LOWER(LTRIM(RTRIM(@SubCategories))) <> 'all')
+        INSERT INTO @SubList (val)
+        SELECT DISTINCT LOWER(LTRIM(RTRIM(s.[value])))
+        FROM STRING_SPLIT(@SubCategories, '|') s
+        WHERE LTRIM(RTRIM(s.[value])) <> ''
+          AND LOWER(LTRIM(RTRIM(s.[value]))) <> 'all';
+    DECLARE @HasSub BIT = CASE WHEN EXISTS (SELECT 1 FROM @SubList) THEN 1 ELSE 0 END;
 
     --=========================== Scheduled ===========================
     -- One row per detail line that is NOT started and NOT overdue: the line
@@ -139,6 +156,13 @@ BEGIN
           -- factory scope: a restricted user is locked to their AssignedGauge (resolved above);
           -- an admin may narrow by @FactoryType. NULL @EffectiveFactory = show all factories.
           AND (@EffectiveFactory IS NULL OR LOWER(mpd.[factory_type]) = LOWER(@EffectiveFactory))
+          -- cascading sub-category filter: numeric gauge -> 'general', else the gauge text.
+          AND (@HasSub = 0 OR
+               (CASE WHEN TRY_CONVERT(DECIMAL(18,4), LTRIM(RTRIM(mpd.[Guage]))) IS NOT NULL
+                     THEN 'general'                                  -- numeric gauge -> general
+                     WHEN tl.[name] IS NOT NULL
+                     THEN LOWER(LTRIM(RTRIM(tl.[name])))             -- tailor code (T2) -> name (Laxaman Jee)
+                     ELSE LOWER(LTRIM(RTRIM(mpd.[Guage]))) END) IN (SELECT val FROM @SubList))
           AND mpd.[plan_status] = 0      -- exclude held lines (plan_status = 1 -> Hold column)
           -- this LINE is not started (none of its sizes has a knitter row with pics)
           AND NOT EXISTS (
@@ -198,6 +222,13 @@ BEGIN
           -- factory scope: a restricted user is locked to their AssignedGauge (resolved above);
           -- an admin may narrow by @FactoryType. NULL @EffectiveFactory = show all factories.
           AND (@EffectiveFactory IS NULL OR LOWER(mpd.[factory_type]) = LOWER(@EffectiveFactory))
+          -- cascading sub-category filter: numeric gauge -> 'general', else the gauge text.
+          AND (@HasSub = 0 OR
+               (CASE WHEN TRY_CONVERT(DECIMAL(18,4), LTRIM(RTRIM(mpd.[Guage]))) IS NOT NULL
+                     THEN 'general'                                  -- numeric gauge -> general
+                     WHEN tl.[name] IS NOT NULL
+                     THEN LOWER(LTRIM(RTRIM(tl.[name])))             -- tailor code (T2) -> name (Laxaman Jee)
+                     ELSE LOWER(LTRIM(RTRIM(mpd.[Guage]))) END) IN (SELECT val FROM @SubList))
           AND mpd.[plan_status] = 0      -- exclude held lines (plan_status = 1 -> Hold column)
           -- this LINE is started AND has an outstanding piece (outstanding implies started)
           AND EXISTS (
@@ -257,6 +288,13 @@ BEGIN
           -- factory scope: a restricted user is locked to their AssignedGauge (resolved above);
           -- an admin may narrow by @FactoryType. NULL @EffectiveFactory = show all factories.
           AND (@EffectiveFactory IS NULL OR LOWER(mpd.[factory_type]) = LOWER(@EffectiveFactory))
+          -- cascading sub-category filter: numeric gauge -> 'general', else the gauge text.
+          AND (@HasSub = 0 OR
+               (CASE WHEN TRY_CONVERT(DECIMAL(18,4), LTRIM(RTRIM(mpd.[Guage]))) IS NOT NULL
+                     THEN 'general'                                  -- numeric gauge -> general
+                     WHEN tl.[name] IS NOT NULL
+                     THEN LOWER(LTRIM(RTRIM(tl.[name])))             -- tailor code (T2) -> name (Laxaman Jee)
+                     ELSE LOWER(LTRIM(RTRIM(mpd.[Guage]))) END) IN (SELECT val FROM @SubList))
 		  AND mpd.[plan_status] = 0
           -- this LINE has a fully-returned piece (pics = ret_pic)
           AND EXISTS (
@@ -320,6 +358,13 @@ BEGIN
           -- factory scope: a restricted user is locked to their AssignedGauge (resolved above);
           -- an admin may narrow by @FactoryType. NULL @EffectiveFactory = show all factories.
           AND (@EffectiveFactory IS NULL OR LOWER(mpd.[factory_type]) = LOWER(@EffectiveFactory))
+          -- cascading sub-category filter: numeric gauge -> 'general', else the gauge text.
+          AND (@HasSub = 0 OR
+               (CASE WHEN TRY_CONVERT(DECIMAL(18,4), LTRIM(RTRIM(mpd.[Guage]))) IS NOT NULL
+                     THEN 'general'                                  -- numeric gauge -> general
+                     WHEN tl.[name] IS NOT NULL
+                     THEN LOWER(LTRIM(RTRIM(tl.[name])))             -- tailor code (T2) -> name (Laxaman Jee)
+                     ELSE LOWER(LTRIM(RTRIM(mpd.[Guage]))) END) IN (SELECT val FROM @SubList))
           AND mpd.[plan_status] = 0      -- exclude held lines (plan_status = 1 -> Hold column)
           -- this LINE is not started
           AND NOT EXISTS (
@@ -380,6 +425,13 @@ BEGIN
             ON tl.[tid] = mpd.[Guage]
         WHERE (@OrderNo IS NULL OR @OrderNo = '' OR mp.[OrderNo] LIKE '%' + @OrderNo + '%')
           AND (@EffectiveFactory IS NULL OR LOWER(mpd.[factory_type]) = LOWER(@EffectiveFactory))
+          -- cascading sub-category filter: numeric gauge -> 'general', else the gauge text.
+          AND (@HasSub = 0 OR
+               (CASE WHEN TRY_CONVERT(DECIMAL(18,4), LTRIM(RTRIM(mpd.[Guage]))) IS NOT NULL
+                     THEN 'general'                                  -- numeric gauge -> general
+                     WHEN tl.[name] IS NOT NULL
+                     THEN LOWER(LTRIM(RTRIM(tl.[name])))             -- tailor code (T2) -> name (Laxaman Jee)
+                     ELSE LOWER(LTRIM(RTRIM(mpd.[Guage]))) END) IN (SELECT val FROM @SubList))
           AND mpd.[plan_status] = 1   -- held lines only
           -- start-date-only window: show once StartDate is on/before the window end; no end-date cut-off.
           AND (@EndDate IS NULL OR mpd.[StartDate] < DATEADD(DAY, 1, CAST(@EndDate AS DATE)))
@@ -397,6 +449,35 @@ BEGIN
         WHERE mpd.[factory_type] IS NOT NULL
           AND LTRIM(RTRIM(mpd.[factory_type])) <> ''
         ORDER BY [FactoryType];
+    END
+
+    --======================== Sub-categories =========================
+    -- Distinct gauge "methods" for the cascading sub-filter checkboxes:
+    --   numeric gauge      -> 'general'
+    --   tailor code (T1..) -> the tailor NAME from tbl_tailor (e.g. T2 -> 'Laxaman Jee')
+    --   anything else      -> the raw gauge text (e.g. 'Pashminalooms')
+    -- Scoped to @EffectiveFactory (NULL = all factories, e.g. admin on "All Factories";
+    -- a restricted user is locked to their own gauge), AND to the selected date window so
+    -- the options reflect only sub-categories that have rows overlapping the window.
+    IF (@Flag = 'SUB')
+    BEGIN
+        SELECT DISTINCT
+            CASE WHEN TRY_CONVERT(DECIMAL(18,4), LTRIM(RTRIM(mpd.[Guage]))) IS NOT NULL
+                 THEN 'general'
+                 WHEN tl.[name] IS NOT NULL
+                 THEN LTRIM(RTRIM(tl.[name]))
+                 ELSE LTRIM(RTRIM(mpd.[Guage])) END AS [SubCategory]
+        FROM [dbo].[MasterPlanDetail] mpd WITH (NOLOCK)
+        LEFT JOIN (SELECT [tid], MAX([name]) AS [name]
+                   FROM [dbo].[tbl_tailor] WITH (NOLOCK) GROUP BY [tid]) tl
+            ON tl.[tid] = mpd.[Guage]
+        WHERE mpd.[Guage] IS NOT NULL
+          AND LTRIM(RTRIM(mpd.[Guage])) <> ''
+          AND (@EffectiveFactory IS NULL OR LOWER(mpd.[factory_type]) = LOWER(@EffectiveFactory))
+          -- only sub-categories with at least one row overlapping the selected window
+          AND (@StartDate IS NULL OR mpd.[EndDate]   >= CAST(@StartDate AS DATE))
+          AND (@EndDate   IS NULL OR mpd.[StartDate] <  DATEADD(DAY, 1, CAST(@EndDate AS DATE)))
+        ORDER BY [SubCategory];
     END
 
     --========================== Current gauge =========================

@@ -111,6 +111,34 @@
             </div>
         </div>
 
+        @* Cascading sub-category filter — its OWN row below the main filter bar.
+           Numeric gauges collapse into "general"; tailor codes (e.g. T2) show the tailor
+           name (e.g. Laxaman Jee); other gauges show as-is. "All" (default) = no sub-filter.
+           Options follow the selected factory AND the selected date window. *@
+        @if (availableSubCategories.Count > 0)
+        {
+            <div class="subcat-filter-row">
+                <span class="subcat-filter-label">Gauge / Method:</span>
+
+                @* Model-driven chips (NOT native checkboxes). The "checked" look is purely the
+                   "active" class derived from the model, so it can never desync from the state:
+                   "All" is active whenever no specific option is selected. *@
+                <button type="button" class="subcat-check@(selectedSubCategories.Count == 0 ? " active" : "")"
+                        @onclick="OnAllSubCategoriesSelected">
+                    <span class="subcat-box"></span>
+                    <span>All</span>
+                </button>
+                @foreach (var sub in availableSubCategories)
+                {
+                    <button type="button" class="subcat-check@(selectedSubCategories.Contains(sub) ? " active" : "")"
+                            @onclick="@(() => ToggleSubCategory(sub))">
+                        <span class="subcat-box"></span>
+                        <span>@sub</span>
+                    </button>
+                }
+            </div>
+        }
+
         <!-- Stats cards -->
         <div class="stats-grid">
             <div class="stat-card stat-scheduled" @onclick="() => ShowBubble(1)">

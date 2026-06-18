@@ -21,6 +21,21 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
         private TaskScopeResponseModel? scope;
         private string? selectedFactoryType;
 
+        // ---- Cascading sub-category (gauge method) filter ----
+        // availableSubCategories: options for the ACTIVE factory (empty when no single
+        // factory is active, e.g. an admin on "All Factories"). selectedSubCategories:
+        // the checked options (empty = "All" = no sub-filter). ActiveFactory is the
+        // factory the sub-options cascade from (a restricted user's gauge, else the pick).
+        private List<string> availableSubCategories = new();
+        private readonly HashSet<string> selectedSubCategories = new(StringComparer.OrdinalIgnoreCase);
+        private string? ActiveFactory =>
+            scope?.IsRestricted == true ? scope.AssignedGauge
+            : (string.IsNullOrWhiteSpace(selectedFactoryType) ? null : selectedFactoryType);
+
+        // Monotonic token so a slow in-flight board load can't overwrite a newer one.
+        // Every LoadBoardAsync bumps it; results are applied only if still the latest.
+        private int _loadSeq;
+
         // ---- Which columns are visible (driven by the stat cards) ----
         private bool Box1 { get; set; }
         private bool Box2 { get; set; }
@@ -54,7 +69,7 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
             if (scope.IsRestricted)
                 selectedFactoryType = scope.AssignedGauge;
 
-            await LoadBoardAsync();
+            await LoadBoardAsync();   // also (re)loads the cascading sub-category options
         }
 
         // ======================================================================
@@ -65,15 +80,34 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
         // ======================================================================
         private async Task LoadBoardAsync()
         {
+            var token = ++_loadSeq;   // newest load wins; a stale in-flight load is discarded below
+
             var (start, end) = GetDateRange();
+
+            // Refresh the cascading sub-category options for the active factory + date window
+            // (numeric -> "general", tailor code -> name). A factory change clears the selection
+            // beforehand; here we just prune anything no longer available in the new window so
+            // the checkboxes stay consistent. ActiveFactory == null (admin "All Factories")
+            // aggregates sub-categories across every factory.
+            var subs = await TaskManager.GetSubCategoriesAsync(ActiveFactory, start, end);
+            if (token != _loadSeq) return;
+            availableSubCategories = subs;
+            selectedSubCategories.RemoveWhere(s => !subs.Contains(s, StringComparer.OrdinalIgnoreCase));
+
             var orderNo = string.IsNullOrWhiteSpace(selectedOrderNo) ? null : selectedOrderNo.Trim();
             var factoryType = string.IsNullOrWhiteSpace(selectedFactoryType) ? null : selectedFactoryType;
+            // Empty selection = "All" = no sub-filter; otherwise pipe-join the checked options.
+            var subCats = selectedSubCategories.Count == 0 ? null : string.Join("|", selectedSubCategories);
 
-            var scheduled = await TaskManager.GetTasksAsync("S", start, end, orderNo, factoryType);
-            var progress = await TaskManager.GetTasksAsync("P", start, end, orderNo, factoryType);
-            var completed = await TaskManager.GetTasksAsync("C", start, end, orderNo, factoryType);
-            var overdue = await TaskManager.GetTasksAsync("O", start, end, orderNo, factoryType);
-            var onhold = await TaskManager.GetTasksAsync("H", start, end, orderNo, factoryType);  // plan_status = 1
+            var scheduled = await TaskManager.GetTasksAsync("S", start, end, orderNo, factoryType, subCats);
+            var progress = await TaskManager.GetTasksAsync("P", start, end, orderNo, factoryType, subCats);
+            var completed = await TaskManager.GetTasksAsync("C", start, end, orderNo, factoryType, subCats);
+            var overdue = await TaskManager.GetTasksAsync("O", start, end, orderNo, factoryType, subCats);
+            var onhold = await TaskManager.GetTasksAsync("H", start, end, orderNo, factoryType, subCats);  // plan_status = 1
+
+            // A newer filter change started while we awaited -> drop these stale results so the
+            // board never shows data that doesn't match the current filters.
+            if (token != _loadSeq) return;
 
             todotasks = scheduled.Select(Map).ToList();
             inprogresstasks = progress.Select(Map).ToList();
@@ -163,6 +197,25 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
         {
             var value = e.Value?.ToString();
             selectedFactoryType = string.IsNullOrWhiteSpace(value) ? null : value;
+            selectedSubCategories.Clear();   // changing factory resets the sub-filter to "All"
+            await LoadBoardAsync();           // reloads sub-options for the new factory + the board
+        }
+
+        // "All" -> clear specific picks (empty set = no sub-filter). The chip's active state
+        // is purely model-driven, so clicking "All" while it is already active is a harmless
+        // no-op (it stays active) and can never be left visually "unchecked".
+        private async Task OnAllSubCategoriesSelected()
+        {
+            if (selectedSubCategories.Count == 0) return;   // already "All"
+            selectedSubCategories.Clear();
+            await LoadBoardAsync();
+        }
+
+        // Toggle one sub-category chip; an empty set falls back to "All".
+        private async Task ToggleSubCategory(string sub)
+        {
+            if (!selectedSubCategories.Remove(sub))   // present -> remove; absent -> add
+                selectedSubCategories.Add(sub);
             await LoadBoardAsync();
         }
 

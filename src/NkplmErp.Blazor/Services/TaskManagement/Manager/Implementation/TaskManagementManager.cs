@@ -17,11 +17,11 @@ namespace NkplmErp.Blazor.Services.TaskManagement.Manager.Implementation
         }
 
         public async Task<List<TaskManagementResponseModel>> GetTasksAsync(
-            string flag, DateTime? startDate = null, DateTime? endDate = null, string? orderNo = null, string? factoryType = null)
+            string flag, DateTime? startDate = null, DateTime? endDate = null, string? orderNo = null, string? factoryType = null, string? subCategories = null)
         {
             try
             {
-                var url = TaskManagementEndpoint.GetTasks(flag, startDate, endDate, orderNo, factoryType);
+                var url = TaskManagementEndpoint.GetTasks(flag, startDate, endDate, orderNo, factoryType, subCategories);
                 var response = await _httpClient.GetAsync(url);
 
                 if (response.IsSuccessStatusCode)
@@ -63,6 +63,29 @@ namespace NkplmErp.Blazor.Services.TaskManagement.Manager.Implementation
             {
                 _logger.LogError(ex, "GetScopeAsync failed");
                 return new TaskScopeResponseModel();
+            }
+        }
+
+        public async Task<List<string>> GetSubCategoriesAsync(string? factoryType, DateTime? startDate = null, DateTime? endDate = null)
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync(TaskManagementEndpoint.GetSubCategories(factoryType, startDate, endDate));
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var data = await response.Content.ReadFromJsonAsync<List<string>>();
+                    return data ?? new List<string>();
+                }
+
+                var error = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("GetSubCategoriesAsync({Factory}) returned {Status}: {Error}", factoryType, response.StatusCode, error);
+                return new List<string>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetSubCategoriesAsync({Factory}) failed", factoryType);
+                return new List<string>();
             }
         }
     }
