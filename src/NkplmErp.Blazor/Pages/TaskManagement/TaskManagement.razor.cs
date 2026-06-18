@@ -14,6 +14,13 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
         private DateTime selectedDate = DateTime.Now;
         private string selectedOrderNo = "";          // order-no search (empty = all)
 
+        // ---- Factory / gauge scope ----
+        // scope tells us whether the user is admin (editable factory dropdown) or
+        // gauge-restricted (locked to one factory_type). selectedFactoryType is the
+        // current dropdown value (null/"" = all factories; only admins can change it).
+        private TaskScopeResponseModel? scope;
+        private string? selectedFactoryType;
+
         // ---- Which columns are visible (driven by the stat cards) ----
         private bool Box1 { get; set; }
         private bool Box2 { get; set; }
@@ -40,6 +47,13 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
         {
             // Default view: Scheduled + In Progress + Completed + Over Due (On Hold hidden).
             ShowBubble(6);
+
+            // Resolve the user's factory scope. A gauge-restricted user is pinned to their
+            // own factory_type; an admin starts on "all factories" (null) and may change it.
+            scope = await TaskManager.GetScopeAsync();
+            if (scope.IsRestricted)
+                selectedFactoryType = scope.AssignedGauge;
+
             await LoadBoardAsync();
         }
 
@@ -53,16 +67,19 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
         {
             var (start, end) = GetDateRange();
             var orderNo = string.IsNullOrWhiteSpace(selectedOrderNo) ? null : selectedOrderNo.Trim();
+            var factoryType = string.IsNullOrWhiteSpace(selectedFactoryType) ? null : selectedFactoryType;
 
-            var scheduled = await TaskManager.GetTasksAsync("S", start, end, orderNo);
-            var progress = await TaskManager.GetTasksAsync("P", start, end, orderNo);
-            var completed = await TaskManager.GetTasksAsync("C", start, end, orderNo);
-            var overdue = await TaskManager.GetTasksAsync("O", start, end, orderNo);
+            var scheduled = await TaskManager.GetTasksAsync("S", start, end, orderNo, factoryType);
+            var progress = await TaskManager.GetTasksAsync("P", start, end, orderNo, factoryType);
+            var completed = await TaskManager.GetTasksAsync("C", start, end, orderNo, factoryType);
+            var overdue = await TaskManager.GetTasksAsync("O", start, end, orderNo, factoryType);
+            var onhold = await TaskManager.GetTasksAsync("H", start, end, orderNo, factoryType);  // plan_status = 1
 
             todotasks = scheduled.Select(Map).ToList();
             inprogresstasks = progress.Select(Map).ToList();
             completedtasks = completed.Select(Map).ToList();
             overduetasks = overdue.Select(Map).ToList();
+            onholdtasks = onhold.Select(Map).ToList();
 
             StateHasChanged();
         }
@@ -137,6 +154,15 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
         private async Task OnOrderNoChanged(ChangeEventArgs e)
         {
             selectedOrderNo = e.Value?.ToString() ?? "";
+            await LoadBoardAsync();
+        }
+
+        // Admin-only: change the active factory_type filter ("" = all factories).
+        // Restricted users never reach this (their dropdown is fixed/disabled).
+        private async Task OnFactoryTypeChanged(ChangeEventArgs e)
+        {
+            var value = e.Value?.ToString();
+            selectedFactoryType = string.IsNullOrWhiteSpace(value) ? null : value;
             await LoadBoardAsync();
         }
 

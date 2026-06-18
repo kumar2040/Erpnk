@@ -1,4 +1,5 @@
 @page "/task"
+@attribute [Authorize]
 @using NkplmErp.Blazor.Pages.TaskManagement.Shared
 
 <div class="main-body">
@@ -82,6 +83,31 @@
                                value="@selectedOrderNo" @onchange="OnOrderNoChanged" />
                     </div>
                 </div>
+
+                @* Factory filter. Admin: editable list of every factory_type.
+                   Gauge-restricted user: a single fixed (disabled) value. *@
+                @if (scope is not null)
+                {
+                    <div class="filter-item">
+                        @if (scope.IsRestricted)
+                        {
+                            <select class="compact-select" disabled style="height:32px" title="Your factory">
+                                <option>@scope.AssignedGauge</option>
+                            </select>
+                        }
+                        else
+                        {
+                            <select class="compact-select" value="@(selectedFactoryType ?? "")"
+                                    @onchange="OnFactoryTypeChanged" style="height:32px" title="Filter by factory">
+                                <option value="">All Factories</option>
+                                @foreach (var ft in scope.FactoryTypes)
+                                {
+                                    <option value="@ft">@ft</option>
+                                }
+                            </select>
+                        }
+                    </div>
+                }
             </div>
         </div>
 

@@ -69,14 +69,31 @@ IF OBJECT_ID('[dbo].[spTaskManagement]', 'P') IS NULL
     EXEC('CREATE PROCEDURE [dbo].[spTaskManagement] AS BEGIN SET NOCOUNT ON; END');
 GO
 
-create PROCEDURE [dbo].[spTaskManagement]
-    @Flag      NVARCHAR(50) = NULL,
-    @StartDate DATETIME     = NULL,
-    @EndDate   DATETIME     = NULL,
-    @OrderNo   NVARCHAR(50) = NULL   -- optional: contains-match on OrderNo (NULL/'' = all)
+alter PROCEDURE [dbo].[spTaskManagement]
+    @Flag        NVARCHAR(50)  = NULL,
+    @StartDate   DATETIME      = NULL,
+    @EndDate     DATETIME      = NULL,
+    @OrderNo     NVARCHAR(50)  = NULL,  -- optional: contains-match on OrderNo (NULL/'' = all)
+    @FactoryType NVARCHAR(100) = NULL,  -- admin's factory dropdown pick (ignored for restricted users)
+    @UserId      NVARCHAR(450) = NULL   -- current user; their identity.Users.AssignedGauge locks the scope
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    -- ---- Resolve the caller's factory scope from the identity Users table ----
+    -- The logged-in user's AssignedGauge decides what they may see:
+    --   NULL / blank  => SUPER ADMIN: no restriction (may narrow by @FactoryType).
+    --   has a value   => LOCKED to that factory_type, regardless of @FactoryType (zero trust).
+    DECLARE @UserGauge NVARCHAR(100) = NULL;   -- matches identity.Users.AssignedGauge width
+    IF (@UserId IS NOT NULL AND @UserId <> '')
+        SELECT @UserGauge = NULLIF(LTRIM(RTRIM(u.[AssignedGauge])), '')
+        FROM [identity].[Users] u WITH (NOLOCK)
+        WHERE u.[Id] = @UserId;
+
+    -- A restricted user's gauge always wins; an admin falls back to their dropdown pick.
+    -- NULL here means "no factory filter" (show all factories).
+    DECLARE @EffectiveFactory NVARCHAR(100) =
+        COALESCE(@UserGauge, NULLIF(LTRIM(RTRIM(@FactoryType)), ''));
 
     --=========================== Scheduled ===========================
     -- One row per detail line that is NOT started and NOT overdue: the line
@@ -119,6 +136,10 @@ BEGIN
                    FROM [dbo].[tbl_tailor] WITH (NOLOCK) GROUP BY [tid]) tl
             ON tl.[tid] = mpd.[Guage]
         WHERE (@OrderNo IS NULL OR @OrderNo = '' OR mp.[OrderNo] LIKE '%' + @OrderNo + '%')
+          -- factory scope: a restricted user is locked to their AssignedGauge (resolved above);
+          -- an admin may narrow by @FactoryType. NULL @EffectiveFactory = show all factories.
+          AND (@EffectiveFactory IS NULL OR LOWER(mpd.[factory_type]) = LOWER(@EffectiveFactory))
+          AND mpd.[plan_status] = 0      -- exclude held lines (plan_status = 1 -> Hold column)
           -- this LINE is not started (none of its sizes has a knitter row with pics)
           AND NOT EXISTS (
                 SELECT 1
@@ -174,6 +195,10 @@ BEGIN
                    FROM [dbo].[tbl_tailor] WITH (NOLOCK) GROUP BY [tid]) tl
             ON tl.[tid] = mpd.[Guage]
         WHERE (@OrderNo IS NULL OR @OrderNo = '' OR mp.[OrderNo] LIKE '%' + @OrderNo + '%')
+          -- factory scope: a restricted user is locked to their AssignedGauge (resolved above);
+          -- an admin may narrow by @FactoryType. NULL @EffectiveFactory = show all factories.
+          AND (@EffectiveFactory IS NULL OR LOWER(mpd.[factory_type]) = LOWER(@EffectiveFactory))
+          AND mpd.[plan_status] = 0      -- exclude held lines (plan_status = 1 -> Hold column)
           -- this LINE is started AND has an outstanding piece (outstanding implies started)
           AND EXISTS (
                 SELECT 1
@@ -229,6 +254,10 @@ BEGIN
                    FROM [dbo].[tbl_tailor] WITH (NOLOCK) GROUP BY [tid]) tl
             ON tl.[tid] = mpd.[Guage]
         WHERE (@OrderNo IS NULL OR @OrderNo = '' OR mp.[OrderNo] LIKE '%' + @OrderNo + '%')
+          -- factory scope: a restricted user is locked to their AssignedGauge (resolved above);
+          -- an admin may narrow by @FactoryType. NULL @EffectiveFactory = show all factories.
+          AND (@EffectiveFactory IS NULL OR LOWER(mpd.[factory_type]) = LOWER(@EffectiveFactory))
+		  AND mpd.[plan_status] = 0
           -- this LINE has a fully-returned piece (pics = ret_pic)
           AND EXISTS (
                 SELECT 1
@@ -288,6 +317,10 @@ BEGIN
                    FROM [dbo].[tbl_tailor] WITH (NOLOCK) GROUP BY [tid]) tl
             ON tl.[tid] = mpd.[Guage]
         WHERE (@OrderNo IS NULL OR @OrderNo = '' OR mp.[OrderNo] LIKE '%' + @OrderNo + '%')
+          -- factory scope: a restricted user is locked to their AssignedGauge (resolved above);
+          -- an admin may narrow by @FactoryType. NULL @EffectiveFactory = show all factories.
+          AND (@EffectiveFactory IS NULL OR LOWER(mpd.[factory_type]) = LOWER(@EffectiveFactory))
+          AND mpd.[plan_status] = 0      -- exclude held lines (plan_status = 1 -> Hold column)
           -- this LINE is not started
           AND NOT EXISTS (
                 SELECT 1
@@ -300,6 +333,79 @@ BEGIN
           AND (@EndDate   IS NULL OR mpd.[StartDate] <  DATEADD(DAY,  1, CAST(@EndDate   AS DATE)))
           AND (@StartDate IS NULL OR mpd.[EndDate]   >= DATEADD(DAY, -1, CAST(@StartDate AS DATE)))
         ORDER BY mpd.[EndDate] ASC;   -- most overdue first
+    END
+
+    --============================= On Hold ============================
+    -- One row per detail line that is HELD (plan_status = 1). Held lines are
+    -- pulled out of S/P/C/O (those filter plan_status = 0) and live only here.
+    -- They IGNORE the end date and the started/returned logic entirely; the
+    -- ONLY date filter is on the START DATE -- a held line shows once its start
+    -- date is on or before the selected window end (StartDate <= window end)
+    -- and then keeps showing (no end-date cut-off, so it never "expires").
+    -- Order-number search and factory/gauge scope still apply.
+    IF (@Flag = 'H')
+    BEGIN
+        SELECT
+            mpd.[MasterPlanChildId]   AS [TaskId],
+            mp.[OrderNo]              AS [OrderNo],
+            mp.[OrderType]            AS [OrderType],
+            mp.[ProductionType]       AS [ProductionType],
+            mpd.[factory_type]        AS [FactoryType],
+            mpd.[Machine]             AS [Machine],
+            CASE
+                WHEN mpd.[factory_type] <> 'knit' AND tl.[name] IS NOT NULL
+                    THEN tl.[name]                                  -- non-knit + tailor code (T1,T2,...) -> name
+                WHEN mpd.[factory_type] <> 'knit'
+                    THEN NULLIF(LTRIM(RTRIM(mpd.[Guage])), '')      -- non-knit, no tailor match -> raw gauge value
+                ELSE NULL                                           -- knit -> hide (no gauge numbers)
+            END                       AS [Guage],
+            CAST(mpd.[Qty] AS INT)    AS [Qty],
+            CASE WHEN mpd.[Machine] <> '1'
+                 THEN (SELECT COUNT(*) FROM [dbo].[MasterPlanDetail] m WITH (NOLOCK)
+                       WHERE m.[MaterID] = mpd.[MaterID]
+                         AND m.[factory_type] = 'knit'
+                         AND m.[Machine] <> '1')
+                 ELSE NULL END
+                                      AS [MachineCount],   -- knit-machine count for the ORDER, sent ONLY on a card whose own Machine<>'1' (Machine='1' -> NULL)
+            mpd.[StartDate]           AS [StartDate],
+            mpd.[EndDate]             AS [EndDate],
+            mp.[OrderStatus]          AS [OrderStatus],
+            mpd.[PlaningStatus]       AS [PlaningStatus],
+            mp.[PlanWorkingStatus]    AS [PlanWorkingStatus]
+        FROM [dbo].[MasterPlan] mp WITH (NOLOCK)
+        INNER JOIN [dbo].[MasterPlanDetail] mpd WITH (NOLOCK)
+            ON mpd.[MaterID] = mp.[MaterID]
+        LEFT JOIN (SELECT [tid], MAX([name]) AS [name]
+                   FROM [dbo].[tbl_tailor] WITH (NOLOCK) GROUP BY [tid]) tl
+            ON tl.[tid] = mpd.[Guage]
+        WHERE (@OrderNo IS NULL OR @OrderNo = '' OR mp.[OrderNo] LIKE '%' + @OrderNo + '%')
+          AND (@EffectiveFactory IS NULL OR LOWER(mpd.[factory_type]) = LOWER(@EffectiveFactory))
+          AND mpd.[plan_status] = 1   -- held lines only
+          -- start-date-only window: show once StartDate is on/before the window end; no end-date cut-off.
+          AND (@EndDate IS NULL OR mpd.[StartDate] < DATEADD(DAY, 1, CAST(@EndDate AS DATE)))
+        ORDER BY mpd.[StartDate] ASC;
+    END
+
+    --======================= Factory types ==========================
+    -- Distinct factory_type values for the board's factory dropdown.
+    -- Admin/unrestricted users pick from these; a gauge-restricted user is
+    -- locked to their own value server-side and never needs this list.
+    IF (@Flag = 'FT')
+    BEGIN
+        SELECT DISTINCT LTRIM(RTRIM(mpd.[factory_type])) AS [FactoryType]
+        FROM [dbo].[MasterPlanDetail] mpd WITH (NOLOCK)
+        WHERE mpd.[factory_type] IS NOT NULL
+          AND LTRIM(RTRIM(mpd.[factory_type])) <> ''
+        ORDER BY [FactoryType];
+    END
+
+    --========================== Current gauge =========================
+    -- The caller's resolved factory scope (NULL => super admin). The board's
+    -- /scope endpoint uses this to choose an editable (admin) vs a fixed
+    -- (restricted) factory dropdown.
+    IF (@Flag = 'GAUGE')
+    BEGIN
+        SELECT @UserGauge AS [AssignedGauge];
     END
 END
 GO

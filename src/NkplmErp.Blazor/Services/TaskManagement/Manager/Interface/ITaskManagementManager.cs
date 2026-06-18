@@ -10,7 +10,12 @@ namespace NkplmErp.Blazor.Services.TaskManagement.Manager.Interface
         // startDate/endDate: the selected period (null = no date filter; the "O"
         //   flag overlaps this window like S/P/C, +1-day grace at the start).
         // orderNo: contains-match on OrderNo (null/empty = all orders).
+        // factoryType: factory scope (null/empty = all). Server forces this to a
+        //   restricted user's gauge regardless of what is sent.
         Task<List<TaskManagementResponseModel>> GetTasksAsync(
-            string flag, DateTime? startDate = null, DateTime? endDate = null, string? orderNo = null);
+            string flag, DateTime? startDate = null, DateTime? endDate = null, string? orderNo = null, string? factoryType = null);
+
+        // Returns the current user's factory scope (admin vs gauge-restricted + the dropdown list).
+        Task<TaskScopeResponseModel> GetScopeAsync();
     }
 }

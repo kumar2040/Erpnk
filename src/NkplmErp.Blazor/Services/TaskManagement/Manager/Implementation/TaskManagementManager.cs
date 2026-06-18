@@ -17,11 +17,11 @@ namespace NkplmErp.Blazor.Services.TaskManagement.Manager.Implementation
         }
 
         public async Task<List<TaskManagementResponseModel>> GetTasksAsync(
-            string flag, DateTime? startDate = null, DateTime? endDate = null, string? orderNo = null)
+            string flag, DateTime? startDate = null, DateTime? endDate = null, string? orderNo = null, string? factoryType = null)
         {
             try
             {
-                var url = TaskManagementEndpoint.GetTasks(flag, startDate, endDate, orderNo);
+                var url = TaskManagementEndpoint.GetTasks(flag, startDate, endDate, orderNo, factoryType);
                 var response = await _httpClient.GetAsync(url);
 
                 if (response.IsSuccessStatusCode)
@@ -40,6 +40,29 @@ namespace NkplmErp.Blazor.Services.TaskManagement.Manager.Implementation
             {
                 _logger.LogError(ex, "GetTasksAsync({Flag}) failed", flag);
                 return new List<TaskManagementResponseModel>();
+            }
+        }
+
+        public async Task<TaskScopeResponseModel> GetScopeAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync(TaskManagementEndpoint.Scope);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var data = await response.Content.ReadFromJsonAsync<TaskScopeResponseModel>();
+                    return data ?? new TaskScopeResponseModel();
+                }
+
+                var error = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("GetScopeAsync returned {Status}: {Error}", response.StatusCode, error);
+                return new TaskScopeResponseModel();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetScopeAsync failed");
+                return new TaskScopeResponseModel();
             }
         }
     }
