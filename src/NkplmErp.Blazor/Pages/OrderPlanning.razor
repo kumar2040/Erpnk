@@ -547,7 +547,7 @@
                                     </thead>
                                     <tbody>
                                         @{ int gSn = 1;}
-                                        @foreach (var item in PlanningDetail.MachineStatus)
+                                        @foreach (var item in PlanningDetail.MachineStatus.Where(m => Permissions.IsRowAllowed("Knit", m.Gauge)))
                                         {
                                             @if (item.NewOrderQty > 0)
                                             {
@@ -1211,7 +1211,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach (var item in GaugeUtilization)
+                                    @foreach (var item in GaugeUtilization.Where(g => Permissions.IsRowAllowed("Knit", g.Gauge.ToString(System.Globalization.CultureInfo.InvariantCulture))))
                                     {
                                         <tr>
                                             <td class="font-bold text-navy">@item.Gauge</td>
@@ -1247,7 +1247,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach (var item in PlanningDetail.MachineStatus)
+                                    @foreach (var item in PlanningDetail.MachineStatus.Where(m => Permissions.IsRowAllowed("Knit", m.Gauge)))
                                     {
                                         <tr>
                                             <td class="font-bold text-teal cursor-pointer hover:underline" @onclick='() => OpenGaugeDetailModal(item.Gauge, "0")'>
@@ -1628,7 +1628,7 @@
                             }
                             else
                             {
-                                @foreach (var item in PlanningDetail.MachineStatus.Where(i => i.NewOrderQty > 0))
+                                @foreach (var item in PlanningDetail.MachineStatus.Where(i => i.NewOrderQty > 0 && Permissions.IsRowAllowed("Knit", i.Gauge)))
                                 {
                                     var plannedPlansForGauge = OrderAllPlannedPlans
                                         .Where(p => string.Equals(p.Gauge?.Trim(), item.Gauge?.Trim(), StringComparison.OrdinalIgnoreCase))

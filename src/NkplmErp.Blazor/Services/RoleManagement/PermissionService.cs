@@ -67,4 +67,15 @@ public class PermissionService
     /// Returns true if the user has no role assigned (will be denied by API anyway).
     /// </summary>
     public bool HasNoPermissions => _isLoaded && (_cachedPermissions == null || !_cachedPermissions.Permissions.Any());
+
+    /// <summary>True if the user has no scope restriction (admin / blank scope) — sees everything.</summary>
+    public bool IsUnrestricted => _cachedPermissions?.IsUnrestricted ?? true;
+
+    /// <summary>
+    /// Two-level row check: may the user see a row tagged (knitType, gauge)?
+    /// Null/blank scope or admin => true. Fails open if permissions aren't loaded yet
+    /// (the server still enforces; this is only for display).
+    /// </summary>
+    public bool IsRowAllowed(string? knitType, string? gauge) =>
+        _cachedPermissions?.IsRowAllowed(knitType, gauge) ?? true;
 }
