@@ -59,7 +59,17 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
         private int VisibleBoxCount =>
             (Box1 ? 1 : 0) + (Box2 ? 1 : 0) + (Box3 ? 1 : 0) + (Box4 ? 1 : 0) + (Box5 ? 1 : 0);
         private bool SingleFullWidth => VisibleBoxCount == 1;
-        private string BoardColClass => SingleFullWidth ? "col-12" : "col-md-6 col-lg-4";
+        // Width = 12 / (visible columns) so all status columns sit on ONE row
+        // (e.g. Scheduled · In Progress · Completed · Over Due side by side).
+        // 5 columns use equal-width flex ("col") since Bootstrap has no col-2.4.
+        private string BoardColClass => VisibleBoxCount switch
+        {
+            1 => "col-12",
+            2 => "col-6",
+            3 => "col-4",
+            4 => "col-3",
+            _ => "col"
+        };
 
         // ---- Board data (loaded from the API) ----
         private List<TaskCardItem> todotasks = new();
