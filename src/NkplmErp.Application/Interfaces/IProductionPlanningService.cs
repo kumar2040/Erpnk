@@ -34,5 +34,13 @@ public interface IProductionPlanningService
     // Gauge of a single plan row - used by the API for Zero-Trust mutation checks.
     // Default implementation so HTTP-client implementations don't need it.
     Task<string?> GetPlanGaugeAsync(int planDetailId) => Task.FromResult<string?>(null);
+
+    // Department (factory_type / KnitType: knit/weave/silk/linen/other) of a single
+    // plan row - used by the API for Zero-Trust mutation checks under department scoping.
+    Task<string?> GetPlanKnitTypeAsync(int planDetailId) => Task.FromResult<string?>(null);
+
+    // Parent plan id (MasterPlanDetailId) of a size line - for Zero-Trust ownership
+    // checks on size-line endpoints. Default impl for HTTP-client implementations.
+    Task<int> GetSizeLinePlanIdAsync(int sizeLineId) => Task.FromResult(0);
 }
 

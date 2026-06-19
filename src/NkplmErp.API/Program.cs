@@ -1,4 +1,6 @@
 using System.Text;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -38,12 +40,27 @@ builder.Services.AddIdentity<NkplmErp.Domain.Entities.User, Role>(options =>
     options.Password.RequireDigit = true;
     options.Password.RequiredLength = 8;
     options.User.RequireUniqueEmail = true;
+
+    // Brute-force protection: lock the account after repeated failures.
+    options.Lockout.AllowedForNewUsers = true;
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
 })
 .AddEntityFrameworkStores<SecurityDbContext>()
 .AddDefaultTokenProviders();
 
 // 3. Authentication & JWT Configuration
 var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key is missing");
+
+// Refuse to start in non-development with a missing/weak/known-leaked signing key.
+const string LeakedDefaultJwtKey = "nkplm_erp_super_secret_key_fixed_length_32_chars";
+if (!builder.Environment.IsDevelopment() &&
+    (jwtKey.Length < 32 || jwtKey == LeakedDefaultJwtKey))
+{
+    throw new InvalidOperationException(
+        "Insecure Jwt:Key. Configure a strong, secret signing key (>= 32 chars) via " +
+        "environment variable or user-secrets — the default/committed key must not be used in production.");
+}
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -72,6 +89,36 @@ builder.Services.AddAuthentication(options =>
                 context.Token = cookieToken;
             }
             return Task.CompletedTask;
+        },
+
+        // Zero Trust live check: reject the token if the user is deactivated or has
+        // been force-logged-out (security stamp rotated). Runs on every request, so
+        // an admin "Force logout" / "Deactivate" takes effect immediately.
+        OnTokenValidated = async context =>
+        {
+            var principal = context.Principal;
+            var userId = principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                         ?? principal?.FindFirst("sub")?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                context.Fail("No subject in token.");
+                return;
+            }
+
+            var userManager = context.HttpContext.RequestServices.GetRequiredService<UserManager<User>>();
+            var user = await userManager.FindByIdAsync(userId);
+            if (user is null || !user.IsActive)
+            {
+                context.Fail("User is inactive or no longer exists.");
+                return;
+            }
+
+            var tokenStamp = principal?.FindFirst("sstamp")?.Value ?? string.Empty;
+            var currentStamp = user.SecurityStamp ?? string.Empty;
+            if (!string.Equals(tokenStamp, currentStamp, StringComparison.Ordinal))
+            {
+                context.Fail("Session has been ended.");
+            }
         }
     };
 });
@@ -125,6 +172,18 @@ builder.Services.AddCors(options =>
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
+// Rate limiting: throttle the auth endpoints to blunt brute-force / credential stuffing.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddFixedWindowLimiter("auth", o =>
+    {
+        o.Window = TimeSpan.FromMinutes(1);
+        o.PermitLimit = 10;          // 10 auth requests / minute / instance
+        o.QueueLimit = 0;
+    });
+});
 
 builder.Services.AddApiVersioning(options =>
 {
@@ -212,10 +271,30 @@ app.UseSwaggerUI(options =>
 });
 
 app.UseExceptionHandler();
-// app.UseHttpsRedirection();
+
+// Transport security: enforce HTTPS + HSTS outside local development.
+if (!app.Environment.IsDevelopment())
+{
+    // Behind a TLS-terminating proxy / IIS, trust X-Forwarded-Proto so the app
+    // sees the original HTTPS scheme (prevents HTTPS-redirect loops, fixes Secure cookies).
+    var fwd = new Microsoft.AspNetCore.Builder.ForwardedHeadersOptions
+    {
+        ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+                         | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
+    };
+    fwd.KnownNetworks.Clear();
+    fwd.KnownProxies.Clear(); // accept forwarded headers from the front-end proxy
+    app.UseForwardedHeaders(fwd);
+
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
+
 app.UseStaticFiles();
 
 app.UseCors("BlazorPolicy");
+
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -988,6 +988,7 @@ public class ProductionPlanningService : IProductionPlanningService
                                 else if (col == "mc") item.Mc = reader[i].ToString() ?? string.Empty;
                                 else if (col == "quantity") item.Quantity = Convert.ToDecimal(reader[i]);
                                 else if (col == "estenddate") item.EstEndDate = Convert.ToDateTime(reader[i]);
+                                else if (col == "knittype") item.KnitType = reader[i].ToString();
                             }
                             list.Add(item);
                         }
@@ -1104,6 +1105,7 @@ public class ProductionPlanningService : IProductionPlanningService
                                 else if (col == "createdby") dto.CreatedBy = reader[i].ToString() ?? string.Empty;
                                 else if (col == "machine") dto.Machine = reader[i].ToString() ?? string.Empty;
                                 else if (col == "machineid") dto.MachineID = Convert.ToInt32(reader[i]);
+                                else if (col == "knittype") dto.KnitType = reader[i].ToString();
                             }
                             result.Add(dto);
                         }
@@ -1212,6 +1214,7 @@ public class ProductionPlanningService : IProductionPlanningService
                                     case "enddate": dto.EndDate = Convert.ToDateTime(reader[i]); break;
                                     case "planid": dto.PlanID = Convert.ToInt32(reader[i]); break;
                                     case "orderid": dto.OrderRowId = Convert.ToInt32(reader[i]); break;
+                                    case "knittype": dto.KnitType = reader[i].ToString(); break;
                                 }
                             }
                             result.Add(dto);
@@ -1302,6 +1305,9 @@ public class ProductionPlanningService : IProductionPlanningService
                                     case "date": dto.Date = Convert.ToDateTime(reader[i]); break;
                                     case "busymachines": dto.BusyMachines = Convert.ToInt32(reader[i]); break;
                                     case "loadqty": dto.LoadQty = Convert.ToDecimal(reader[i]); break;
+                                    case "knittedpc": dto.KnittedPC = Convert.ToInt32(reader[i]); break;
+                                    case "shipcount": dto.ShipCount = Convert.ToInt32(reader[i]); break;
+                                    case "shiporders": dto.ShipOrders = reader[i].ToString() ?? string.Empty; break;
                                     case "totalmachines": dto.TotalMachines = Convert.ToInt32(reader[i]); break;
                                     case "totalknitters": dto.TotalKnitters = Convert.ToInt32(reader[i]); break;
                                     case "dayname": dto.DayName = reader[i].ToString() ?? string.Empty; break;
@@ -1537,6 +1543,50 @@ public class ProductionPlanningService : IProductionPlanningService
         catch (Exception ex)
         {
             Console.WriteLine($"GetPlanGaugeAsync Error: {ex.Message}");
+            throw;
+        }
+    }
+
+    public async Task<string?> GetPlanKnitTypeAsync(int planDetailId)
+    {
+        try
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = new SqlCommand("SELECT factory_type FROM dbo.MasterPlanDetail WHERE MasterPlanChildId = @id", connection))
+                {
+                    command.Parameters.AddWithValue("@id", planDetailId);
+                    var result = await command.ExecuteScalarAsync();
+                    return result == null || result == DBNull.Value ? null : result.ToString();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"GetPlanKnitTypeAsync Error: {ex.Message}");
+            throw;
+        }
+    }
+
+    public async Task<int> GetSizeLinePlanIdAsync(int sizeLineId)
+    {
+        try
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = new SqlCommand("SELECT MasterPlanDetailId FROM dbo.MasterPlanDetailSize WHERE id = @id", connection))
+                {
+                    command.Parameters.AddWithValue("@id", sizeLineId);
+                    var result = await command.ExecuteScalarAsync();
+                    return result == null || result == DBNull.Value ? 0 : Convert.ToInt32(result);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"GetSizeLinePlanIdAsync Error: {ex.Message}");
             throw;
         }
     }

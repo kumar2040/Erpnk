@@ -36,6 +36,7 @@ public class PermissionService
     {
         _cachedPermissions = null;
         _isLoaded = false;
+        LandingApplied = false;
     }
 
     /// <summary>
@@ -45,6 +46,12 @@ public class PermissionService
     public string? AssignedGauge => _cachedPermissions?.AssignedGauge;
 
     public bool IsLoaded => _isLoaded;
+
+    /// <summary>
+    /// One-shot guard so the per-user landing redirect runs at most once per circuit
+    /// (prevents dashboard↔landing redirect loops/flicker).
+    /// </summary>
+    public bool LandingApplied { get; set; }
 
     // ===== Permission Check Helpers =====
     // Use these in .razor files to show/hide UI elements.
@@ -60,4 +67,15 @@ public class PermissionService
     /// Returns true if the user has no role assigned (will be denied by API anyway).
     /// </summary>
     public bool HasNoPermissions => _isLoaded && (_cachedPermissions == null || !_cachedPermissions.Permissions.Any());
+
+    /// <summary>True if the user has no scope restriction (admin / blank scope) — sees everything.</summary>
+    public bool IsUnrestricted => _cachedPermissions?.IsUnrestricted ?? true;
+
+    /// <summary>
+    /// Two-level row check: may the user see a row tagged (knitType, gauge)?
+    /// Null/blank scope or admin => true. Fails open if permissions aren't loaded yet
+    /// (the server still enforces; this is only for display).
+    /// </summary>
+    public bool IsRowAllowed(string? knitType, string? gauge) =>
+        _cachedPermissions?.IsRowAllowed(knitType, gauge) ?? true;
 }

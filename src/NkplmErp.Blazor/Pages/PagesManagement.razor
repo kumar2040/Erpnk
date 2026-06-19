@@ -1,0 +1,203 @@
+@page "/pages-management"
+@using NkplmErp.Shared.DTOs
+@using NkplmErp.Blazor.Services.RoleManagement
+
+<PageTitle>Pages / Modules — NKPLM ERP</PageTitle>
+
+<style>
+    .pm-page { padding: 14px; background: #f4f6fa; min-height: 100vh; font-family: 'Inter','DM Sans',sans-serif; color: #111827; }
+
+    .pm-header {
+        display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+        background: linear-gradient(90deg, #1a3353 0%, #234a73 100%);
+        border-bottom: 3px solid #2ab3b1; border-radius: 10px;
+        padding: 12px 16px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(26,51,83,.18);
+    }
+    .pm-header .pm-h-left { display: flex; align-items: center; gap: 12px; }
+    .pm-header .pm-ic { font-size: 1.4rem; background: rgba(255,255,255,.12); width: 40px; height: 40px; border-radius: 9px; display: flex; align-items: center; justify-content: center; }
+    .pm-header h1 { margin: 0; font-size: 1.15rem; font-weight: 700; color: #fff; }
+    .pm-header p  { margin: 2px 0 0; font-size: .74rem; color: rgba(255,255,255,.72); }
+
+    .pm-toast { padding: 7px 14px; border-radius: 7px; font-size: .8rem; font-weight: 600; }
+    .pm-toast.ok  { background: #d1fae5; border: 1px solid #34d399; color: #065f46; }
+    .pm-toast.err { background: #fee2e2; border: 1px solid #f87171; color: #991b1b; }
+
+    .pm-panel { background: #fff; border: 1px solid #e5e9f0; border-radius: 10px; box-shadow: 0 1px 3px rgba(16,24,40,.05); overflow: hidden; }
+    .pm-panel-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #fafbfd; border-bottom: 1px solid #eceff4; }
+    .pm-panel-head .pm-title { font-weight: 700; font-size: .9rem; color: #1a3353; flex: 1; }
+    .pm-body { padding: 14px; }
+
+    .pm-help { font-size: .72rem; color: #1a3353; background: rgba(42,179,177,.10); border: 1px solid rgba(42,179,177,.30); border-radius: 7px; padding: 8px 12px; margin-bottom: 12px; line-height: 1.4; }
+
+    .pm-form { background: #f7f9fc; border: 1px solid #e5e9f0; border-radius: 8px; padding: 12px; margin-bottom: 14px;
+               display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 14px; }
+    .pm-form .pm-full { grid-column: 1 / -1; }
+    .pm-field label { display: block; font-size: .64rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+    .pm-input { width: 100%; box-sizing: border-box; border: 1px solid #d6dbe4; border-radius: 6px; padding: 8px 10px; font-size: .82rem; background: #fff; color: #111827; transition: border-color .15s, box-shadow .15s; }
+    .pm-input:focus { outline: none; border-color: #2ab3b1; box-shadow: 0 0 0 3px rgba(42,179,177,.15); }
+    .pm-check { display: inline-flex; align-items: center; gap: 8px; font-size: .82rem; font-weight: 600; color: #374151; }
+    .pm-check input { width: 16px; height: 16px; accent-color: #2ab3b1; }
+    .pm-actions { display: flex; gap: 8px; margin-top: 2px; }
+
+    .pm-btn { border: none; border-radius: 7px; cursor: pointer; font-size: .78rem; font-weight: 700; padding: 8px 14px; display: inline-flex; align-items: center; gap: 6px; transition: filter .15s, transform .12s, background .15s; }
+    .pm-btn:hover { transform: translateY(-1px); }
+    .pm-btn.primary { background: linear-gradient(135deg, #2ab3b1, #1a8f8d); color: #fff; }
+    .pm-btn.success { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
+    .pm-btn.ghost   { background: #fff; color: #4b5563; border: 1px solid #d6dbe4; }
+    .pm-btn.ghost:hover { background: #f3f4f6; }
+    .pm-btn.sm { padding: 6px 11px; font-size: .74rem; }
+    .pm-btn.icon { padding: 6px 8px; background: transparent; font-size: .9rem; border-radius: 6px; }
+    .pm-btn.icon:hover { background: #eef1f6; }
+    .pm-btn.icon.danger { color: #ef4444; }
+
+    .pm-table-wrap { overflow-x: auto; }
+    .pm-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    .pm-table thead th { text-align: left; background: #1a3353; color: #e6edf6; font-size: .66rem; text-transform: uppercase; letter-spacing: .5px; font-weight: 700; padding: 9px 12px; }
+    .pm-table thead th.c { text-align: center; }
+    .pm-table tbody td { padding: 9px 12px; border-bottom: 1px solid #eef1f6; vertical-align: middle; }
+    .pm-table tbody tr:nth-child(even) { background: #fafbfd; }
+    .pm-table tbody tr:hover { background: #f0f7f7; }
+    .pm-table td.c { text-align: center; }
+    .pm-key { font-family: monospace; font-size: .72rem; background: #eef1f6; color: #334155; padding: 2px 7px; border-radius: 5px; }
+    .pm-name { font-weight: 600; color: #111827; }
+    .pm-url { color: #6b7280; }
+
+    .pm-badge { padding: 2px 9px; border-radius: 20px; font-size: .68rem; font-weight: 700; }
+    .pm-badge.on  { background: rgba(16,185,129,.12); color: #047857; border: 1px solid rgba(16,185,129,.3); }
+    .pm-badge.off { background: rgba(148,163,184,.18); color: #475569; border: 1px solid rgba(148,163,184,.4); }
+
+    .pm-acts { display: flex; gap: 4px; justify-content: center; }
+    .pm-state { padding: 28px; text-align: center; color: #9ca3af; font-size: .85rem; }
+</style>
+
+@if (AccessDenied)
+{
+    <AccessDenied403 Message="You don’t have permission to view Pages / Modules. If you need access, contact your administrator." />
+}
+else
+{
+<div class="pm-page">
+
+    <div class="pm-header">
+        <div class="pm-h-left">
+            <span class="pm-ic">🗂️</span>
+            <div>
+                <h1>Pages / Modules</h1>
+                <p>Register the modules that can be permission-controlled in Role Management</p>
+            </div>
+        </div>
+        @if (!string.IsNullOrEmpty(StatusMessage))
+        {
+            <div class="pm-toast @(IsError ? "err" : "ok")">@StatusMessage</div>
+        }
+    </div>
+
+    <div class="pm-panel">
+        <div class="pm-panel-head">
+            <i class="fa-solid fa-folder-tree" style="color:#2ab3b1;"></i>
+            <span class="pm-title">All Pages</span>
+            @if (CanEdit)
+            {
+                <button class="pm-btn primary sm" @onclick="ShowAddForm" id="btn-add-page">
+                    <i class="fa-solid fa-plus"></i> Add Page
+                </button>
+            }
+        </div>
+        <div class="pm-body">
+
+            <div class="pm-help">
+                ℹ️ Adding a page registers a permission module (creates its View / Edit / Delete buckets). It does not create an actual screen — a developer wires a Blazor page to the same <strong>Page Key</strong>.
+            </div>
+
+            @if (ShowForm)
+            {
+                <div class="pm-form">
+                    <div class="pm-field">
+                        <label>Page Key *</label>
+                        <input class="pm-input" @bind="EditPage.PageKey" placeholder="e.g. OrderPlanning" id="input-page-key" />
+                    </div>
+                    <div class="pm-field">
+                        <label>Display Name *</label>
+                        <input class="pm-input" @bind="EditPage.PageName" placeholder="e.g. Order Planning" id="input-page-name" />
+                    </div>
+                    <div class="pm-field">
+                        <label>URL (optional)</label>
+                        <input class="pm-input" @bind="EditPage.PageUrl" placeholder="e.g. /order-planning" id="input-page-url" />
+                    </div>
+                    <div class="pm-field">
+                        <label>Display Order</label>
+                        <input class="pm-input" type="number" @bind="EditPage.DisplayOrder" id="input-page-order" />
+                    </div>
+                    <div class="pm-field pm-full">
+                        <label class="pm-check">
+                            <input type="checkbox" @bind="EditPage.IsActive" id="chk-page-active" /> Active
+                        </label>
+                    </div>
+                    <div class="pm-actions pm-full">
+                        <button class="pm-btn success" @onclick="SavePage" id="btn-save-page"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+                        <button class="pm-btn ghost" @onclick="CancelForm" id="btn-cancel-page">Cancel</button>
+                    </div>
+                </div>
+            }
+
+            @if (IsLoading)
+            {
+                <div class="pm-state">Loading pages…</div>
+            }
+            else if (!Pages.Any())
+            {
+                <div class="pm-state">No pages registered yet.</div>
+            }
+            else
+            {
+                <div class="pm-table-wrap">
+                    <table class="pm-table">
+                        <thead>
+                            <tr>
+                                <th>Page Key</th>
+                                <th>Name</th>
+                                <th>URL</th>
+                                <th class="c">Order</th>
+                                <th class="c">Status</th>
+                                @if (CanEdit || CanDelete)
+                                {
+                                    <th class="c">Actions</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in Pages)
+                            {
+                                <tr>
+                                    <td><span class="pm-key">@p.PageKey</span></td>
+                                    <td><span class="pm-name">@p.PageName</span></td>
+                                    <td class="pm-url">@(string.IsNullOrWhiteSpace(p.PageUrl) ? "—" : p.PageUrl)</td>
+                                    <td class="c">@p.DisplayOrder</td>
+                                    <td class="c">
+                                        <span class="pm-badge @(p.IsActive ? "on" : "off")">@(p.IsActive ? "Active" : "Inactive")</span>
+                                    </td>
+                                    @if (CanEdit || CanDelete)
+                                    {
+                                        <td class="c">
+                                            <div class="pm-acts">
+                                                @if (CanEdit)
+                                                {
+                                                    <button class="pm-btn icon" title="Edit" @onclick="() => EditAction(p)" id="btn-edit-page-@p.AppPageId"><i class="fa-solid fa-pen"></i></button>
+                                                }
+                                                @if (CanDelete)
+                                                {
+                                                    <button class="pm-btn icon danger" title="Delete" @onclick="() => DeletePage(p)" id="btn-del-page-@p.AppPageId"><i class="fa-solid fa-trash"></i></button>
+                                                }
+                                            </div>
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+}

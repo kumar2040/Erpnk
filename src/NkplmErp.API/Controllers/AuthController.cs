@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using NkplmErp.Application.Interfaces;
 using NkplmErp.Shared.DTOs;
 using Asp.Versioning;
@@ -10,15 +11,18 @@ namespace NkplmErp.API.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
+[EnableRateLimiting("auth")]
 public class AuthController : ControllerBase
 {
     private readonly IIdentityService _identityService;
     private readonly IWebAuthnService _webAuthnService;
+    private readonly IWebHostEnvironment _env;
 
-    public AuthController(IIdentityService identityService, IWebAuthnService webAuthnService)
+    public AuthController(IIdentityService identityService, IWebAuthnService webAuthnService, IWebHostEnvironment env)
     {
         _identityService = identityService;
         _webAuthnService = webAuthnService;
+        _env = env;
     }
 
     [HttpPost("login")]
@@ -182,10 +186,13 @@ public class AuthController : ControllerBase
     {
         if (!result.IsSuccess || result.RequiresMfa) return;
 
+        // Secure only over HTTP in local dev; always Secure (HTTPS-only) elsewhere.
+        bool secure = !_env.IsDevelopment();
+
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = false, // Changed to false for local development
+            Secure = secure,
             SameSite = SameSiteMode.Lax,
             Expires = DateTime.UtcNow.AddHours(1)
         };
@@ -198,7 +205,7 @@ public class AuthController : ControllerBase
             var refreshCookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = false, // Changed to false for local development
+                Secure = secure,
                 SameSite = SameSiteMode.Lax,
                 Expires = DateTime.UtcNow.AddDays(7)
             };

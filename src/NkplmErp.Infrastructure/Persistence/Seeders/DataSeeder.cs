@@ -149,12 +149,8 @@ public class DataSeeder
                     await _userManager.AddToRoleAsync(user, role);
                 }
             }
-            else
-            {
-                // In Development, ensure the password is what we expect
-                await _userManager.RemovePasswordAsync(user);
-                await _userManager.AddPasswordAsync(user, "Password123!");
-            }
+            // NOTE: existing users are left untouched. Do NOT reset passwords on
+            // every boot - that would clobber any rotated/admin-set credentials.
         }
 
         // Random Users

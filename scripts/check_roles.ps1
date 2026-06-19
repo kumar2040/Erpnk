@@ -1,4 +1,4 @@
-$connString = "server=172.25.50.251;database=NatureKnit;user id=eflow;password=Efl0w@123#;MultipleActiveResultSets=true;TrustServerCertificate=True"
+﻿$connString = $env:NK_DB_CONNECTION; if ([string]::IsNullOrWhiteSpace($connString)) { Write-Error "Set the NK_DB_CONNECTION environment variable to the DB connection string before running this script."; exit 1 }
 $conn = New-Object System.Data.SqlClient.SqlConnection($connString)
 $conn.Open()
 

@@ -687,12 +687,20 @@ public partial class OrderPlanning
         var sorted = machines.OrderBy(m => m.FreeDate).ToList();
         int bestN = 1;
         DateTime bestEnd = DateTime.MaxValue;
+        Dictionary<int, decimal> bestTargets = new();
         for (int n = 1; n <= idealN; n++)
         {
-            var (_, finish) = ComputeFinishAlignedPlan(sorted.Take(n).ToList(), qty, capPerMc);
-            if (finish.Date <= bestEnd.Date) { bestN = n; bestEnd = finish; }
+            var (targets, finish) = ComputeFinishAlignedPlan(sorted.Take(n).ToList(), qty, capPerMc);
+            if (finish.Date <= bestEnd.Date) { bestN = n; bestEnd = finish; bestTargets = targets; }
         }
-        return (bestN, bestEnd == DateTime.MaxValue ? DateTime.Today : bestEnd);
+
+        // Match AutoSelectKnitMachines exactly: it drops machines whose finish-aligned
+        // share is < 1 piece, so the shown count must exclude those too.
+        int effectiveN = sorted.Take(bestN)
+            .Count(m => bestTargets.TryGetValue(m.Machine_ID, out var t) && t >= 1m);
+        if (effectiveN < 1) effectiveN = 1;
+
+        return (effectiveN, bestEnd == DateTime.MaxValue ? DateTime.Today : bestEnd);
     }
 
     // Scan all unplanned knit gauges and cache their suggested machine count + Est. End.
@@ -1406,12 +1414,10 @@ public partial class OrderPlanning
                 
             if (masterData != null)
             {
-                var currentPlanned = OrderAllPlannedPlans.Where(p => 
-                    string.Equals(p.Gauge?.Trim(), masterData.MasterId?.Trim(), StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(p.Gauge?.Trim(), masterData.MasterName?.Trim(), StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(p.Gauge?.Trim(), gauge?.Trim(), StringComparison.OrdinalIgnoreCase)
-                ).Sum(p => p.Quantity);
-                
+                // Validate against the SAME gauge-specific list PlanQty was derived from
+                // (DbPlannedPlans), so the check can't disagree with the shown remaining.
+                var currentPlanned = DbPlannedPlans.Sum(p => p.Quantity);
+
                 var remaining = masterData.NewOrderQty - currentPlanned;
                 if (PlanQty > remaining)
                 {
@@ -1425,7 +1431,8 @@ public partial class OrderPlanning
             var machineData = PlanningDetail?.MachineStatus?.FirstOrDefault(m => string.Equals(m.Gauge?.Trim(), gauge?.Trim(), StringComparison.OrdinalIgnoreCase));
             if (machineData != null)
             {
-                var currentPlanned = OrderAllPlannedPlans.Where(p => string.Equals(p.Gauge?.Trim(), gauge?.Trim(), StringComparison.OrdinalIgnoreCase)).Sum(p => p.Quantity);
+                // Validate against the SAME gauge-specific list PlanQty was derived from.
+                var currentPlanned = DbPlannedPlans.Sum(p => p.Quantity);
                 var remaining = machineData.NewOrderQty - currentPlanned;
                 if (PlanQty > remaining)
                 {
@@ -1846,15 +1853,19 @@ public partial class OrderPlanning
             .ToList();
     }
 
-    // Restore the order the planner was viewing before the bulk run touched state.
-    private async Task RestoreOrderContextAsync(List<MonthlyOrderDetailDto> original)
+    // Restore the order AND the product-type view the planner had before the bulk run
+    // (bulk forces SelectedKnitType="Knit"), reloading the correct analysis for it.
+    private async Task RestoreOrderContextAsync(List<MonthlyOrderDetailDto> original, string originalKnitType)
     {
         SelectedOrders = original;
         SelectedModalGauge = string.Empty;
+        SelectedKnitType = originalKnitType;
+
         var current = SelectedOrders.LastOrDefault();
-        if (current != null)
+        if (current != null && !string.IsNullOrEmpty(originalKnitType))
         {
-            await LoadOrderProductionStatus(current.OrderNo);
+            // Re-run the same analysis load the user's tab uses (Knit/Weave/Silk/...).
+            await OnOrderSummaryRowClick(originalKnitType);
         }
     }
 
@@ -1870,6 +1881,7 @@ public partial class OrderPlanning
         }
 
         var originalOrders = SelectedOrders;
+        var originalKnitType = SelectedKnitType;
         IsBulkOpen = true;
         IsBulkBusy = true;
         BulkPhase = "Scanning orders by deadline...";
@@ -1911,7 +1923,7 @@ public partial class OrderPlanning
         }
         finally
         {
-            await RestoreOrderContextAsync(originalOrders);
+            await RestoreOrderContextAsync(originalOrders, originalKnitType);
             IsBulkBusy = false;
             BulkPhase = "";
             StateHasChanged();
@@ -1927,11 +1939,13 @@ public partial class OrderPlanning
         if (!selected.Any()) { IsBulkOpen = false; return; }
 
         var originalOrders = SelectedOrders;
+        var originalKnitType = SelectedKnitType;
         IsBulkBusy = true;
         BulkPhase = "Planning...";
         StateHasChanged();
 
         int doneCount = 0;
+        var skipped = new List<string>();
         try
         {
             // Group by order to minimise context reloads; orders already in EDD sequence.
@@ -1939,7 +1953,7 @@ public partial class OrderPlanning
             {
                 var order = AllOrders.FirstOrDefault(o => o.OrderNo == grp.Key)
                             ?? originalOrders.FirstOrDefault(o => o.OrderNo == grp.Key);
-                if (order == null) continue;
+                if (order == null) { skipped.AddRange(grp.Select(r => $"{r.OrderNo}/{r.Gauge}")); continue; }
 
                 SelectedOrders = new List<MonthlyOrderDetailDto> { order };
                 SelectedKnitType = "Knit";
@@ -1948,7 +1962,13 @@ public partial class OrderPlanning
                 foreach (var row in grp)
                 {
                     await SelectGaugeInModal(row.Gauge);
-                    if (PlanQty <= 0 || !SelectedMachinesList.Any()) continue;
+                    // Nothing left to plan for this gauge (already saved by an earlier row
+                    // or balance changed) - record it so it isn't dropped silently.
+                    if (PlanQty <= 0 || !SelectedMachinesList.Any())
+                    {
+                        skipped.Add($"{row.OrderNo}/{row.Gauge}");
+                        continue;
+                    }
                     await AddManualPlan(row.Gauge);
                     doneCount++;
                 }
@@ -1956,7 +1976,7 @@ public partial class OrderPlanning
         }
         finally
         {
-            await RestoreOrderContextAsync(originalOrders);
+            await RestoreOrderContextAsync(originalOrders, originalKnitType);
             IsBulkBusy = false;
             BulkPhase = "";
             IsBulkOpen = false;
@@ -1964,6 +1984,10 @@ public partial class OrderPlanning
         }
 
         ToastService.ShowSuccess($"Bulk planning done: {doneCount} gauge plan(s) saved.");
+        if (skipped.Any())
+        {
+            ToastService.ShowInfo($"{skipped.Count} row(s) skipped (already planned / no balance): {string.Join(", ", skipped.Take(8))}{(skipped.Count > 8 ? "…" : "")}");
+        }
     }
 
     // Switch bulk scope (all orders vs current order) and re-scan the preview.
@@ -2376,6 +2400,17 @@ public partial class OrderPlanning
         StateHasChanged();
     }
 
+    // Open the Planning popup AND pre-select the given gauge (so its allocation
+    // panel is ready). Used when a gauge chip is clicked in the analysis grid.
+    private async Task OpenPlanningForGauge(string gauge)
+    {
+        await OpenPlanningDetailsModal();
+        if (!string.IsNullOrWhiteSpace(gauge))
+        {
+            await SelectGaugeInModal(gauge);
+        }
+    }
+
     private void ClosePlanningDetailsModal()
     {
         IsPlanningDetailsModalOpen = false;
@@ -2521,8 +2556,12 @@ public partial class OrderPlanning
         }
     }
 
+    // Guards the Weave Confirm button against double-clicks while saving.
+    private bool IsWeaveConfirmSaving { get; set; }
+
     private async Task AddWeaveManualPlan()
     {
+        if (IsWeaveConfirmSaving) return;            // ignore double-clicks
         if (string.IsNullOrEmpty(SelectedWeaveFactory)) return;
         var orderNo = SelectedOrders.LastOrDefault()?.OrderNo ?? "";
         if (string.IsNullOrEmpty(orderNo)) return;
@@ -2534,6 +2573,9 @@ public partial class OrderPlanning
             ShowAlert("Allocation Limit Exceeded", $"The quantity ({WeavePlanQty:N0}) exceeds the remaining required quantity ({remaining:N0}) for factory '{SelectedWeaveFactory}'. Please reduce the allocation quantity to proceed.", "warning");
             return;
         }
+
+        IsWeaveConfirmSaving = true;
+        StateHasChanged();
 
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var userId = authState.User.Identity?.Name ?? "system";
@@ -2571,6 +2613,7 @@ public partial class OrderPlanning
         }
         finally
         {
+            IsWeaveConfirmSaving = false;
             StateHasChanged();
         }
     }
@@ -2830,10 +2873,15 @@ public partial class OrderPlanning
         {
             var result = await PlanningService.GetMonthlySummaryAsync(DateTime.Now);
             Months = result.ToList();
-            
-            if (Months.Any() && SelectedMonth == DateTime.Now)
+
+            if (Months.Any())
             {
-                SelectedMonth = Months.First().MonthStartDate;
+                // Default to the CURRENT month's option (so the dropdown shows it),
+                // falling back to the first month if the current one isn't listed.
+                var now = DateTime.Now;
+                var current = Months.FirstOrDefault(m =>
+                    m.MonthStartDate.Year == now.Year && m.MonthStartDate.Month == now.Month);
+                SelectedMonth = (current ?? Months.First()).MonthStartDate;
             }
             StateHasChanged();
         }

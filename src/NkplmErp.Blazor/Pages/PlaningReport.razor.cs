@@ -24,6 +24,9 @@ public partial class PlaningReport
     // Capacity ceiling toggle: knitters (real bottleneck, default) vs machines.
     private bool UseKnitterCapacity { get; set; } = true;
 
+    // Overlay ship-date (order_ldate) markers on the calendar.
+    private bool ShowShipDates { get; set; } = true;
+
     private int TotalMachines => Days.FirstOrDefault()?.TotalMachines ?? 0;
     private int TotalKnitters => Days.FirstOrDefault()?.TotalKnitters ?? 0;
     private int MachineKnitterGap => Math.Max(0, TotalMachines - TotalKnitters);

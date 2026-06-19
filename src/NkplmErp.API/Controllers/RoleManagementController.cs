@@ -25,6 +25,13 @@ public class RoleManagementController(IRoleManagementService roleManagementServi
         ?? User.FindFirstValue("sub")
         ?? throw new UnauthorizedAccessException("User identity not found in token.");
 
+    // Zero Trust: caller must have View on at least one of the given modules.
+    private async Task<bool> CanViewAnyAsync(params string[] pageKeys)
+    {
+        var perms = await _roleService.GetUserPermissionsAsync(GetCurrentUserId());
+        return pageKeys.Any(perms.CanView);
+    }
+
     // =========================================================
     // PERMISSION CHECK — Zero Trust gate
     // Called by Blazor on every page load after login
@@ -42,6 +49,17 @@ public class RoleManagementController(IRoleManagementService roleManagementServi
         return Ok(permissions);
     }
 
+    /// <summary>
+    /// The current user's landing page URL (first page they can view). Open to any
+    /// authenticated user — returns only their own landing target.
+    /// </summary>
+    [HttpGet("my-landing")]
+    public async Task<IActionResult> GetMyLanding()
+    {
+        var url = await _roleService.GetUserLandingPageAsync(GetCurrentUserId());
+        return Ok(new { url });
+    }
+
     // =========================================================
     // ROLES
     // =========================================================
@@ -49,6 +67,7 @@ public class RoleManagementController(IRoleManagementService roleManagementServi
     [HttpGet("roles")]
     public async Task<IActionResult> GetAllRoles()
     {
+        if (!await CanViewAnyAsync("RoleManagement")) return Forbid();
         var result = await _roleService.GetAllRolesAsync();
         return Ok(result);
     }
@@ -56,6 +75,7 @@ public class RoleManagementController(IRoleManagementService roleManagementServi
     [HttpGet("roles/{id}")]
     public async Task<IActionResult> GetRoleById(string id)
     {
+        if (!await CanViewAnyAsync("RoleManagement")) return Forbid();
         var result = await _roleService.GetRoleByIdAsync(id);
         return result == null ? NotFound() : Ok(result);
     }
@@ -63,10 +83,14 @@ public class RoleManagementController(IRoleManagementService roleManagementServi
     [HttpPost("roles")]
     public async Task<IActionResult> SaveRole([FromBody] SaveRoleRequest request)
     {
-        // Zero Trust: verify caller has permission to manage roles
+        // Zero Trust: verify caller has permission to manage roles.
+        // Flag 3 = Delete, so it must require Delete (not Edit); 1/2 = Insert/Update = Edit.
         var userId = GetCurrentUserId();
         var callerPerms = await _roleService.GetUserPermissionsAsync(userId);
-        if (!callerPerms.CanEdit("RoleManagement"))
+        var allowed = request.Flag == 3
+            ? callerPerms.CanDelete("RoleManagement")
+            : callerPerms.CanEdit("RoleManagement");
+        if (!allowed)
             return Forbid();
 
         var result = await _roleService.SaveRoleAsync(request);
@@ -92,8 +116,40 @@ public class RoleManagementController(IRoleManagementService roleManagementServi
     [HttpGet("pages")]
     public async Task<IActionResult> GetAllPages()
     {
+        // Shared by the Role-permission grid and the Pages CRUD screen.
+        if (!await CanViewAnyAsync("RoleManagement", "PagesManagement")) return Forbid();
         var result = await _roleService.GetAllPagesAsync();
         return Ok(result);
+    }
+
+    [HttpGet("pages/{id:int}")]
+    public async Task<IActionResult> GetPageById(int id)
+    {
+        if (!await CanViewAnyAsync("RoleManagement", "PagesManagement")) return Forbid();
+        var result = await _roleService.GetPageByIdAsync(id);
+        return result == null ? NotFound() : Ok(result);
+    }
+
+    [HttpPost("pages")]
+    public async Task<IActionResult> SavePage([FromBody] SavePageRequest request)
+    {
+        var callerPerms = await _roleService.GetUserPermissionsAsync(GetCurrentUserId());
+        if (!callerPerms.CanEdit("PagesManagement") && !callerPerms.CanEdit("RoleManagement"))
+            return Forbid();
+
+        var result = await _roleService.SavePageAsync(request);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpDelete("pages/{id:int}")]
+    public async Task<IActionResult> DeletePage(int id)
+    {
+        var callerPerms = await _roleService.GetUserPermissionsAsync(GetCurrentUserId());
+        if (!callerPerms.CanDelete("PagesManagement") && !callerPerms.CanDelete("RoleManagement"))
+            return Forbid();
+
+        var result = await _roleService.DeletePageAsync(id);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
 
     // =========================================================
@@ -103,6 +159,7 @@ public class RoleManagementController(IRoleManagementService roleManagementServi
     [HttpGet("roles/{roleId}/permissions")]
     public async Task<IActionResult> GetPermissionsByRole(string roleId)
     {
+        if (!await CanViewAnyAsync("RoleManagement")) return Forbid();
         var result = await _roleService.GetPermissionsByRoleAsync(roleId);
         return Ok(result);
     }
@@ -143,6 +200,7 @@ public class RoleManagementController(IRoleManagementService roleManagementServi
     [HttpGet("users-with-roles")]
     public async Task<IActionResult> GetAllUsersWithRoles()
     {
+        if (!await CanViewAnyAsync("RoleManagement")) return Forbid();
         var result = await _roleService.GetAllUsersWithRolesAsync();
         return Ok(result);
     }
@@ -150,6 +208,7 @@ public class RoleManagementController(IRoleManagementService roleManagementServi
     [HttpGet("users/{userId}/roles")]
     public async Task<IActionResult> GetRolesByUser(string userId)
     {
+        if (!await CanViewAnyAsync("RoleManagement")) return Forbid();
         var result = await _roleService.GetRolesByUserAsync(userId);
         return Ok(result);
     }
@@ -157,9 +216,13 @@ public class RoleManagementController(IRoleManagementService roleManagementServi
     [HttpPost("users/assign-role")]
     public async Task<IActionResult> AssignUserRole([FromBody] AssignUserRoleRequest request)
     {
+        // Flag 2 = Remove (revoke a user's role) — a Delete action; Flag 1 = Assign = Edit.
         var assignedByUserId = GetCurrentUserId();
         var callerPerms = await _roleService.GetUserPermissionsAsync(assignedByUserId);
-        if (!callerPerms.CanEdit("RoleManagement"))
+        var allowed = request.Flag == 2
+            ? callerPerms.CanDelete("RoleManagement")
+            : callerPerms.CanEdit("RoleManagement");
+        if (!allowed)
             return Forbid();
 
         var result = await _roleService.AssignUserRoleAsync(request, assignedByUserId);

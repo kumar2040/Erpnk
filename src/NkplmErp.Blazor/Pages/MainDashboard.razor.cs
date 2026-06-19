@@ -25,6 +25,17 @@ public partial class MainDashboard : ComponentBase
     [Inject]
     private NkplmErp.Blazor.Services.Toast.ToastService ToastService { get; set; } = default!;
 
+    [Inject]
+    private NkplmErp.Blazor.Services.RoleManagement.PermissionService PermSvc { get; set; } = default!;
+
+    [Inject]
+    private NkplmErp.Blazor.Services.RoleManagement.RoleManagementApiClient RoleApi { get; set; } = default!;
+
+    [Inject]
+    private NavigationManager Nav { get; set; } = default!;
+
+    private bool _redirecting = false;
+
     private IQueryable<BuyerOrderSummaryDto> OrderSummaries { get; set; } = Enumerable.Empty<BuyerOrderSummaryDto>().AsQueryable();
     private IQueryable<BuyerOrderSummaryDto> OrderSummaries_pop { get; set; } = Enumerable.Empty<BuyerOrderSummaryDto>().AsQueryable();
     private bool IsLoading { get; set; } = true;
@@ -260,8 +271,40 @@ public partial class MainDashboard : ComponentBase
         }
     }
 
+    protected override async Task OnInitializedAsync()
+    {
+        // Per-user landing: send users who can't view the Dashboard to their first
+        // permitted page. (Admins resolve to the dashboard itself, so they stay.)
+        try
+        {
+            if (!PermSvc.IsLoaded)
+                await PermSvc.LoadPermissionsAsync();
+
+            if (!PermSvc.CanView("Dashboard") && !PermSvc.LandingApplied)
+            {
+                PermSvc.LandingApplied = true; // one-shot — never loop back to the dashboard
+                var landing = await RoleApi.GetMyLandingAsync();
+                // Never redirect to a dashboard route from the dashboard (avoids loops),
+                // and never redirect to the page we're already on.
+                static string Norm(string? p) => "/" + (p ?? "").Trim().TrimStart('/').TrimEnd('/').ToLowerInvariant();
+                var dashAliases = new[] { "/", "/main-dashboard", "/dashboard" };
+                var landingNorm = Norm(landing);
+                var currentNorm = Norm(Nav.ToBaseRelativePath(Nav.Uri).Split('?')[0]);
+                if (!string.IsNullOrWhiteSpace(landing)
+                    && !dashAliases.Contains(landingNorm)
+                    && landingNorm != currentNorm)
+                {
+                    _redirecting = true;
+                    Nav.NavigateTo(landing, replace: true);
+                }
+            }
+        }
+        catch { /* fall through to the dashboard if landing resolution fails */ }
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (_redirecting) return; // navigating away to the user's landing page
         Console.WriteLine($">>>> [DEBUG] MainDashboard.OnAfterRenderAsync (firstRender: {firstRender})");
         if (firstRender)
         {

@@ -7,6 +7,10 @@ namespace NkplmErp.Blazor.Pages;
 public partial class RoleManagement
 {
     [Inject] private RoleManagementApiClient RoleApi { get; set; } = default!;
+    [Inject] private PermissionService PermSvc { get; set; } = default!;
+
+    private bool CanDeleteRoleMgmt => PermSvc.CanDelete("RoleManagement");
+    private bool CanEditRoleMgmt   => PermSvc.CanEdit("RoleManagement");
 
     // ===== State =====
     private List<AppRoleDto>        Roles       = new();
@@ -19,6 +23,26 @@ public partial class RoleManagement
     private bool ShowRoleForm         = false;
     private string SelectedUserIdToAssign = "";
 
+    // Scope builder for the assignment being created.
+    private static readonly string[] DepartmentOptions = { "knit", "weave", "silk", "linen", "other" };
+    private List<ScopeEntry> PendingScopes = new();
+    private string NewScopeDept  = "knit";
+    private string NewScopeValue = "";
+
+    // Users not already assigned to the selected role (distinct, one entry per user).
+    private IEnumerable<UserWithRolesDto> AssignableUsers
+    {
+        get
+        {
+            if (SelectedRole == null) return Enumerable.Empty<UserWithRolesDto>();
+            var assignedIds = UsersInRole.Select(u => u.UserId).ToHashSet();
+            return AllUsers
+                .Where(u => !assignedIds.Contains(u.UserId))
+                .GroupBy(u => u.UserId)
+                .Select(g => g.First());
+        }
+    }
+
     private bool IsLoadingRoles       = false;
     private bool IsLoadingPermissions = false;
     private bool IsLoadingUsers       = false;
@@ -29,8 +53,20 @@ public partial class RoleManagement
 
     // ===== Lifecycle =====
 
+    private bool AccessDenied = false;
+
     protected override async Task OnInitializedAsync()
     {
+        // Ensure cached permissions exist (direct navigation / refresh), then gate view.
+        if (!PermSvc.IsLoaded)
+            await PermSvc.LoadPermissionsAsync();
+
+        if (!PermSvc.CanView("RoleManagement"))
+        {
+            AccessDenied = true;
+            return;
+        }
+
         await LoadRolesAsync();
         await LoadAllUsersAsync();
     }
@@ -201,19 +237,34 @@ public partial class RoleManagement
 
     private async Task AssignUser()
     {
-        if (SelectedRole == null || string.IsNullOrEmpty(SelectedUserIdToAssign)) return;
+        if (SelectedRole == null)
+            return;
+        if (string.IsNullOrEmpty(SelectedUserIdToAssign))
+        {
+            ShowStatus("Select a user first.", isError: true);
+            return;
+        }
+
+        // Auto-commit a scope value typed in the builder but not yet added with "+ Add"
+        // (the common reason a scope "didn't save").
+        if (!string.IsNullOrWhiteSpace(NewScopeValue))
+            AddScope();
 
         var result = await RoleApi.AssignUserRoleAsync(new AssignUserRoleRequest
         {
             UserId = SelectedUserIdToAssign,
             RoleId = SelectedRole.RoleId,
-            Flag   = 1  // Assign
+            Flag   = 1,  // Assign
+            Scopes = new List<ScopeEntry>(PendingScopes)
         });
 
         if (result?.IsSuccess == true)
         {
             ShowStatus("User assigned to role.");
             SelectedUserIdToAssign = "";
+            PendingScopes = new();
+            NewScopeDept  = "knit";
+            NewScopeValue = "";
             await LoadAllUsersAsync();
             await LoadUsersInRoleAsync(SelectedRole.RoleId);
         }
@@ -221,6 +272,30 @@ public partial class RoleManagement
         {
             ShowStatus(result?.Message ?? "Failed to assign user.", isError: true);
         }
+    }
+
+    private void AddScope()
+    {
+        if (string.IsNullOrWhiteSpace(NewScopeDept)) return;
+        var value = string.IsNullOrWhiteSpace(NewScopeValue) ? null : NewScopeValue.Trim();
+        // Avoid duplicates (same dept + value).
+        if (PendingScopes.Any(s =>
+                string.Equals(s.KnitType, NewScopeDept, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(s.GaugeValue ?? "", value ?? "", StringComparison.OrdinalIgnoreCase)))
+        {
+            NewScopeValue = "";
+            return;
+        }
+        PendingScopes.Add(new ScopeEntry { KnitType = NewScopeDept, GaugeValue = value });
+        NewScopeValue = "";
+    }
+
+    private void RemoveScope(ScopeEntry scope) => PendingScopes.Remove(scope);
+
+    // Press Enter in the value box to add the scope.
+    private void OnScopeValueKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") AddScope();
     }
 
     private async Task RemoveUserFromRole(string userId)
