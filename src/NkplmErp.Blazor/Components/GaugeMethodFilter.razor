@@ -1,0 +1,66 @@
+@* Compact multi-select dropdown for the Gauge / Method filter. A single fixed-width
+   trigger lives in the filter bar; the (dynamic, variable-length) option list lives inside
+   the popover, so the toolbar never reflows no matter how many gauges appear.
+
+   Multi-select: an empty selection means "All". This component is presentational only —
+   it raises OnToggle / OnSelectAll and the parent owns the selection state and the board
+   reload, so behaviour matches the chip row it replaces. The date-range picker is a
+   separate component and is intentionally left untouched. *@
+
+<div class="gauge-filter">
+    <button type="button" class="gauge-trigger@(IsOpen ? " open" : "")"
+            @onclick="Toggle" title="Filter by gauge / method">
+        <span class="gauge-label">Gauge / Method</span>
+        <span class="gauge-caret">@(IsOpen ? "▲" : "▼")</span>
+    </button>
+
+    @if (IsOpen)
+    {
+        @* Invisible full-screen backdrop closes the popover on an outside click. *@
+        <div class="gauge-backdrop" @onclick="Close"></div>
+
+        <div class="gauge-pop">
+            @* "All" = clear every specific pick (empty set = no sub-filter). *@
+            <button type="button" class="gauge-option@(Selected.Count == 0 ? " selected" : "")"
+                    @onclick="SelectAllClicked">
+                <span class="subcat-box@(Selected.Count == 0 ? " checked" : "")"></span>
+                <span>All</span>
+            </button>
+
+            <div class="gauge-divider"></div>
+
+            @foreach (var opt in Options)
+            {
+                var isSel = Selected.Contains(opt);
+                <button type="button" class="gauge-option@(isSel ? " selected" : "")"
+                        @onclick="@(() => ToggleClicked(opt))">
+                    <span class="subcat-box@(isSel ? " checked" : "")"></span>
+                    <span>@opt</span>
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    // The available options (cascades from the active factory + date window). Owned by the parent.
+    [Parameter] public List<string> Options { get; set; } = new();
+
+    // The currently-checked options (empty = "All"). Owned by the parent.
+    [Parameter] public ICollection<string> Selected { get; set; } = new HashSet<string>();
+
+    // Raised when an option is toggled / "All" is chosen. The parent mutates its state and
+    // reloads the board (the same methods the old chip row used).
+    [Parameter] public EventCallback<string> OnToggle { get; set; }
+    [Parameter] public EventCallback OnSelectAll { get; set; }
+
+    private bool IsOpen;
+
+    private void Toggle() => IsOpen = !IsOpen;
+    private void Close() => IsOpen = false;
+
+    // Multi-select: keep the popover open after a click so the user can pick several;
+    // an outside click (the backdrop) closes it.
+    private Task SelectAllClicked() => OnSelectAll.InvokeAsync();
+    private Task ToggleClicked(string opt) => OnToggle.InvokeAsync(opt);
+}

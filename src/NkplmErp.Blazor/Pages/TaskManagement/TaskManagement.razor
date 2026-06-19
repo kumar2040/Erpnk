@@ -1,0 +1,199 @@
+@page "/task"
+@attribute [Authorize]
+@using NkplmErp.Blazor.Pages.TaskManagement.Shared
+
+<div class="main-body">
+    <div class="page-header-container">
+        <div class="header-row">
+            <div class="page-title-section">
+                <h1 class="page-title">Task Management</h1>
+            </div>
+
+            <div class="compact-filters">
+                @* Reusable date-range picker. The page owns the window (selectedStartDate/
+                   selectedEndDate via @bind) and reloads the board on OnChanged. *@
+                <CompactDateRangeFilter @bind-StartDate="selectedStartDate"
+                                        @bind-EndDate="selectedEndDate"
+                                        OnChanged="OnFilterChanged" />
+
+                <div class="filter-item">
+                    <div class="compact-staff-wrapper">
+                        <input type="text" class="compact-search" placeholder="Search Order No"
+                               value="@selectedOrderNo" @onchange="OnOrderNoChanged" />
+                    </div>
+                </div>
+
+                @* Factory filter. Admin: editable list of every factory_type.
+                   Gauge-restricted user: a single fixed (disabled) value. *@
+                @if (scope is not null)
+                {
+                    <div class="filter-item">
+                        @if (scope.IsRestricted)
+                        {
+                            @* Single-factory user: the factory is fixed, so render a read-only
+                               field (gray, lock icon, no caret) instead of a disabled-looking
+                               dropdown that invites a click and does nothing. *@
+                            <div class="compact-fixed" title="Your factory (fixed)">
+                                <svg class="tc-ic tc-ic-14" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z" /></svg>
+                                <span>@scope.AssignedGauge</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <select class="compact-select" value="@(selectedFactoryType ?? "")"
+                                    @onchange="OnFactoryTypeChanged" style="height:32px" title="Filter by factory">
+                                <option value="">All Factories</option>
+                                @foreach (var ft in scope.FactoryTypes)
+                                {
+                                    <option value="@ft">@ft</option>
+                                }
+                            </select>
+                        }
+                    </div>
+                }
+
+                @* Gauge / Method multi-select — one fixed control in the filter bar; the
+                   dynamic option list lives inside its popover so the bar never reflows.
+                   Cascades from the active factory + date window; hidden when there are none.
+                   Reuses the same state + reload methods the old chip row used. *@
+                @if (availableSubCategories.Count > 0)
+                {
+                    <div class="filter-item">
+                        <GaugeMethodFilter Options="availableSubCategories"
+                                           Selected="selectedSubCategories"
+                                           OnToggle="ToggleSubCategory"
+                                           OnSelectAll="OnAllSubCategoriesSelected" />
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* Selected gauge/method readout — removable tags for the active picks, shown below
+           the filter bar only when something is selected. Each tag removes itself; "Clear
+           all" resets to All. Uses the same state + methods as the dropdown. *@
+        @if (selectedSubCategories.Count > 0)
+        {
+            <div class="selected-filter-row">
+                <span class="selected-filter-label">Selected</span>
+                @foreach (var sub in selectedSubCategories)
+                {
+                    <button type="button" class="filter-tag" title="Remove @sub"
+                            @onclick="@(() => ToggleSubCategory(sub))">
+                        <span>@sub</span>
+                        <span class="filter-tag-x">✕</span>
+                    </button>
+                }
+                <button type="button" class="filter-clear" @onclick="OnAllSubCategoriesSelected">
+                    <span class="filter-clear-x">✕</span>
+                    <span>Clear all</span>
+                </button>
+            </div>
+        }
+
+        <!-- Stats cards -->
+        <div class="stats-grid">
+            <div class="stat-card stat-scheduled@(activeBubble == 1 ? " active" : "")" @onclick="() => ShowBubble(1)">
+                <div class="stat-content d-flex justify-content-between">
+                    <div class="stat-label">Scheduled</div>
+                    <div class="stat-value">@Scheduled</div>
+                </div>
+            </div>
+
+            <div class="stat-card stat-progress@(activeBubble == 2 ? " active" : "")" @onclick="() => ShowBubble(2)">
+                <div class="stat-content d-flex justify-content-between">
+                    <div class="stat-label">In Progress</div>
+                    <div class="stat-value">@InProgress</div>
+                </div>
+            </div>
+
+            <div class="stat-card stat-hold@(activeBubble == 5 ? " active" : "")" @onclick="() => ShowBubble(5)">
+                <div class="stat-content d-flex justify-content-between">
+                    <div class="stat-label">On Hold</div>
+                    <div class="stat-value">@OnHoldCount</div>
+                </div>
+            </div>
+
+            <div class="stat-card stat-workload@(activeBubble == 6 ? " active" : "")" @onclick="() => ShowBubble(6)">
+                <div class="stat-content d-flex justify-content-between">
+                    <div class="stat-label">Work Load</div>
+                    <div class="stat-value">@Workload</div>
+                </div>
+            </div>
+
+            <div class="stat-card stat-completed@(activeBubble == 3 ? " active" : "")" @onclick="() => ShowBubble(3)">
+                <div class="stat-content d-flex justify-content-between">
+                    <div class="stat-label">Completed</div>
+                    <div class="stat-value">@Completed</div>
+                </div>
+            </div>
+
+            <div class="stat-card stat-overdue@(activeBubble == 4 ? " active" : "")" @onclick="() => ShowBubble(4)">
+                <div class="stat-content d-flex justify-content-between">
+                    <div class="stat-label">OverDue</div>
+                    <div class="stat-value">@OverDue</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="containers">
+        <section>
+            <div class="row g-2 my-2">
+                @if (Box1)
+                {
+                    <div class="@BoardColClass">
+                        <TaskCard Title="Scheduled"
+                                  Variant="TaskVariant.Todo"
+                                  Items="todotasks"
+                                  OnItemClick="OnItemClicked"
+                                  FlowCards="SingleFullWidth" />
+                    </div>
+                }
+
+                @if (Box2)
+                {
+                    <div class="@BoardColClass">
+                        <TaskCard Title="In Progress"
+                                  Variant="TaskVariant.Progress"
+                                  Items="inprogresstasks"
+                                  OnItemClick="OnItemClicked"
+                                  FlowCards="SingleFullWidth" />
+                    </div>
+                }
+
+                @if (Box3)
+                {
+                    <div class="@BoardColClass">
+                        <TaskCard Title="Completed"
+                                  Variant="TaskVariant.Complete"
+                                  Items="completedtasks"
+                                  OnItemClick="OnItemClicked"
+                                  FlowCards="SingleFullWidth" />
+                    </div>
+                }
+
+                @if (Box4)
+                {
+                    <div class="@BoardColClass">
+                        <TaskCard Title="Over Due"
+                                  Variant="TaskVariant.Due"
+                                  Items="overduetasks"
+                                  OnItemClick="OnItemClicked"
+                                  FlowCards="SingleFullWidth" />
+                    </div>
+                }
+
+                @if (Box5)
+                {
+                    <div class="@BoardColClass">
+                        <TaskCard Title="On Hold"
+                                  Variant="TaskVariant.OnHold"
+                                  Items="onholdtasks"
+                                  OnItemClick="OnItemClicked"
+                                  FlowCards="SingleFullWidth" />
+                    </div>
+                }
+            </div>
+        </section>
+    </div>
+</div>

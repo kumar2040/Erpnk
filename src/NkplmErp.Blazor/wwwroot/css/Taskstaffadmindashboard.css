@@ -1,0 +1,898 @@
+/* ===========================================================================
+   Task Management board styles (ported from UraCare StaffTaskToDo design).
+   Only the board-relevant rules are included so nothing else in Erpnk is
+   affected. Theme colors are defined here because Erpnk has no --color-* vars.
+   =========================================================================== */
+:root {
+    --color-primary: #123F6B;
+    --color-danger: #ff1111;
+    --color-white: #fff;
+}
+
+/* ---- Layout wrappers (match header padding so columns align) ---- */
+.main-body {
+    flex-grow: 1;
+}
+
+.containers {
+    width: 100%;
+    padding: 0 1rem;
+}
+
+/* ---- Page header ---- */
+.page-header-container {
+    margin: 0.6rem 0 0 0;
+    padding: 0 1rem;
+}
+
+.header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.6rem;
+    gap: 1.5rem;
+}
+
+.page-title-section {
+    position: relative;
+}
+
+.page-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    margin: 0;
+    letter-spacing: -0.025em;
+    position: relative;
+    display: inline-block;
+}
+
+/* ---- Compact Filters ---- */
+.compact-filters {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 8px;
+    padding: 0.25rem 0.5rem;
+    flex-shrink: 0;
+}
+
+.filter-item {
+    display: flex;
+    align-items: center;
+}
+
+/* ---- Cascading sub-category (gauge / method) filter — its own row ---- */
+.subcat-filter-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0.4rem 0.5rem;
+    margin-top: 0.2rem;
+    border-top: 1px solid #eef0f3;
+}
+
+.subcat-filter-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #374151;
+    margin-right: 0.25rem;
+}
+
+.subcat-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.4;
+    color: #374151;
+    cursor: pointer;
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 9999px;
+    padding: 0.2rem 0.6rem;
+    margin: 0;
+    user-select: none;
+    white-space: nowrap;
+}
+
+    .subcat-check:hover {
+        border-color: var(--color-primary);
+    }
+
+    .subcat-check.active {
+        border-color: var(--color-primary);
+        background: #eff6ff;
+        color: #1e3a5f;
+    }
+
+/* The little box that shows the "checked" state — driven purely by the .active class. */
+.subcat-box {
+    flex: 0 0 auto;
+    width: 15px;
+    height: 15px;
+    border: 1.5px solid #9ca3af;
+    border-radius: 3px;
+    background: #ffffff;
+    position: relative;
+    box-sizing: border-box;
+}
+
+.subcat-check.active .subcat-box {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+    /* CSS checkmark, shown only when the chip is active. */
+    .subcat-check.active .subcat-box::after {
+        content: "";
+        position: absolute;
+        left: 4px;
+        top: 1px;
+        width: 4px;
+        height: 8px;
+        border: solid #ffffff;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+    }
+
+/* Reusable "checked" state for the little box, so the same checkbox visual works inside
+   the Gauge / Method dropdown options (not only on the chips). */
+.subcat-box.checked {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+    .subcat-box.checked::after {
+        content: "";
+        position: absolute;
+        left: 4px;
+        top: 1px;
+        width: 4px;
+        height: 8px;
+        border: solid #ffffff;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+    }
+
+/* ---- Gauge / Method multi-select dropdown (sits inline in the filter bar) ----
+   Trigger matches .compact-select (factory dropdown) so the two read as a pair; the
+   popover is a clean checklist that scrolls when a factory has many gauges. */
+.gauge-filter {
+    position: relative;
+    display: inline-flex;
+}
+
+.gauge-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 32px;
+    padding: 0 0.6rem;
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+    .gauge-trigger:hover,
+    .gauge-trigger.open {
+        outline: none;
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 1px var(--color-primary);
+    }
+
+.gauge-caret {
+    font-size: 0.55rem;
+    color: #9ca3af;
+}
+
+.gauge-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: transparent;
+}
+
+.gauge-pop {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 50;
+    min-width: 200px;
+    max-height: 260px;
+    overflow-y: auto;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12), 0 3px 6px rgba(0, 0, 0, 0.06);
+    padding: 4px;
+}
+
+.gauge-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+    text-align: left;
+    white-space: nowrap;
+}
+
+    .gauge-option:hover {
+        background: #f3f4f6;
+    }
+
+    .gauge-option.selected {
+        color: #1e3a5f;
+    }
+
+.gauge-divider {
+    height: 1px;
+    background: #eef0f3;
+    margin: 4px 2px;
+}
+
+/* ---- Selected gauge/method tags — readout row below the filter bar (shown only when
+   something is picked). Tags reuse the active-chip colors; each removes itself. ---- */
+.selected-filter-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0.4rem 0.5rem;
+    margin-top: 0.2rem;
+    border-top: 1px solid #eef0f3;
+}
+
+.selected-filter-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-right: 0.1rem;
+}
+
+.filter-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 26px;
+    padding: 0 0.45rem 0 0.7rem;
+    background: #eff6ff;
+    border: 1px solid var(--color-primary);
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #1e3a5f;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+
+    .filter-tag:hover {
+        background: #dbeafe;
+    }
+
+.filter-tag-x {
+    font-size: 0.7rem;
+    line-height: 1;
+    opacity: 0.6;
+}
+
+.filter-tag:hover .filter-tag-x {
+    opacity: 1;
+}
+
+.filter-clear {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    height: 26px;
+    padding: 0 0.5rem;
+    background: transparent;
+    border: none;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #6b7280;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.15s ease;
+}
+
+    .filter-clear:hover {
+        color: var(--color-danger);
+    }
+
+.filter-clear-x {
+    font-size: 0.7rem;
+    line-height: 1;
+}
+
+.compact-select {
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 100px;
+    height: 32px;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 12px;
+    padding-right: 2rem;
+}
+
+    .compact-select:hover,
+    .compact-select:focus {
+        outline: none;
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 1px var(--color-primary);
+    }
+
+/* Restricted (single-factory) user: the factory can't be changed, so render a read-only
+   field — gray, lock icon, no caret — so it isn't mistaken for an interactive dropdown. */
+.compact-fixed {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 32px;
+    padding: 0 0.6rem;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #6b7280;
+    white-space: nowrap;
+    cursor: default;
+}
+
+.compact-staff-wrapper {
+    min-width: 130px;
+}
+
+/* Order-no search box */
+.compact-search {
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #374151;
+    height: 32px;
+    min-width: 150px;
+    transition: all 0.2s ease;
+}
+
+    .compact-search::placeholder {
+        color: #9ca3af;
+        font-weight: 400;
+    }
+
+    .compact-search:hover,
+    .compact-search:focus {
+        outline: none;
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 1px var(--color-primary);
+    }
+
+/* Navigation buttons */
+.compact-nav-btn {
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 0.25rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    color: #374151;
+}
+
+    .compact-nav-btn:hover {
+        background: var(--color-primary);
+        border-color: var(--color-primary);
+        color: white;
+    }
+
+    .compact-nav-btn svg {
+        width: 16px;
+        height: 16px;
+        fill: currentColor;
+    }
+
+/* Date Picker */
+.compact-date-picker {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.compact-date-input {
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--color-primary);
+    text-align: center;
+    width: 130px;
+    height: 32px;
+    transition: all 0.2s ease;
+}
+
+    .compact-date-input:hover,
+    .compact-date-input:focus {
+        outline: none;
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 1px var(--color-primary);
+    }
+
+/* Date Range */
+.compact-date-range {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.compact-range-display {
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--color-primary);
+    white-space: nowrap;
+    min-width: 140px;
+    text-align: center;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Month Picker */
+.compact-month-picker {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.compact-month-display {
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--color-primary);
+    min-width: 100px;
+    text-align: center;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ---- Stats Grid ---- */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 1rem;
+    max-width: 100%;
+    margin-top: 0.4rem;
+}
+
+.stat-card {
+    border-radius: 8px;
+    padding: 0.5rem 0.6rem;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+}
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        border-radius: 8px 8px 0 0;
+        opacity: 0.4;
+        transition: all 0.2s ease;
+    }
+
+    /* Selected underline — a detached bar that floats a few px BELOW the card (not on
+       its edge), giving the gap between the card and the underline. */
+    .stat-card::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -6px;
+        height: 3px;
+        border-radius: 2px;
+        background: transparent;
+        transition: all 0.2s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.15);
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+
+        .stat-card:hover::before {
+            height: 4px;
+        }
+
+    /* Selected stat card — underline "tab" indicator (Bootstrap nav-underline style): a
+       single navy underline + navy label/value. No scale / shadow; the colored card itself
+       is left as-is, only the selected cue changes. */
+    .stat-card.active {
+        transform: none;
+        box-shadow: none;
+    }
+
+        /* Colour the detached underline only when the card is selected. */
+        .stat-card.active::after {
+            background: var(--color-primary);
+        }
+
+        /* The selected card stays static on hover — the underline is the cue, not motion. */
+        .stat-card.active:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .stat-card.active .stat-label,
+        .stat-card.active .stat-value {
+            color: var(--color-primary);
+        }
+
+.stat-scheduled { background: #078ecf33; }
+    .stat-scheduled::before { background: #078ecf; }
+    .stat-scheduled:hover { background: rgba(7, 142, 207, 0.25); }
+
+.stat-progress { background: rgba(186, 113, 0, 0.15); }
+    .stat-progress::before { background: #ba7100; }
+    .stat-progress:hover { background: rgba(186, 113, 0, 0.2); }
+
+.stat-completed { background: rgba(0, 189, 18, 0.15); }
+    .stat-completed::before { background: #00BD12; }
+    .stat-completed:hover { background: rgba(0, 189, 18, 0.2); }
+
+.stat-hold { background: rgba(178, 190, 181, 0.3); }
+    .stat-hold::before { background: #B2BEB5; }
+    .stat-hold:hover { background: rgba(178, 190, 181, 0.4); }
+
+.stat-workload { background: rgba(59, 130, 246, 0.15); }
+    .stat-workload::before { background: #3b82f6; }
+    .stat-workload:hover { background: rgba(59, 130, 246, 0.2); }
+
+.stat-overdue { background: rgba(239, 68, 68, 0.15); }
+    .stat-overdue::before { background: #ef4444; }
+    .stat-overdue:hover { background: rgba(239, 68, 68, 0.2); }
+
+.stat-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.stat-label {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #4b5563;
+    margin-bottom: 0.25rem;
+    line-height: 1;
+}
+
+.stat-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1f2937;
+    line-height: 1;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+    .header-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+
+    .compact-filters {
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        padding: 0.75rem;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 0.5rem;
+    }
+
+    .stat-card { padding: 0.45rem; }
+    .stat-value { font-size: 0.9rem; }
+    .stat-label { font-size: 0.65rem; }
+    .page-title { font-size: 1rem; }
+
+    .compact-select,
+    .compact-staff-wrapper { min-width: 100px; }
+
+    .compact-date-input,
+    .compact-range-display,
+    .compact-month-display {
+        min-width: 100px;
+        font-size: 0.75rem;
+    }
+
+    .compact-nav-btn { width: 24px; height: 24px; }
+}
+
+@media (max-width: 480px) {
+    .page-header-container {
+        margin: 0.75rem 0 1rem 0;
+        padding: 0 0.25rem;
+    }
+
+    .compact-filters { padding: 0.5rem; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ---- Board boxes ---- */
+.TaskBox {
+    border: 1px solid;
+    border-radius: 6px;
+    box-shadow: 0 0 3px rgba(0,0,0,0.1);
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    height: 420px;
+    overflow-y: auto;
+}
+
+    .TaskBox.TodoBox { border-color: #078ecf33; }
+    .TaskBox.ProgressBox { border-color: #e68c0233; }
+    .TaskBox.CompleteBox { border-color: #00c61e33; }
+    .TaskBox.DueBox { border-color: #cb3a0f33; }
+    .TaskBox.OnHoldBox { border-color: #B2BEB5; }
+
+    .TaskBox .boxHead {
+        border-bottom: 1px solid rgba(10,10,10,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 6px;
+    }
+
+        .TaskBox .boxHead .taskFirst {
+            background-color: #078ecf33;
+            border-radius: 15px;
+            padding: 4px 14px 4px 8px;
+            display: flex;
+            align-items: center;
+            border: 1px solid rgba(0,0,0,0.2);
+            margin-bottom: 5px;
+            font-weight: 600;
+            min-width: 100px;
+        }
+
+.ProgressBox .taskFirst, .ProgressBox .TaskCount { background: #e68c0233 !important; }
+.CompleteBox .taskFirst, .CompleteBox .TaskCount { background: #00c61e33 !important; }
+.DueBox .taskFirst, .DueBox .TaskCount { background: #cb3a0f33 !important; }
+.OnHoldBox .taskFirst, .OnHoldBox .TaskCount { background: #B2BEB5 !important; }
+
+.TaskBox .boxHead .TaskCount {
+    background-color: #078ecf33;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    border: 1px solid rgba(0,0,0,0.2);
+    width: 28px;
+    justify-content: center;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.TaskBox .boxHead .taskAdd {
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #078ecf33;
+    color: white;
+    margin-bottom: 5px;
+    font-weight: 600;
+    padding: 3px 5px;
+    cursor: pointer;
+}
+
+.TaskBox .boxBody {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    padding: 8px;
+    margin: 3px 0 8px 0;
+    border-radius: 8px;
+    background-color: white;
+    transition: all 0.3s ease-in-out;
+    cursor: grab;
+}
+
+    .TaskBox .boxBody:hover {
+        transform: translateX(2px);
+    }
+
+/* ---- Full-width single-category view: cards flow into a responsive grid so the board
+   fills the row instead of leaving a wide empty gap. Work Load (multi-column) is unaffected.
+   Set on the TaskBox via the FlowCards parameter. ---- */
+.TaskBox.flow-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    align-content: start;
+    align-items: start;
+}
+
+    /* The column header sits above the card grid, spanning the full width. */
+    /* Full-width single-category view: the selected stat card already shows the category
+       and count, so the column's own header is redundant — hide it. */
+    .TaskBox.flow-grid .boxHead {
+        display: none;
+    }
+
+    /* The grid gap handles spacing, so drop the per-card vertical margin. */
+    .TaskBox.flow-grid .boxBody {
+        margin: 0;
+    }
+
+.TodoBox .boxBody { border-color: #078ecf33; border-right: 5px solid #078ecf33; }
+.ProgressBox .boxBody { border-color: #e68c0233; border-right: 5px solid #e68c0233; }
+.CompleteBox .boxBody { border-color: #00c61e33; border-right: 5px solid #00c61e33; }
+.DueBox .boxBody { border-color: #cb3a0f33; border-right: 5px solid #cb3a0f33; }
+.OnHoldBox .boxBody { border-color: #B2BEB5; border-right: 5px solid #B2BEB5; }
+
+.boxBody .flat {
+    font-weight: 600;
+    padding: 1px 12px;
+    color: black;
+    border-radius: 10px;
+    background-color: #078ecf33;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 90px;
+    height: auto;
+    font-size: 10px;
+    border: 1px solid transparent;
+}
+
+    .boxBody .flat.progress { width: 110px; background: #e68c0233 !important; }
+    .boxBody .flat.complete { background: #00c61e33 !important; }
+    .boxBody .flat.overdue { background: #cb3a0f33 !important; }
+    .boxBody .flat.onhold { background: #B2BEB5 !important; }
+
+.boxBody .stat {
+    font-weight: 600;
+    padding: 1px 12px;
+    color: white;
+    border-radius: 10px;
+    background-color: #34c759;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 70px;
+    font-size: 10px;
+}
+
+    .boxBody .stat.Warn {
+        color: white !important;
+        background-color: #ff9500 !important;
+        border: 1px solid #D8B812;
+    }
+
+    .boxBody .stat.statRed {
+        color: white !important;
+        background-color: #f95555 !important;
+    }
+
+    .boxBody .stat.statGreen {
+        color: white !important;
+        background-color: #34c759 !important;
+    }
+
+.boxBody .qty {
+    font-weight: 600;
+    padding: 1px 10px;
+    color: #374151;
+    border-radius: 10px;
+    background-color: #eef2ff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    border: 1px solid transparent;
+}
+
+.dragging { opacity: 0.5; }
+
+.dueDate {
+    color: black;
+    font-size: 11px;
+}
+
+.DueBox .dueDate {
+    color: red;
+    font-size: 11px;
+    text-decoration: line-through;
+    text-decoration-color: red;
+}
+
+.bolt-icon {
+    border-radius: 100%;
+    width: 20px;
+    height: 20px;
+    padding: 1px;
+}
+
+.TodoBox .bolt-icon { color: black; background-color: #078ecf33; }
+.ProgressBox .bolt-icon { color: black; background-color: #e68c0233; }
+.CompleteBox .bolt-icon { color: black; background-color: #00c61e33; }
+.DueBox .bolt-icon { color: black; background-color: #cb3a0f33; }
+.OnHoldBox .bolt-icon { color: black; background-color: #B2BEB5; }
+
+/* ---- Small text helpers used by the cards ---- */
+.task-item {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+}
+
+.OvRemarks {
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    display: block;
+}
+
+/* ---- Inline SVG icon sizing (no icon font dependency) ---- */
+.tc-ic { fill: currentColor; flex-shrink: 0; vertical-align: middle; }
+.tc-ic-14 { width: 14px; height: 14px; }
+.tc-ic-16 { width: 16px; height: 16px; }
+.tc-ic-18 { width: 18px; height: 18px; }
+.tc-ic-20 { width: 20px; height: 20px; }

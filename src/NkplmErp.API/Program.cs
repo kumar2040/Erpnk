@@ -141,6 +141,8 @@ builder.Services.AddScoped<IBuyerOrderSummaryService, NkplmErp.Infrastructure.Se
 builder.Services.AddScoped<ILookupService, NkplmErp.Infrastructure.Services.LookupService>();
 builder.Services.AddScoped<IProductionPlanningService, NkplmErp.Infrastructure.Services.ProductionPlanningService>();
 builder.Services.AddScoped<IRoleManagementService, RoleManagementService>();
+builder.Services.AddScoped<NkplmErp.Shared.Repositories.Interface.IDapperRepository, NkplmErp.Shared.Repositories.Implementation.DapperRepository>();
+builder.Services.AddScoped<NkplmErp.API.Controllers.TaskManagement.Service.Interface.ITaskManagementService, NkplmErp.API.Controllers.TaskManagement.Service.Implementation.TaskManagementService>();
 
 builder.Services.AddMemoryCache();
 builder.Services.AddFido2(options =>

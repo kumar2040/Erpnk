@@ -74,6 +74,14 @@ builder.Services.AddHttpClient<RoleManagementApiClient>(client =>
 })
 .AddHttpMessageHandler<AuthenticationDelegatingHandler>();
 
+// Task Management board
+builder.Services.AddHttpClient<NkplmErp.Blazor.Services.TaskManagement.Manager.Interface.ITaskManagementManager, NkplmErp.Blazor.Services.TaskManagement.Manager.Implementation.TaskManagementManager>(client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddHttpMessageHandler<AuthenticationDelegatingHandler>();
+
 // PermissionService: scoped so it lives per circuit (Blazor Server)
 // Loads on login, cleared on logout
 builder.Services.AddScoped<PermissionService>();

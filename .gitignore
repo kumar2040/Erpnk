@@ -1,5 +1,4 @@
 /.vs
-
 # --- Secrets: never commit real keys / connection strings ---
 # Production / environment overrides that hold credentials:
 **/appsettings.Production.json
