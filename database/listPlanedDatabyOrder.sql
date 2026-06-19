@@ -18,6 +18,7 @@ BEGIN
         mpd.[MasterPlanChildId] AS [MasterPlanChildId],
         mpd.[StartDate] AS [StartDate],
         mpd.[Guage] AS [Gauge],
+        mpd.[factory_type] AS [KnitType],
         mpd.[Machine] AS [Mc],
         mpd.[MachineID] AS [MachineID],
         mpd.[Qty] AS [Quantity],

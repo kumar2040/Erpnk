@@ -341,7 +341,10 @@ public class PlaningReportDayDto
 {
     public DateTime Date { get; set; }
     public int BusyMachines { get; set; }
-    public decimal LoadQty { get; set; }
+    public decimal LoadQty { get; set; }       // planned pcs/day (spread across working days)
+    public int KnittedPC { get; set; }          // actual pcs knitted/received that day
+    public int ShipCount { get; set; }          // orders shipping (order_ldate) that day
+    public string ShipOrders { get; set; } = string.Empty; // comma-list of those order nos
     public int TotalMachines { get; set; }
     public int TotalKnitters { get; set; }
     public string DayName { get; set; } = string.Empty;
@@ -353,6 +356,8 @@ public class MasterPlanningRowDto
 {
     public string OrderNo { get; set; } = string.Empty;
     public string Guage { get; set; } = string.Empty;
+    public string? KnitType { get; set; }   // factory_type: department of this row
+
     public string Machine { get; set; } = string.Empty;
     public int? MachineID { get; set; }
     public string Style { get; set; } = string.Empty;
@@ -379,6 +384,7 @@ public class PlannedDataDto
     public int OrderId { get; set; }
     public DateTime StartDate { get; set; }
     public string Gauge { get; set; } = string.Empty;
+    public string? KnitType { get; set; }   // factory_type: department of this row
     public string Mc { get; set; } = string.Empty;
     public decimal Quantity { get; set; }
     public DateTime EstEndDate { get; set; }
@@ -435,6 +441,7 @@ public class KnitGanttChartDto
     public string ProductionType { get; set; } = string.Empty;
     public string OrderStatus { get; set; } = string.Empty;
     public string Guage { get; set; } = string.Empty;
+    public string? KnitType { get; set; }   // factory_type: department of this row
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public int MachineCount { get; set; }

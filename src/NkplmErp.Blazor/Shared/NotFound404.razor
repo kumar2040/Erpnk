@@ -1,0 +1,70 @@
+@inject NavigationManager Nav
+
+<div class="nf-wrap">
+    <div class="nf-card">
+        <div class="nf-weave"></div>
+
+        <div class="nf-spool">🧶</div>
+
+        <div class="nf-code">404</div>
+        <h1 class="nf-title">This thread leads nowhere</h1>
+        <p class="nf-sub">
+            The page you’re looking for has slipped off the loom. It may have been moved,
+            renamed, or never woven into <span class="nf-brand">NKPLM Pashmina ERP</span>.
+        </p>
+
+        <div class="nf-actions">
+            <button class="nf-btn primary" @onclick='() => Nav.NavigateTo("/")'>
+                <i class="fa-solid fa-house"></i> Back to Dashboard
+            </button>
+            <button class="nf-btn ghost" @onclick="GoBack">
+                <i class="fa-solid fa-arrow-left"></i> Go Back
+            </button>
+        </div>
+
+        <div class="nf-foot">Natural fibres · Knit · Weave · Silk &nbsp;—&nbsp; woven with care</div>
+        <div class="nf-weave bottom"></div>
+    </div>
+</div>
+
+<style>
+    .nf-wrap { min-height: 80vh; display: flex; align-items: center; justify-content: center; padding: 24px;
+               background: #f4f6fa; font-family: 'Inter','DM Sans',sans-serif; }
+    .nf-card { position: relative; width: 100%; max-width: 560px; background: #fff; border: 1px solid #e5e9f0;
+               border-radius: 16px; padding: 40px 34px; text-align: center;
+               box-shadow: 0 10px 40px rgba(26,51,83,.12); overflow: hidden; }
+
+    /* woven accent strips (pashmina weave) */
+    .nf-weave { position: absolute; left: 0; right: 0; height: 6px; top: 0;
+                background: repeating-linear-gradient(90deg, #1a3353 0 14px, #2ab3b1 14px 28px); opacity: .9; }
+    .nf-weave.bottom { top: auto; bottom: 0; }
+
+    .nf-spool { font-size: 3rem; line-height: 1; margin-bottom: 6px; filter: drop-shadow(0 4px 8px rgba(42,179,177,.35)); }
+
+    .nf-code { font-size: 4.6rem; font-weight: 800; letter-spacing: 4px; line-height: 1;
+               background: linear-gradient(135deg, #1a3353 0%, #2ab3b1 100%);
+               -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .nf-title { margin: 8px 0 6px; font-size: 1.35rem; font-weight: 700; color: #1a3353; }
+    .nf-sub { margin: 0 auto 22px; max-width: 430px; font-size: .9rem; line-height: 1.55; color: #5b6b80; }
+    .nf-brand { color: #1a8f8d; font-weight: 700; }
+
+    .nf-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .nf-btn { border: none; border-radius: 9px; cursor: pointer; font-size: .9rem; font-weight: 700;
+              padding: 11px 20px; display: inline-flex; align-items: center; gap: 8px; transition: filter .15s, transform .12s; }
+    .nf-btn:hover { transform: translateY(-1px); }
+    .nf-btn.primary { background: linear-gradient(135deg, #2ab3b1, #1a8f8d); color: #fff; box-shadow: 0 3px 10px rgba(42,179,177,.35); }
+    .nf-btn.ghost { background: #fff; color: #1a3353; border: 1px solid #d6dbe4; }
+    .nf-btn.ghost:hover { background: #f3f4f6; }
+
+    .nf-foot { margin-top: 26px; font-size: .72rem; letter-spacing: .5px; text-transform: uppercase; color: #9fb0c4; }
+</style>
+
+@code {
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    private async Task GoBack()
+    {
+        try { await JS.InvokeVoidAsync("history.back"); }
+        catch { Nav.NavigateTo("/"); }
+    }
+}

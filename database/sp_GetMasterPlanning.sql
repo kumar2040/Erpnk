@@ -27,6 +27,7 @@ BEGIN
     SELECT
         mp.[OrderNo]                AS [Order],
         mpd.[Guage]                 AS [Guage],
+        mpd.[factory_type]          AS [KnitType],
         mpd.[Machine]               AS [Machine],
         mpd.[MachineID]             AS [MachineID],
         sz.[style_no]               AS [Style],
@@ -55,6 +56,7 @@ BEGIN
     GROUP BY
         mp.[OrderNo],
         mpd.[Guage],
+        mpd.[factory_type],
         mpd.[Machine],
         mpd.[MachineID],
         sz.[style_no],

@@ -8,157 +8,144 @@
     :root {
         --navy:   #1a3353;
         --teal:   #2ab3b1;
-        --sky:    #e8f4fb;
+        --ink:    #3c4043;
+        --muted:  #80868b;
+        --line:   #e4e7ec;
         --bg:     #f4f6f9;
-        --border: #dde3ec;
-        --muted:  #7a8fa6;
     }
 
     .pr-page {
-        background-color: var(--bg) !important;
-        color: #222 !important;
+        background: var(--bg) !important;
+        color: var(--ink) !important;
         font-family: 'Inter', system-ui, sans-serif !important;
         min-height: 100%;
     }
 
-    .pr-panel { background: #fff; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    /* Shared panel chrome (matches order-planning) */
+    .pr-panel { background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+    .pr-head {
+        background: var(--navy); color: #fff; padding: 12px 16px;
+        display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    }
+    .pr-head-left { display: flex; align-items: center; gap: 11px; }
+    .pr-icon {
+        width: 34px; height: 34px; border-radius: 9px; background: rgba(255,255,255,.12);
+        border: 1px solid rgba(255,255,255,.18); display: flex; align-items: center; justify-content: center; font-size: 15px;
+    }
+    .pr-title { font-size: 15px; font-weight: 700; letter-spacing: .01em; line-height: 1.05; }
+    .pr-subtitle { font-size: 11px; opacity: .8; margin-top: 2px; font-weight: 500; }
 
-    .pr-header {
-        background: linear-gradient(120deg, #16294a 0%, #1f3c63 48%, #2a7e80 100%);
-        color: #fff; padding: 18px 22px;
-        display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;
-        position: relative; overflow: hidden;
-    }
-    .pr-header::before {
-        content: ""; position: absolute; right: -50px; top: -70px; width: 230px; height: 230px;
-        background: radial-gradient(circle, rgba(42,179,177,.45), transparent 70%); pointer-events: none;
-    }
-    .pr-header::after {
-        content: ""; position: absolute; left: 30%; bottom: -90px; width: 200px; height: 200px;
-        background: radial-gradient(circle, rgba(255,255,255,.08), transparent 70%); pointer-events: none;
-    }
-    .pr-header > * { position: relative; z-index: 1; }
+    .pr-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
-    .pr-badge {
-        width: 44px; height: 44px; border-radius: 13px;
-        background: rgba(255,255,255,.13); border: 1px solid rgba(255,255,255,.22);
-        display: flex; align-items: center; justify-content: center; font-size: 19px;
-        box-shadow: 0 4px 14px rgba(0,0,0,.18); backdrop-filter: blur(6px);
+    /* segmented toggle on dark header */
+    .pr-seg { display: inline-flex; border: 1px solid rgba(255,255,255,.22); border-radius: 8px; overflow: hidden; }
+    .pr-seg button {
+        border: none; background: transparent; color: rgba(255,255,255,.85); font-size: 11px; font-weight: 700;
+        padding: 6px 13px; cursor: pointer; transition: background .12s ease, color .12s ease;
     }
-    .pr-title { font-size: 17px; font-weight: 800; letter-spacing: .02em; line-height: 1.05; }
-    .pr-subtitle { font-size: 11px; opacity: .82; margin-top: 3px; font-weight: 500; }
+    .pr-seg button + button { border-left: 1px solid rgba(255,255,255,.22); }
+    .pr-seg button:hover { color: #fff; }
+    .pr-seg button.active { background: #fff; color: var(--navy); }
 
-    .pr-monthnav {
-        display: flex; align-items: center; gap: 2px;
-        background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.20);
-        border-radius: 11px; padding: 3px; backdrop-filter: blur(6px);
-    }
-    .pr-monthnav .navbtn {
-        width: 30px; height: 30px; border: none; background: transparent; color: #fff;
-        border-radius: 8px; cursor: pointer; font-size: 12px; transition: background .12s ease;
-    }
-    .pr-monthnav .navbtn:hover { background: rgba(255,255,255,.20); }
-    .pr-monthnav .mlabel { font-weight: 800; font-size: 13px; min-width: 132px; text-align: center; letter-spacing: .02em; }
+    /* month nav on dark header */
+    .pr-monthnav { display: flex; align-items: center; gap: 2px; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.20); border-radius: 9px; padding: 2px; }
+    .pr-navbtn { width: 28px; height: 28px; border: none; background: transparent; color: #fff; border-radius: 7px; cursor: pointer; font-size: 11px; transition: background .12s ease; }
+    .pr-navbtn:hover { background: rgba(255,255,255,.18); }
+    .pr-mlabel { font-weight: 700; font-size: 13px; min-width: 130px; text-align: center; }
 
-    .pr-today {
-        border: none; background: #fff; color: var(--navy); border-radius: 10px;
-        padding: 8px 16px; font-size: 12px; font-weight: 800; cursor: pointer;
-        box-shadow: 0 3px 10px rgba(0,0,0,.15); transition: transform .12s ease;
-    }
+    .pr-today { border: none; background: #fff; color: var(--navy); border-radius: 8px; padding: 7px 15px; font-size: 12px; font-weight: 700; cursor: pointer; transition: transform .12s ease; }
     .pr-today:hover { transform: translateY(-1px); }
 
-    .pr-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    /* KPI strip */
+    .pr-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
     @@media (max-width: 820px) { .pr-kpis { grid-template-columns: repeat(2, 1fr); } }
     @@media (max-width: 460px) { .pr-kpis { grid-template-columns: 1fr; } }
+    .pr-kpi { border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; background: #fff; }
+    .pr-kpi .lbl { font-size: 10.5px; font-weight: 600; text-transform: uppercase; color: var(--muted); letter-spacing: .04em; }
+    .pr-kpi .val { font-size: 22px; font-weight: 700; color: var(--navy); line-height: 1.15; margin-top: 2px; }
+    .pr-kpi .sub { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
 
-    .pr-kpi { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
-    .pr-kpi .lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: .03em; }
-    .pr-kpi .val { font-size: 26px; font-weight: 800; color: var(--navy); line-height: 1.1; margin-top: 4px; }
-    .pr-kpi .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
-
-    .pr-cal { width: 100%; border-collapse: separate; border-spacing: 8px; table-layout: fixed; }
+    /* Calendar grid */
+    .pr-cal { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .pr-cal th {
-        font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em;
-        padding: 10px 4px; text-align: center; color: #fff;
-        background: linear-gradient(135deg, #20406a, #2a6f74);
-        border-radius: 10px; box-shadow: 0 2px 8px rgba(26,51,83,.14);
+        font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+        padding: 10px 6px; text-align: right; color: var(--muted);
+        background: #fff; border-bottom: 1px solid var(--line);
     }
-    .pr-cal th.sat { background: linear-gradient(135deg, #c2410c, #ea7a3c); }
-    .pr-cal th.sun { background: linear-gradient(135deg, #3a4f6b, #5a7390); }
+    .pr-cal th.sat { color: #b0552a; }
+    .pr-cal th.sun { color: #5a7390; }
     .pr-cal th .abbr { display: none; }
-    @@media (max-width: 620px) {
-        .pr-cal th .full { display: none; }
-        .pr-cal th .abbr { display: inline; }
-        .pr-cal { border-spacing: 4px; }
-    }
+    @@media (max-width: 620px) { .pr-cal th .full { display: none; } .pr-cal th .abbr { display: inline; } }
 
     .pr-cell {
-        border-radius: 12px; height: 96px; vertical-align: top; padding: 8px 10px 10px;
-        position: relative; overflow: hidden;
-        box-shadow: inset 0 0 0 1px rgba(26,51,83,.06), 0 1px 2px rgba(26,51,83,.05);
-        transition: transform .12s ease, box-shadow .12s ease;
+        height: 122px; vertical-align: top; padding: 6px 8px 8px; position: relative;
+        border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+        background: #fff; transition: background .1s ease;
     }
-    .pr-cell:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1px rgba(26,51,83,.10), 0 8px 18px rgba(26,51,83,.14); z-index: 2; }
+    .pr-cal td:last-child { border-right: none; }
+    .pr-cal tr:last-child td { border-bottom: none; }
+    .pr-cell:hover { background: #f8fafc; }
+    .pr-cell.empty, .pr-cell.empty:hover { background: #fbfcfd; }
 
-    .pr-cell .dnum {
-        position: absolute; top: 7px; right: 9px;
-        font-size: 12px; font-weight: 800; color: rgba(26,51,83,.55);
-    }
-    .pr-cell .util { font-size: 24px; font-weight: 800; line-height: 1; margin-top: 16px; letter-spacing: -.5px; }
-    .pr-cell .busy { font-size: 10px; font-weight: 600; color: rgba(26,51,83,.6); margin-top: 4px; }
-
-    /* utilisation bar at the bottom of the cell */
-    .pr-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: rgba(26,51,83,.08); }
-    .pr-bar > span { display: block; height: 100%; border-radius: 0 3px 3px 0; }
-
-    .pr-cell.today { box-shadow: inset 0 0 0 2px var(--teal), 0 4px 12px rgba(42,179,177,.25); }
-    .pr-cell.today .dnum { color: var(--teal); }
-
-    .pr-cell.empty { background: transparent; box-shadow: none; }
-    .pr-cell.empty:hover { transform: none; box-shadow: none; }
-
-    .pr-cell.sat-holiday { background: repeating-linear-gradient(135deg, #fff6f0, #fff6f0 8px, #fdeee3 8px, #fdeee3 16px) !important; }
-    .pr-cell.sat-holiday .holtag {
-        position: absolute; bottom: 8px; left: 10px; font-size: 8px; font-weight: 800; color: #c2410c; letter-spacing: .08em;
+    .pr-dnum { font-size: 12.5px; font-weight: 600; color: var(--ink); text-align: right; line-height: 24px; height: 24px; }
+    .pr-dnum.today {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 24px; height: 24px; border-radius: 50%; background: var(--teal); color: #fff; float: right; font-weight: 700;
     }
 
-    .pr-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 11px; color: #334; align-items: center; }
-    .pr-legend .sw { width: 14px; height: 14px; border-radius: 4px; display: inline-block; border: 1px solid rgba(0,0,0,.06); margin-right: 5px; vertical-align: -2px; }
+    .pr-evt { margin-top: 4px; border-radius: 6px; padding: 4px 7px; line-height: 1.15; display: flex; align-items: baseline; justify-content: space-between; gap: 4px; }
+    .pr-evt .pct { font-size: 14px; font-weight: 700; }
+    .pr-evt .cnt { font-size: 10px; font-weight: 600; opacity: .8; }
+    .pr-bar { margin-top: 5px; height: 4px; border-radius: 3px; background: #eef1f4; overflow: hidden; }
+    .pr-bar > span { display: block; height: 100%; border-radius: 3px; }
+    .pr-qty { margin-top: 5px; font-size: 10px; font-weight: 600; display: flex; gap: 8px; flex-wrap: wrap; }
+    .pr-qty > span { color: var(--navy); white-space: nowrap; }
+    .pr-qty i { font-size: 9px; color: var(--muted); margin-right: 3px; }
+    .pr-qty .knit { color: #c2410c; }
+    .pr-qty .knit i { color: #c2410c; }
+    .pr-qty .knit.ok { color: #1f8a4c; }
+    .pr-qty .knit.ok i { color: #1f8a4c; }
 
-    .pr-toggle {
-        display: flex; gap: 3px; padding: 3px;
-        background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.20);
-        border-radius: 11px; backdrop-filter: blur(6px);
+    .pr-ship {
+        display: inline-block; margin-top: 2px; font-size: 9.5px; font-weight: 700;
+        color: #1d6fb8; background: #eaf4fc; border: 1px solid #cfe6f8;
+        padding: 1px 6px; border-radius: 20px; cursor: default;
     }
-    .pr-toggle button {
-        border: none; background: transparent; color: rgba(255,255,255,.85);
-        font-size: 11px; font-weight: 800; padding: 6px 13px; border-radius: 8px; cursor: pointer;
-        transition: background .12s ease, color .12s ease;
-    }
-    .pr-toggle button:hover { color: #fff; }
-    .pr-toggle button.active { background: #fff; color: var(--navy); box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+    .pr-ship i { font-size: 9px; margin-right: 2px; }
+    .pr-ship.danger { color: #b11f1f; background: #fdecea; border-color: #f6c9c4; }
+
+    .pr-cell.sat { background: #fafafa; }
+    .pr-cell.sat:hover { background: #f4f4f4; }
+    .pr-hol { margin-top: 8px; font-size: 9.5px; font-weight: 600; color: #b0552a; letter-spacing: .05em; text-transform: uppercase; }
+
+    .pr-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 11px; color: var(--muted); align-items: center; margin-top: 12px; }
+    .pr-legend .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; margin-right: 5px; vertical-align: -2px; }
 </style>
 
 <div class="pr-page p-3 flex flex-col gap-3">
 
-    <div class="pr-panel" style="border:none;">
-        <div class="pr-header">
-            <div class="flex items-center gap-3">
-                <div class="pr-badge"><i class="fa-solid fa-chart-area"></i></div>
+    <!-- Header panel (app-consistent navy bar) -->
+    <div class="pr-panel">
+        <div class="pr-head">
+            <div class="pr-head-left">
+                <div class="pr-icon"><i class="fa-solid fa-calendar-days"></i></div>
                 <div>
-                    <div class="pr-title">Planing Report</div>
+                    <div class="pr-title">Planning Report</div>
                     <div class="pr-subtitle">Factory load &middot; capacity by @(UseKnitterCapacity ? "knitters" : "machines")</div>
                 </div>
             </div>
-            <div class="flex items-center gap-3 flex-wrap">
-                <div class="pr-toggle" title="Capacity is limited by knitters (fewer than machines)">
-                    <button class="@(UseKnitterCapacity ? "active" : "")" @onclick="@(() => { UseKnitterCapacity = true; })">By Knitters</button>
-                    <button class="@(!UseKnitterCapacity ? "active" : "")" @onclick="@(() => { UseKnitterCapacity = false; })">By Machines</button>
+            <div class="pr-controls">
+                <div class="pr-seg" title="Capacity is limited by knitters (fewer than machines)">
+                    <button class="@(UseKnitterCapacity ? "active" : "")" @onclick="@(() => UseKnitterCapacity = true)">Knitters</button>
+                    <button class="@(!UseKnitterCapacity ? "active" : "")" @onclick="@(() => UseKnitterCapacity = false)">Machines</button>
+                </div>
+                <div class="pr-seg" title="Show order ship dates (order_ldate) on the calendar">
+                    <button class="@(ShowShipDates ? "active" : "")" @onclick="@(() => ShowShipDates = !ShowShipDates)"><i class="fa-solid fa-ship mr-1"></i>Ship Dates</button>
                 </div>
                 <div class="pr-monthnav">
-                    <button class="navbtn" title="Previous month" @onclick="PrevMonth"><i class="fa-solid fa-chevron-left"></i></button>
-                    <span class="mlabel">@Month.ToString("MMMM yyyy")</span>
-                    <button class="navbtn" title="Next month" @onclick="NextMonth"><i class="fa-solid fa-chevron-right"></i></button>
+                    <button class="pr-navbtn" title="Previous month" @onclick="PrevMonth"><i class="fa-solid fa-chevron-left"></i></button>
+                    <span class="pr-mlabel">@Month.ToString("MMMM yyyy")</span>
+                    <button class="pr-navbtn" title="Next month" @onclick="NextMonth"><i class="fa-solid fa-chevron-right"></i></button>
                 </div>
                 <button class="pr-today" @onclick="ThisMonth">Today</button>
             </div>
@@ -173,17 +160,17 @@
     }
     else
     {
-        <!-- KPI tiles -->
+        <!-- KPI strip -->
         <div class="pr-kpis">
             <div class="pr-kpi">
                 <div class="lbl">Avg Utilization</div>
                 <div class="val">@AvgUtilization.ToString("N0")%</div>
-                <div class="sub">working days, vs @(UseKnitterCapacity ? "knitters" : "machines")</div>
+                <div class="sub">working days vs @(UseKnitterCapacity ? "knitters" : "machines")</div>
             </div>
             <div class="pr-kpi">
                 <div class="lbl">Over-Capacity Days</div>
                 <div class="val" style="@(OverCapacityDays > 0 ? "color:#c2410c;" : "")">@OverCapacityDays</div>
-                <div class="sub">days demand &gt; @(UseKnitterCapacity ? "knitters" : "machines")</div>
+                <div class="sub">demand &gt; @(UseKnitterCapacity ? "knitters" : "machines")</div>
             </div>
             <div class="pr-kpi">
                 <div class="lbl">Idle Capacity</div>
@@ -197,7 +184,7 @@
             </div>
         </div>
 
-        <!-- Calendar heatmap -->
+        <!-- Calendar panel -->
         <div class="pr-panel p-3">
             <table class="pr-cal">
                 <thead>
@@ -229,19 +216,32 @@
                                     var util = day != null ? Utilization(day) : 0;
                                     var barW = Math.Min(util, 100);
                                     var cellTitle = slot.Value.ToString("dd-MMM-yyyy") + (day != null && !isSat ? $" — {util:N0}% ({day.BusyMachines}/{Capacity})" : "");
-                                    <td class="pr-cell @(isSat ? "sat-holiday" : "") @(isToday ? "today" : "")"
-                                        style="background:@(isSat ? "" : UtilColor(util));"
-                                        title="@cellTitle">
-                                        <div class="dnum">@slot.Value.Day</div>
+                                    <td class="pr-cell @(isSat ? "sat" : "")" title="@cellTitle">
+                                        <div class="pr-dnum @(isToday ? "today" : "")">@slot.Value.Day</div>
+                                        @if (ShowShipDates && day != null && day.ShipCount > 0)
+                                        {
+                                            <div class="pr-ship @(util > 100 ? "danger" : "")" title="Ships today: @day.ShipOrders">
+                                                <i class="fa-solid fa-ship"></i> @day.ShipCount ship@(day.ShipCount > 1 ? "s" : "")
+                                            </div>
+                                        }
                                         @if (isSat)
                                         {
-                                            <span class="holtag">HOLIDAY</span>
+                                            <div class="pr-hol">Holiday</div>
                                         }
                                         else if (day != null)
                                         {
-                                            <div class="util" style="color:@UtilTextColor(util);">@util.ToString("N0")%</div>
-                                            <div class="busy">@day.BusyMachines / @Capacity @(UseKnitterCapacity ? "knitters" : "mc")</div>
+                                            <div class="pr-evt" style="background:@UtilColor(util);">
+                                                <span class="pct" style="color:@UtilTextColor(util);">@util.ToString("N0")%</span>
+                                                <span class="cnt" style="color:@UtilTextColor(util);">@day.BusyMachines/@Capacity</span>
+                                            </div>
                                             <div class="pr-bar"><span style="width:@barW.ToString("N0")%; background:@UtilBarColor(util);"></span></div>
+                                            @if (day.LoadQty > 0 || day.KnittedPC > 0)
+                                            {
+                                                <div class="pr-qty">
+                                                    <span title="Planned pcs/day"><i class="fa-solid fa-clipboard-list"></i> @day.LoadQty.ToString("N0")</span>
+                                                    <span class="knit @(day.KnittedPC >= day.LoadQty && day.LoadQty > 0 ? "ok" : "")" title="Actual knitted pcs"><i class="fa-solid fa-check-double"></i> @day.KnittedPC</span>
+                                                </div>
+                                            }
                                         }
                                     </td>
                                 }
@@ -251,13 +251,13 @@
                 </tbody>
             </table>
 
-            <div class="pr-legend mt-2">
+            <div class="pr-legend">
                 <span><span class="sw" style="background:#d7f5e6;"></span>&lt;60%</span>
                 <span><span class="sw" style="background:#bfe9f5;"></span>60&ndash;85%</span>
                 <span><span class="sw" style="background:#fde9b8;"></span>85&ndash;100%</span>
                 <span><span class="sw" style="background:#f9c9c4;"></span>&gt;100% over capacity</span>
-                <span><span class="sw" style="background:#fff5ef; border-color:#f1c4a8;"></span>Saturday (holiday)</span>
-                <span class="ml-auto" style="color:var(--muted);">Capacity = @Capacity @(UseKnitterCapacity ? "knitters" : "machines")</span>
+                <span><span class="sw" style="background:#fafafa; border:1px solid var(--line);"></span>Saturday (holiday)</span>
+                <span class="ml-auto">Capacity = @Capacity @(UseKnitterCapacity ? "knitters" : "machines")</span>
             </div>
         </div>
     }

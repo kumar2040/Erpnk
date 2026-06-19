@@ -15,11 +15,13 @@ public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
     private readonly IRoleManagementService _roleService;
+    private readonly IIdentityService _identityService;
 
-    public UsersController(IUserService userService, IRoleManagementService roleService)
+    public UsersController(IUserService userService, IRoleManagementService roleService, IIdentityService identityService)
     {
         _userService = userService;
         _roleService = roleService;
+        _identityService = identityService;
     }
 
     private string GetCurrentUserId() =>
@@ -161,6 +163,24 @@ public class UsersController : ControllerBase
         }
 
         return Ok(new { message });
+    }
+
+    /// <summary>
+    /// Force-logout a user: ends all their active sessions immediately
+    /// (rotates security stamp + revokes refresh tokens).
+    /// </summary>
+    [HttpPost("{id}/force-logout")]
+    public async Task<IActionResult> ForceLogout(string id)
+    {
+        var callerId = GetCurrentUserId();
+        var callerPerms = await _roleService.GetUserPermissionsAsync(callerId);
+        if (!callerPerms.CanEdit("Users"))
+            return Forbid();
+
+        var result = await _identityService.ForceLogoutAsync(id, callerId);
+        return result.IsSuccess
+            ? Ok(new { message = result.Message })
+            : BadRequest(new { message = result.Message });
     }
 
     /// <summary>

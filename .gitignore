@@ -1,0 +1,15 @@
+/.vs
+
+# --- Secrets: never commit real keys / connection strings ---
+# Production / environment overrides that hold credentials:
+**/appsettings.Production.json
+**/appsettings.*.local.json
+# Local copies of web.config that hold the real Jwt__Key / connection string on the server.
+# The tracked src/NkplmErp.API/web.config keeps only placeholders.
+**/web.config.local
+**/web.secrets.config
+# User-secrets are stored outside the repo by design (no rule needed).
+
+# --- Build artifacts (should never be committed; they also copy secrets) ---
+**/bin/
+**/obj/

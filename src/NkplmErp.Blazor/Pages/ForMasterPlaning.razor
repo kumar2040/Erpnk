@@ -431,9 +431,12 @@
                             }
                             @if (groupStatus == "Assigned")
                             {
-                                <button class="mp-btn mp-btn-light" title="Remove this knitter" @onclick="() => UnassignKnitter(sg)">
-                                    <i class="fa-solid fa-user-xmark"></i>
-                                </button>
+                                @if (Permissions.CanDelete("ForMasterPlaning"))
+                                {
+                                    <button class="mp-btn mp-btn-light" title="Remove this knitter" @onclick="() => UnassignKnitter(sg)">
+                                        <i class="fa-solid fa-user-xmark"></i>
+                                    </button>
+                                }
                                 <button class="mp-btn" style="background:#2f9e44;" title="Mark work completed" @onclick="() => CompleteAssignment(sg)">
                                     <i class="fa-solid fa-check mr-1"></i> Complete
                                 </button>

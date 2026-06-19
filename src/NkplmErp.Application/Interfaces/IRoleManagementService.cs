@@ -13,8 +13,14 @@ public interface IRoleManagementService
     Task<AppRoleDto?> GetRoleByIdAsync(string roleId);
     Task<RoleOperationResult> SaveRoleAsync(SaveRoleRequest request);
 
-    // Page registry
+    // Per-user landing page (first viewable page URL). Null = no specific landing.
+    Task<string?> GetUserLandingPageAsync(string userId);
+
+    // Page registry (CRUD)
     Task<IEnumerable<AppPageDto>> GetAllPagesAsync();
+    Task<AppPageDto?> GetPageByIdAsync(int appPageId);
+    Task<RoleOperationResult> SavePageAsync(SavePageRequest request);
+    Task<RoleOperationResult> DeletePageAsync(int appPageId);
 
     // Role permissions (per-page View/Edit/Delete flags)
     Task<IEnumerable<RolePagePermissionDto>> GetPermissionsByRoleAsync(string roleId);
