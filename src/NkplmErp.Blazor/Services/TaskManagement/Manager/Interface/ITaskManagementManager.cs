@@ -22,5 +22,8 @@ namespace NkplmErp.Blazor.Services.TaskManagement.Manager.Interface
         // Distinct gauge sub-categories for the given factory within the date window
         // (cascading sub-filter options; tailor codes resolve to names).
         Task<List<string>> GetSubCategoriesAsync(string? factoryType, DateTime? startDate = null, DateTime? endDate = null);
+
+        // Pull new knitter rows from MySQL into SQL Server (incremental, no duplicates).
+        Task<SyncResultModel> SyncAsync();
     }
 }

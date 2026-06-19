@@ -31,5 +31,9 @@ namespace NkplmErp.API.Controllers.TaskManagement.Service.Interface
         // The current user's resolved gauge from identity.Users.AssignedGauge
         // (null/empty = super admin / unrestricted).
         Task<string?> GetUserAssignedGaugeAsync(string userId);
+
+        // Incrementally pull new knitter rows from MySQL (linked server) into SQL Server
+        // via sp_SyncKnitterRecords. Watermark-based, so already-synced rows are skipped.
+        Task<SyncResultModel> SyncKnitterRecordsAsync();
     }
 }

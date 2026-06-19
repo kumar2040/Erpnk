@@ -8,6 +8,9 @@ namespace NkplmErp.Blazor.Services.TaskManagement.Manager.Route
         // Current user's factory scope (admin vs gauge-restricted + dropdown list).
         public const string Scope = Base + "/scope";
 
+        // Incremental pull of new knitter rows from MySQL into SQL Server (POST).
+        public const string Sync = Base + "/sync";
+
         // Distinct gauge sub-categories for a factory within a date window (cascading options).
         public static string GetSubCategories(string? factoryType, DateTime? startDate = null, DateTime? endDate = null)
         {

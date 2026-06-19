@@ -88,5 +88,27 @@ namespace NkplmErp.Blazor.Services.TaskManagement.Manager.Implementation
                 return new List<string>();
             }
         }
+
+        public async Task<SyncResultModel> SyncAsync()
+        {
+            try
+            {
+                var response = await _httpClient.PostAsync(TaskManagementEndpoint.Sync, null);
+                if (response.IsSuccessStatusCode)
+                {
+                    var data = await response.Content.ReadFromJsonAsync<SyncResultModel>();
+                    return data ?? new SyncResultModel { Message = "No response." };
+                }
+
+                var error = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("SyncAsync returned {Status}: {Error}", response.StatusCode, error);
+                return new SyncResultModel { Message = $"Sync failed ({(int)response.StatusCode})." };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "SyncAsync failed");
+                return new SyncResultModel { Message = "Sync failed." };
+            }
+        }
     }
 }

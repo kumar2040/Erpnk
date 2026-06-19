@@ -92,6 +92,22 @@ namespace NkplmErp.API.Controllers.TaskManagement
             });
         }
 
+        // POST api/v1/TaskManagement/sync
+        // Incrementally pulls new knitter rows from MySQL into SQL Server (watermark-based,
+        // no duplicates). Returns how many rows were inserted per table.
+        // NOTE: this hits the MySQL linked server — call it on a schedule or on demand,
+        // not on every page render (see the page wiring).
+        [HttpPost("sync")]
+        public async Task<IActionResult> SyncFromMySql()
+        {
+            var userId = GetCurrentUserId();
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            if (!await CanViewTasksAsync(userId)) return Forbid();
+
+            var result = await _taskManagementService.SyncKnitterRecordsAsync();
+            return Ok(result);
+        }
+
         // Current user id from the JWT (mirrors RoleManagementController). The "sub"
         // fallback only matters if inbound claim mapping is ever disabled.
         private string? GetCurrentUserId() =>

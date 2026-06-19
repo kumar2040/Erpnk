@@ -89,5 +89,16 @@ namespace NkplmErp.API.Controllers.TaskManagement.Service.Implementation
 
             return string.IsNullOrWhiteSpace(gauge) ? null : gauge.Trim();
         }
+
+        public async Task<SyncResultModel> SyncKnitterRecordsAsync()
+        {
+            // Watermark-based incremental pull from MySQL via the linked server.
+            var result = await _dapperRepository.GetQueryFirstOrDefaultResultAsync<SyncResultModel>(
+                "sp_SyncKnitterRecords",
+                new { },
+                CommandType.StoredProcedure);
+
+            return result ?? new SyncResultModel { Message = "No response from sync procedure." };
+        }
     }
 }
