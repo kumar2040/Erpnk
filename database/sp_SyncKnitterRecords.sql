@@ -10,15 +10,14 @@ GO
 -- Incrementally pulls NEW rows from MySQL (linked server MYSQL_NatureKnit)
 -- into SQL Server, using a high-water-mark (MAX local id) so already-synced
 -- rows are never re-inserted (no duplicates).
---   tbl_knitter_record_data : key column d_id
---   tbl_knitter_record      : key column kr_id
+--   tbl_knitter_record_data : key column d_id   (IDENTITY)
+--   tbl_knitter_record      : key column kr_id  (IDENTITY)
 --
--- An app-lock serializes concurrent callers so two requests can't both read
--- the same MAX and insert the same rows. Returns the rows inserted per table.
---
--- NOTE: assumes d_id / kr_id are plain columns (the existing manual INSERTs set
--- them explicitly). If they are IDENTITY columns, IDENTITY_INSERT handling is
--- needed — tell me and I'll add it.
+-- d_id / kr_id are IDENTITY columns, so each INSERT runs with
+-- SET IDENTITY_INSERT ON (toggled inside the same dynamic batch as the INSERT)
+-- to preserve the original MySQL ids. An app-lock serializes concurrent callers
+-- so two requests can't both read the same MAX and insert the same rows.
+-- Returns the rows inserted per table.
 -- =========================================================================
 CREATE OR ALTER PROCEDURE [dbo].[sp_SyncKnitterRecords]
 AS
@@ -39,9 +38,10 @@ BEGIN
     END
 
     BEGIN TRY
-        -- 1) tbl_knitter_record_data  (watermark = MAX(d_id))
+        -- 1) tbl_knitter_record_data  (watermark = MAX(d_id), IDENTITY)
         SELECT @lastId = ISNULL(MAX(d_id), 0) FROM dbo.tbl_knitter_record_data;
         SET @sql = N'
+            SET IDENTITY_INSERT dbo.tbl_knitter_record_data ON;
             INSERT INTO dbo.tbl_knitter_record_data
                 (d_id, r_id, knitter, cone_id, pics, status, knd, krd, cone_wt, order_id, req_wt,
                  barcode, ret_pic, forward, ret_wt, r_status, for_pics, p_typ, will_ret_daate, plan_id, setting_pc)
@@ -50,13 +50,15 @@ BEGIN
                          cone_wt, order_id, req_wt, barcode, ret_pic, forward, ret_wt, r_status, for_pics,
                          p_typ, CAST(will_ret_daate AS DATETIME), plan_id, setting_pc
                   FROM db_natureknit.tbl_knitter_record_data
-                  WHERE d_id > ' + CAST(@lastId AS NVARCHAR(20)) + N' ORDER BY d_id'')';
-        EXEC sp_executesql @sql;
-        SET @insData = @@ROWCOUNT;
+                  WHERE d_id > ' + CAST(@lastId AS NVARCHAR(20)) + N' ORDER BY d_id'');
+            SET @cnt = @@ROWCOUNT;
+            SET IDENTITY_INSERT dbo.tbl_knitter_record_data OFF;';
+        EXEC sp_executesql @sql, N'@cnt INT OUTPUT', @cnt = @insData OUTPUT;
 
-        -- 2) tbl_knitter_record  (watermark = MAX(kr_id))
+        -- 2) tbl_knitter_record  (watermark = MAX(kr_id), IDENTITY)
         SELECT @lastId = ISNULL(MAX(kr_id), 0) FROM dbo.tbl_knitter_record;
         SET @sql = N'
+            SET IDENTITY_INSERT dbo.tbl_knitter_record ON;
             INSERT INTO dbo.tbl_knitter_record
                 (kr_id, knitter_id, po, style_no, kpics, color, size, kcone_id, cone_wt, kr_status,
                  machine_no, [return], order_id, flag, i_time, date_ty)
@@ -64,21 +66,24 @@ BEGIN
                 ''SELECT kr_id, knitter_id, po, style_no, kpics, color, size, kcone_id, cone_wt, kr_status,
                          machine_no, `return`, order_id, flag, i_time, CAST(date_ty AS DATETIME)
                   FROM db_natureknit.tbl_knitter_record
-                  WHERE kr_id > ' + CAST(@lastId AS NVARCHAR(20)) + N' ORDER BY kr_id'')';
-        EXEC sp_executesql @sql;
-        SET @insRec = @@ROWCOUNT;
+                  WHERE kr_id > ' + CAST(@lastId AS NVARCHAR(20)) + N' ORDER BY kr_id'');
+            SET @cnt = @@ROWCOUNT;
+            SET IDENTITY_INSERT dbo.tbl_knitter_record OFF;';
+        EXEC sp_executesql @sql, N'@cnt INT OUTPUT', @cnt = @insRec OUTPUT;
 
         EXEC sp_releaseapplock @Resource = N'sync_knitter_records', @LockOwner = N'Session';
 
-        SELECT @insData AS InsertedData, @insRec AS InsertedRecord, CAST(1 AS BIT) AS Ran,
-               'OK' AS [Message];
+        SELECT @insData AS InsertedData, @insRec AS InsertedRecord, CAST(1 AS BIT) AS Ran, 'OK' AS [Message];
     END TRY
     BEGIN CATCH
+        -- Make sure IDENTITY_INSERT never leaks back to the connection pool turned ON.
+        BEGIN TRY SET IDENTITY_INSERT dbo.tbl_knitter_record_data OFF; END TRY BEGIN CATCH END CATCH
+        BEGIN TRY SET IDENTITY_INSERT dbo.tbl_knitter_record OFF;      END TRY BEGIN CATCH END CATCH
         EXEC sp_releaseapplock @Resource = N'sync_knitter_records', @LockOwner = N'Session';
         ;THROW;
     END CATCH
 END
 GO
 
-PRINT 'sp_SyncKnitterRecords created.';
+PRINT 'sp_SyncKnitterRecords created (IDENTITY_INSERT-aware).';
 GO
