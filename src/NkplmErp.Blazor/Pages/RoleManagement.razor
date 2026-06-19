@@ -4,6 +4,12 @@
 
 <PageTitle>Role Management — NKPLM ERP</PageTitle>
 
+@if (AccessDenied)
+{
+    <AccessDenied403 Message="You don’t have permission to view Role Management. If you need access, contact your administrator." />
+}
+else
+{
 <div class="rm-container">
 
     <!-- ===================== HEADER ===================== -->
@@ -96,7 +102,10 @@
                                         <td><span class="rm-count">@role.UserCount</span></td>
                                         <td class="rm-actions-cell" @onclick:stopPropagation="true">
                                             <button class="rm-btn rm-btn-icon" title="Edit" @onclick="() => EditRoleAction(role)" id="btn-edit-@role.RoleId">✏️</button>
-                                            <button class="rm-btn rm-btn-icon rm-btn-danger" title="Delete" @onclick="() => DeleteRole(role.RoleId)" id="btn-del-@role.RoleId">🗑️</button>
+                                            @if (CanDeleteRoleMgmt)
+                                            {
+                                                <button class="rm-btn rm-btn-icon rm-btn-danger" title="Delete" @onclick="() => DeleteRole(role.RoleId)" id="btn-del-@role.RoleId">🗑️</button>
+                                            }
                                         </td>
                                     </tr>
                                 }
@@ -218,15 +227,55 @@
                 else
                 {
                     <!-- Assign new user -->
-                    <div class="rm-assign-form">
-                        <select class="rm-input" @bind="SelectedUserIdToAssign" id="sel-user-assign">
-                            <option value="">— Select user to assign —</option>
-                            @foreach (var u in AllUsers.Where(u => u.RoleId == null || u.RoleId != SelectedRole.RoleId))
-                            {
-                                <option value="@u.UserId">@u.FullName (@u.Email)</option>
-                            }
-                        </select>
-                        <button class="rm-btn rm-btn-primary rm-btn-sm" @onclick="AssignUser" id="btn-assign-user">+ Assign</button>
+                    <div class="rm-assign-card">
+                        <div class="rm-assign-title">➕ Assign a user to this role</div>
+
+                        <div class="rm-field">
+                            <label>User</label>
+                            <select class="rm-input" @bind="SelectedUserIdToAssign" id="sel-user-assign">
+                                <option value="">— Select user —</option>
+                                @foreach (var u in AssignableUsers)
+                                {
+                                    <option value="@u.UserId">@u.FullName (@u.Email)</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="rm-field">
+                            <label>Scope <span class="rm-field-opt">(optional — leave blank for all departments)</span></label>
+                            <div class="rm-scope-builder">
+                                <select class="rm-input rm-scope-dept" @bind="NewScopeDept" id="sel-scope-dept" title="Department (factory_type)">
+                                    @foreach (var d in DepartmentOptions)
+                                    {
+                                        <option value="@d">@d</option>
+                                    }
+                                </select>
+                                <input class="rm-input rm-scope-val" @bind="NewScopeValue"
+                                       placeholder="value — e.g. 7 · handknit · Gyatri Pashmina · t1 (blank = whole dept)"
+                                       title="knit → gauge number or 'handknit' · weave → factory name · silk/linen/other → tailor/master id. Blank = the whole department."
+                                       id="input-scope-value" @onkeydown="OnScopeValueKeyDown" />
+                                <button class="rm-btn rm-btn-ghost rm-btn-sm rm-scope-add" @onclick="AddScope" id="btn-add-scope">+ Add</button>
+                            </div>
+                        </div>
+
+                        @if (PendingScopes.Any())
+                        {
+                            <div class="rm-scope-chips">
+                                @foreach (var s in PendingScopes)
+                                {
+                                    <span class="rm-chip">
+                                        @s.DisplayLabel
+                                        <a class="rm-chip-x" @onclick="() => RemoveScope(s)" title="Remove">✕</a>
+                                    </span>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="rm-scope-hint">No scope added → user gets <strong>all</strong> departments for this role.</div>
+                        }
+
+                        <button class="rm-btn rm-btn-primary rm-assign-go" @onclick="AssignUser" id="btn-assign-user">Assign user to role</button>
                     </div>
 
                     <!-- Assigned users list -->
@@ -244,14 +293,26 @@
                                     <div class="rm-user-info">
                                         <span class="rm-user-name">@user.FullName</span>
                                         <span class="rm-user-email">@user.Email</span>
-                                        @if (!string.IsNullOrEmpty(user.AssignedGauge))
-                                        {
-                                            <span class="rm-badge rm-badge-restricted">Gauge: @user.AssignedGauge</span>
-                                        }
+                                        <div class="rm-scope-chips" style="margin-top:0.2rem;">
+                                            @if (user.Scopes.Any())
+                                            {
+                                                @foreach (var s in user.Scopes)
+                                                {
+                                                    <span class="rm-chip">@s.DisplayLabel</span>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <span class="rm-badge rm-badge-admin">All departments</span>
+                                            }
+                                        </div>
                                     </div>
-                                    <button class="rm-btn rm-btn-icon rm-btn-danger" title="Remove"
-                                            @onclick="() => RemoveUserFromRole(user.UserId)"
-                                            id="btn-remove-user-@user.UserId">✕</button>
+                                    @if (CanDeleteRoleMgmt)
+                                    {
+                                        <button class="rm-btn rm-btn-icon rm-btn-danger" title="Remove"
+                                                @onclick="() => RemoveUserFromRole(user.UserId)"
+                                                id="btn-remove-user-@user.UserId">✕</button>
+                                    }
                                 </div>
                             }
                         </div>
@@ -262,3 +323,4 @@
 
     </div>
 </div>
+}

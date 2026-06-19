@@ -36,6 +36,7 @@ public class PermissionService
     {
         _cachedPermissions = null;
         _isLoaded = false;
+        LandingApplied = false;
     }
 
     /// <summary>
@@ -45,6 +46,12 @@ public class PermissionService
     public string? AssignedGauge => _cachedPermissions?.AssignedGauge;
 
     public bool IsLoaded => _isLoaded;
+
+    /// <summary>
+    /// One-shot guard so the per-user landing redirect runs at most once per circuit
+    /// (prevents dashboard↔landing redirect loops/flicker).
+    /// </summary>
+    public bool LandingApplied { get; set; }
 
     // ===== Permission Check Helpers =====
     // Use these in .razor files to show/hide UI elements.

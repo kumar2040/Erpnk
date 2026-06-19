@@ -35,6 +35,23 @@ public class RoleManagementApiClient
         catch (Exception ex) { _logger.LogError(ex, "GetMyPermissionsAsync failed"); return null; }
     }
 
+    public async Task<string?> GetMyLandingAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"{Base}/my-landing");
+            if (response.IsSuccessStatusCode)
+            {
+                var doc = await response.Content.ReadFromJsonAsync<LandingResponse>();
+                return doc?.Url;
+            }
+            return null;
+        }
+        catch (Exception ex) { _logger.LogError(ex, "GetMyLandingAsync failed"); return null; }
+    }
+
+    private sealed class LandingResponse { public string? Url { get; set; } }
+
     // ===== Roles =====
 
     public async Task<List<AppRoleDto>> GetAllRolesAsync()
@@ -81,6 +98,26 @@ public class RoleManagementApiClient
             return new();
         }
         catch (Exception ex) { _logger.LogError(ex, "GetAllPagesAsync failed"); return new(); }
+    }
+
+    public async Task<RoleOperationResult?> SavePageAsync(SavePageRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"{Base}/pages", request);
+            return await response.Content.ReadFromJsonAsync<RoleOperationResult>();
+        }
+        catch (Exception ex) { _logger.LogError(ex, "SavePageAsync failed"); return null; }
+    }
+
+    public async Task<RoleOperationResult?> DeletePageAsync(int appPageId)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"{Base}/pages/{appPageId}");
+            return await response.Content.ReadFromJsonAsync<RoleOperationResult>();
+        }
+        catch (Exception ex) { _logger.LogError(ex, "DeletePageAsync failed"); return null; }
     }
 
     // ===== Role Permissions =====

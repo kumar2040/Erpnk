@@ -473,14 +473,13 @@ h1:focus {
             }
             else
             {
-                var debugInfo = $"(Sent: {loginModel.Email?.Length ?? 0} ID, {loginModel.Password?.Length ?? 0} PWD)";
-                errorMessage = $"{result.Message ?? "Invalid credentials."} {debugInfo}";
+                errorMessage = result.Message ?? "Invalid credentials.";
                 ToastService.ShowError(errorMessage);
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            ToastService.ShowError($"Login error: {ex.Message}");
+            ToastService.ShowError("Login failed. Please try again.");
         }
         finally
         {

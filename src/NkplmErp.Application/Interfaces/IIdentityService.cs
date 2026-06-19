@@ -15,4 +15,11 @@ public interface IIdentityService
     Task<UserInfoDto?> GetUserByEmailAsync(string email);
     Task<AuthResponse> RemoveBiometricAsync(string email, Guid deviceId);
     Task<AuthResponse> ChangePasswordAsync(string email, ChangePasswordRequest request);
+
+    /// <summary>
+    /// Immediately ends all of a user's active sessions: rotates their security
+    /// stamp (invalidating every live access token at the next request) and revokes
+    /// their refresh tokens. Used by admins to force-logout a user.
+    /// </summary>
+    Task<AuthResponse> ForceLogoutAsync(string userId, string performedByUserId);
 }

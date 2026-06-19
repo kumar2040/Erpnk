@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using NkplmErp.Shared.DTOs;
 using System.Net.Http.Json;
 
@@ -10,6 +11,7 @@ public partial class Users
     [Inject] private NavigationManager Navigation { get; set; } = default!;
     [Inject] private NkplmErp.Blazor.Services.RoleManagement.PermissionService Permissions { get; set; } = default!;
     [Inject] private NkplmErp.Blazor.Services.RoleManagement.RoleManagementApiClient RoleApi { get; set; } = default!;
+    [Inject] private Microsoft.JSInterop.IJSRuntime JS { get; set; } = default!;
 
     private List<UserListItemDto> users = new();
     private IEnumerable<UserListItemDto> filteredUsers => FilterUsersList();
@@ -196,6 +198,19 @@ public partial class Users
                 };
 
                 response = await Api.Client.PutAsJsonAsync($"api/v1/users/{editingUserId}", updateDto);
+
+                // Admin password reset: only when a new password was typed in edit mode.
+                if (response.IsSuccessStatusCode && !string.IsNullOrWhiteSpace(formData.Password))
+                {
+                    var pwdResponse = await Api.Client.PostAsJsonAsync(
+                        $"api/v1/users/{editingUserId}/reset-password", formData.Password);
+                    if (!pwdResponse.IsSuccessStatusCode)
+                    {
+                        var pwdError = await pwdResponse.Content.ReadFromJsonAsync<ErrorResponse>();
+                        formErrorMessage = pwdError?.Message ?? $"User saved, but password reset failed: {pwdResponse.StatusCode}";
+                        return; // keep modal open so the admin sees the password error
+                    }
+                }
             }
             else
             {
@@ -262,6 +277,32 @@ public partial class Users
         showDeleteConfirm = false;
         deleteUserId = null;
         deleteUserName = null;
+    }
+
+    private async Task ForceLogout(string userId, string fullName)
+    {
+        var ok = await JS.InvokeAsync<bool>("confirm",
+            $"Force logout {fullName}? This ends all their active sessions immediately — they'll have to sign in again.");
+        if (!ok) return;
+
+        try
+        {
+            var response = await Api.Client.PostAsync($"api/v1/users/{userId}/force-logout", null);
+            if (response.IsSuccessStatusCode)
+            {
+                errorMessage = null;
+            }
+            else
+            {
+                var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                errorMessage = error?.Message ?? $"Force logout failed: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Force logout failed: {ex.Message}";
+        }
+        StateHasChanged();
     }
 
     private async Task ConfirmDelete()

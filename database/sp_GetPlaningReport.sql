@@ -54,11 +54,50 @@ BEGIN
               AND d BETWEEN CAST(mpd.StartDate AS DATE) AND CAST(mpd.EndDate AS DATE)
         ), 0) AS BusyMachines,
 
+        -- Per-day planned qty: each plan's Qty spread across its WORKING days
+        -- (Saturdays excluded unless that plan has WorkSaturday=1). Overtime is
+        -- already reflected in the plan's End date, so a shorter span => more/day.
+        -- A plan only contributes on a day it actually works.
+        -- ('1900-01-06' is a Saturday; the /7 difference counts Saturdays in a span.)
         ISNULL((
-            SELECT SUM(mpd.Qty)
+            SELECT SUM(
+                CAST(mpd.Qty AS DECIMAL(18,4)) /
+                NULLIF(
+                    CASE WHEN ISNULL(mpd.WorkSaturday, 0) = 1
+                         THEN DATEDIFF(DAY, CAST(mpd.StartDate AS DATE), CAST(mpd.EndDate AS DATE)) + 1
+                         ELSE (DATEDIFF(DAY, CAST(mpd.StartDate AS DATE), CAST(mpd.EndDate AS DATE)) + 1)
+                              - ( DATEDIFF(DAY, '1900-01-06', CAST(mpd.EndDate AS DATE)) / 7
+                                  - DATEDIFF(DAY, '1900-01-06', DATEADD(DAY, -1, CAST(mpd.StartDate AS DATE))) / 7 )
+                    END, 0)
+            )
             FROM dbo.MasterPlanDetail mpd
             WHERE d BETWEEN CAST(mpd.StartDate AS DATE) AND CAST(mpd.EndDate AS DATE)
+              AND ( DATENAME(WEEKDAY, d) <> 'Saturday' OR ISNULL(mpd.WorkSaturday, 0) = 1 )
         ), 0) AS LoadQty,
+
+        -- Actual knitted pieces received on this calendar day (item count, weight > 0).
+        ISNULL((
+            SELECT COUNT(r.item_no)
+            FROM tbl_knitter_recieved r
+            WHERE CAST(r.r_date AS DATE) = d
+              AND r.r_wt > 0
+        ), 0) AS KnittedPC,
+
+        -- Orders whose ship date (order_ldate) falls on this calendar day.
+        ISNULL((
+            SELECT COUNT(DISTINCT o.order_no)
+            FROM tbl_order o
+            WHERE CAST(o.order_ldate AS DATE) = d
+        ), 0) AS ShipCount,
+
+        ISNULL(STUFF((
+            SELECT ', ' + o.order_no
+            FROM tbl_order o
+            WHERE CAST(o.order_ldate AS DATE) = d
+            GROUP BY o.order_no
+            ORDER BY o.order_no
+            FOR XML PATH(''), TYPE
+        ).value('.', 'NVARCHAR(MAX)'), 1, 2, ''), '') AS ShipOrders,
 
         @TotalMachines AS TotalMachines,
         @TotalKnitters AS TotalKnitters,

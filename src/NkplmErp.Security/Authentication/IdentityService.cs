@@ -32,21 +32,30 @@ public class IdentityService(
     {
         try
         {
-            Console.WriteLine($"DEBUG: Security - LoginAsync attempt for email: {request.Email}");
             var user = await _userManager.FindByEmailAsync(request.Email);
             if (user == null)
             {
-                Console.WriteLine($"DEBUG: Security - User not found: {request.Email}");
                 await _auditService.LogAsync("system", "LoginFailed", "User", request.Email, "", "Invalid credentials");
                 return new AuthResponse { IsSuccess = false, Message = "Invalid credentials." };
             }
 
+            // Brute-force protection: reject locked-out accounts up front.
+            if (await _userManager.IsLockedOutAsync(user))
+            {
+                await _auditService.LogAsync(user.Id, "LoginLockedOut", "User", user.Id, "", "Account locked");
+                return new AuthResponse { IsSuccess = false, Message = "Account temporarily locked. Try again later." };
+            }
+
             if (!await _userManager.CheckPasswordAsync(user, request.Password))
             {
-                Console.WriteLine($"DEBUG: Security - Invalid password for user: {user.Email}");
+                // Count the failure; lock the account once the threshold is hit.
+                await _userManager.AccessFailedAsync(user);
                 await _auditService.LogAsync("system", "LoginFailed", "User", request.Email, "", "Invalid credentials");
                 return new AuthResponse { IsSuccess = false, Message = "Invalid credentials." };
             }
+
+            // Successful password: reset the failed-attempt counter.
+            await _userManager.ResetAccessFailedCountAsync(user);
 
             var fingerprint = _deviceService.GetDeviceFingerprint();
             await _auditService.LogAsync(user.Id, "LoginAttempt", "User", user.Id, "", $"Device: {fingerprint}");
@@ -77,10 +86,10 @@ public class IdentityService(
                 Message = "Login successful."
             };
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Console.WriteLine($"DEBUG: Security - Exception in LoginAsync: {ex.Message}");
-            return new AuthResponse { IsSuccess = false, Message = $"Login error: {ex.Message}" };
+            // Never leak exception detail to the client on the auth path.
+            return new AuthResponse { IsSuccess = false, Message = "Login failed. Please try again." };
         }
     }
 
@@ -163,6 +172,33 @@ public class IdentityService(
             RefreshToken = newRefreshToken,
             Message = "Token refreshed successfully."
         };
+    }
+
+    public async Task<AuthResponse> ForceLogoutAsync(string userId, string performedByUserId)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return new AuthResponse { IsSuccess = false, Message = "User not found." };
+
+        // 1. Rotate the security stamp — every live access token (which carries the
+        //    old stamp) is rejected at its next request by the OnTokenValidated check.
+        await _userManager.UpdateSecurityStampAsync(user);
+
+        // 2. Revoke all still-active refresh tokens so they can't mint a new token.
+        var activeTokens = await _context.RefreshTokens
+            .Where(t => t.UserId == userId && t.Revoked == null)
+            .ToListAsync();
+        foreach (var t in activeTokens)
+        {
+            t.Revoked = DateTime.UtcNow;
+            t.RevokedByIp = "force-logout";
+        }
+        await _context.SaveChangesAsync();
+
+        await _auditService.LogAsync(performedByUserId, "ForceLogout", "User", userId, "",
+            $"Admin force-logged-out user {userId}");
+
+        return new AuthResponse { IsSuccess = true, Message = "User has been logged out." };
     }
 
     private async Task SaveRefreshToken(string userId, string token)

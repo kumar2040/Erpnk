@@ -230,9 +230,54 @@
 .rm-user-name  { font-weight: 600; font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #111827; }
 .rm-user-email { font-size: 0.68rem; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* Assign form */
+/* Assign form (legacy) */
 .rm-assign-form { display: flex; gap: 0.4rem; margin-bottom: 0.6rem; align-items: center; }
 .rm-assign-form .rm-input { flex: 1; }
+
+/* Assign-a-user card */
+.rm-assign-card {
+    background: #f7f9fc;
+    border: 1px solid #e5e9f0;
+    border-radius: 9px;
+    padding: 0.7rem 0.75rem;
+    margin-bottom: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+.rm-assign-title { font-size: 0.8rem; font-weight: 700; color: #1a3353; }
+.rm-field { display: flex; flex-direction: column; gap: 0.25rem; }
+.rm-field > label { font-size: 0.64rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+.rm-field-opt { font-weight: 500; text-transform: none; letter-spacing: 0; color: #9ca3af; }
+
+/* Scope builder row */
+.rm-scope-builder { display: flex; gap: 0.4rem; align-items: stretch; }
+.rm-scope-dept { flex: 0 0 96px; }
+.rm-scope-val  { flex: 1 1 auto; min-width: 0; }
+.rm-scope-add  { flex: 0 0 auto; white-space: nowrap; }
+
+/* Pending scope chips */
+.rm-scope-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.rm-chip {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    background: rgba(42, 179, 177, 0.12);
+    border: 1px solid rgba(42, 179, 177, 0.4);
+    color: #0f766e;
+    border-radius: 20px;
+    padding: 0.15rem 0.6rem;
+    font-size: 0.72rem; font-weight: 600;
+}
+.rm-chip-x { cursor: pointer; color: #ef4444; font-weight: 700; line-height: 1; }
+.rm-chip-x:hover { color: #b91c1c; }
+
+.rm-scope-hint {
+    font-size: 0.7rem; color: #2563eb;
+    background: rgba(37, 99, 235, 0.06);
+    border: 1px solid rgba(37, 99, 235, 0.15);
+    border-radius: 6px; padding: 0.35rem 0.55rem; line-height: 1.35;
+}
+
+.rm-assign-go { width: 100%; justify-content: center; margin-top: 0.15rem; padding: 0.5rem; }
 
 /* States */
 .rm-loading { padding: 1.5rem; text-align: center; color: #6b7280; font-size: 0.8rem; }

@@ -25,7 +25,9 @@ public class JwtTokenService(IConfiguration configuration, SecurityDbContext con
             new Claim(ClaimTypes.Name, user.Email ?? string.Empty), // Ensure User.Identity.Name is populated
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim("firstName", user.FirstName),
-            new Claim("lastName", user.LastName)
+            new Claim("lastName", user.LastName),
+            // Session fingerprint — rotated on force-logout to invalidate all live tokens.
+            new Claim("sstamp", user.SecurityStamp ?? string.Empty)
         };
 
         // Add Roles
