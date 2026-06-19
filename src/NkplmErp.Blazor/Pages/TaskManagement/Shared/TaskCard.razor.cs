@@ -17,6 +17,11 @@ namespace NkplmErp.Blazor.Pages.TaskManagement.Shared
         // Opening a card (read-only board; no edit/hold/delete/add actions).
         [Parameter] public EventCallback<int> OnItemClick { get; set; }
 
+        // When true (single-category full-width view) the card list flows into a responsive
+        // grid instead of one vertical stack, so it fills the wider column. Default false =
+        // the normal stacked column used inside the Work Load multi-column grid.
+        [Parameter] public bool FlowCards { get; set; }
+
         private int Count => Items?.Count ?? 0;
 
         // data-status attribute used by the drag/drop script (1..5)
@@ -39,6 +44,10 @@ namespace NkplmErp.Blazor.Pages.TaskManagement.Shared
             TaskVariant.OnHold => "OnHoldBox",
             _ => "TodoBox"
         };
+
+        // The variant box class, plus "flow-grid" when the card list should flow into a
+        // responsive grid (single-category full-width view).
+        private string BoxCssClass => FlowCards ? $"{BoxClass} flow-grid" : BoxClass;
 
         // Over Due / On Hold use a distinct header: title-only pill + a separate
         // circular count badge (matches the original boxHead dueHead/onholdHead layout).

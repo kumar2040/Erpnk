@@ -45,6 +45,18 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
         private bool Box4 { get; set; }
         private bool Box5 { get; set; }
 
+        // Which stat card is currently selected (mirrors the ShowBubble id) so the UI can
+        // highlight it. Starts at 6 (Work Load) to match the initial ShowBubble(6) default.
+        private int activeBubble = 6;
+
+        // How many board columns are visible (driven by the stat-card selection): a single
+        // category shows one column, Work Load shows four. When only one is showing it takes
+        // the full row and flows its cards into a grid; Work Load keeps the 3-up column grid.
+        private int VisibleBoxCount =>
+            (Box1 ? 1 : 0) + (Box2 ? 1 : 0) + (Box3 ? 1 : 0) + (Box4 ? 1 : 0) + (Box5 ? 1 : 0);
+        private bool SingleFullWidth => VisibleBoxCount == 1;
+        private string BoardColClass => SingleFullWidth ? "col-12" : "col-md-6 col-lg-4";
+
         // ---- Board data (loaded from the API) ----
         private List<TaskCardItem> todotasks = new();
         private List<TaskCardItem> inprogresstasks = new();
@@ -150,6 +162,7 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
         // ======================================================================
         private void ShowBubble(int id)
         {
+            activeBubble = id;
             Box1 = Box2 = Box3 = Box4 = Box5 = false;
             switch (id)
             {

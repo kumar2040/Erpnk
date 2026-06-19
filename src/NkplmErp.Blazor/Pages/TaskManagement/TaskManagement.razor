@@ -30,9 +30,13 @@
                     <div class="filter-item">
                         @if (scope.IsRestricted)
                         {
-                            <select class="compact-select" disabled style="height:32px" title="Your factory">
-                                <option>@scope.AssignedGauge</option>
-                            </select>
+                            @* Single-factory user: the factory is fixed, so render a read-only
+                               field (gray, lock icon, no caret) instead of a disabled-looking
+                               dropdown that invites a click and does nothing. *@
+                            <div class="compact-fixed" title="Your factory (fixed)">
+                                <svg class="tc-ic tc-ic-14" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z" /></svg>
+                                <span>@scope.AssignedGauge</span>
+                            </div>
                         }
                         else
                         {
@@ -47,75 +51,83 @@
                         }
                     </div>
                 }
+
+                @* Gauge / Method multi-select — one fixed control in the filter bar; the
+                   dynamic option list lives inside its popover so the bar never reflows.
+                   Cascades from the active factory + date window; hidden when there are none.
+                   Reuses the same state + reload methods the old chip row used. *@
+                @if (availableSubCategories.Count > 0)
+                {
+                    <div class="filter-item">
+                        <GaugeMethodFilter Options="availableSubCategories"
+                                           Selected="selectedSubCategories"
+                                           OnToggle="ToggleSubCategory"
+                                           OnSelectAll="OnAllSubCategoriesSelected" />
+                    </div>
+                }
             </div>
         </div>
 
-        @* Cascading sub-category filter — its OWN row below the main filter bar.
-           Numeric gauges collapse into "general"; tailor codes (e.g. T2) show the tailor
-           name (e.g. Laxaman Jee); other gauges show as-is. "All" (default) = no sub-filter.
-           Options follow the selected factory AND the selected date window. *@
-        @if (availableSubCategories.Count > 0)
+        @* Selected gauge/method readout — removable tags for the active picks, shown below
+           the filter bar only when something is selected. Each tag removes itself; "Clear
+           all" resets to All. Uses the same state + methods as the dropdown. *@
+        @if (selectedSubCategories.Count > 0)
         {
-            <div class="subcat-filter-row">
-                <span class="subcat-filter-label">Gauge / Method:</span>
-
-                @* Model-driven chips (NOT native checkboxes). The "checked" look is purely the
-                   "active" class derived from the model, so it can never desync from the state:
-                   "All" is active whenever no specific option is selected. *@
-                <button type="button" class="subcat-check@(selectedSubCategories.Count == 0 ? " active" : "")"
-                        @onclick="OnAllSubCategoriesSelected">
-                    <span class="subcat-box"></span>
-                    <span>All</span>
-                </button>
-                @foreach (var sub in availableSubCategories)
+            <div class="selected-filter-row">
+                <span class="selected-filter-label">Selected</span>
+                @foreach (var sub in selectedSubCategories)
                 {
-                    <button type="button" class="subcat-check@(selectedSubCategories.Contains(sub) ? " active" : "")"
+                    <button type="button" class="filter-tag" title="Remove @sub"
                             @onclick="@(() => ToggleSubCategory(sub))">
-                        <span class="subcat-box"></span>
                         <span>@sub</span>
+                        <span class="filter-tag-x">✕</span>
                     </button>
                 }
+                <button type="button" class="filter-clear" @onclick="OnAllSubCategoriesSelected">
+                    <span class="filter-clear-x">✕</span>
+                    <span>Clear all</span>
+                </button>
             </div>
         }
 
         <!-- Stats cards -->
         <div class="stats-grid">
-            <div class="stat-card stat-scheduled" @onclick="() => ShowBubble(1)">
+            <div class="stat-card stat-scheduled@(activeBubble == 1 ? " active" : "")" @onclick="() => ShowBubble(1)">
                 <div class="stat-content d-flex justify-content-between">
                     <div class="stat-label">Scheduled</div>
                     <div class="stat-value">@Scheduled</div>
                 </div>
             </div>
 
-            <div class="stat-card stat-progress" @onclick="() => ShowBubble(2)">
+            <div class="stat-card stat-progress@(activeBubble == 2 ? " active" : "")" @onclick="() => ShowBubble(2)">
                 <div class="stat-content d-flex justify-content-between">
                     <div class="stat-label">In Progress</div>
                     <div class="stat-value">@InProgress</div>
                 </div>
             </div>
 
-            <div class="stat-card stat-hold" @onclick="() => ShowBubble(5)">
+            <div class="stat-card stat-hold@(activeBubble == 5 ? " active" : "")" @onclick="() => ShowBubble(5)">
                 <div class="stat-content d-flex justify-content-between">
                     <div class="stat-label">On Hold</div>
                     <div class="stat-value">@OnHoldCount</div>
                 </div>
             </div>
 
-            <div class="stat-card stat-workload" @onclick="() => ShowBubble(6)">
+            <div class="stat-card stat-workload@(activeBubble == 6 ? " active" : "")" @onclick="() => ShowBubble(6)">
                 <div class="stat-content d-flex justify-content-between">
                     <div class="stat-label">Work Load</div>
                     <div class="stat-value">@Workload</div>
                 </div>
             </div>
 
-            <div class="stat-card stat-completed" @onclick="() => ShowBubble(3)">
+            <div class="stat-card stat-completed@(activeBubble == 3 ? " active" : "")" @onclick="() => ShowBubble(3)">
                 <div class="stat-content d-flex justify-content-between">
                     <div class="stat-label">Completed</div>
                     <div class="stat-value">@Completed</div>
                 </div>
             </div>
 
-            <div class="stat-card stat-overdue" @onclick="() => ShowBubble(4)">
+            <div class="stat-card stat-overdue@(activeBubble == 4 ? " active" : "")" @onclick="() => ShowBubble(4)">
                 <div class="stat-content d-flex justify-content-between">
                     <div class="stat-label">OverDue</div>
                     <div class="stat-value">@OverDue</div>
@@ -126,54 +138,59 @@
 
     <div class="containers">
         <section>
-            <div class="row g-3 my-3">
+            <div class="row g-2 my-2">
                 @if (Box1)
                 {
-                    <div class="col-md-6 col-lg-4">
+                    <div class="@BoardColClass">
                         <TaskCard Title="Scheduled"
                                   Variant="TaskVariant.Todo"
                                   Items="todotasks"
-                                  OnItemClick="OnItemClicked" />
+                                  OnItemClick="OnItemClicked"
+                                  FlowCards="SingleFullWidth" />
                     </div>
                 }
 
                 @if (Box2)
                 {
-                    <div class="col-md-6 col-lg-4">
+                    <div class="@BoardColClass">
                         <TaskCard Title="In Progress"
                                   Variant="TaskVariant.Progress"
                                   Items="inprogresstasks"
-                                  OnItemClick="OnItemClicked" />
+                                  OnItemClick="OnItemClicked"
+                                  FlowCards="SingleFullWidth" />
                     </div>
                 }
 
                 @if (Box3)
                 {
-                    <div class="col-md-6 col-lg-4">
+                    <div class="@BoardColClass">
                         <TaskCard Title="Completed"
                                   Variant="TaskVariant.Complete"
                                   Items="completedtasks"
-                                  OnItemClick="OnItemClicked" />
+                                  OnItemClick="OnItemClicked"
+                                  FlowCards="SingleFullWidth" />
                     </div>
                 }
 
                 @if (Box4)
                 {
-                    <div class="col-md-6 col-lg-4">
+                    <div class="@BoardColClass">
                         <TaskCard Title="Over Due"
                                   Variant="TaskVariant.Due"
                                   Items="overduetasks"
-                                  OnItemClick="OnItemClicked" />
+                                  OnItemClick="OnItemClicked"
+                                  FlowCards="SingleFullWidth" />
                     </div>
                 }
 
                 @if (Box5)
                 {
-                    <div class="col-md-6 col-lg-4">
+                    <div class="@BoardColClass">
                         <TaskCard Title="On Hold"
                                   Variant="TaskVariant.OnHold"
                                   Items="onholdtasks"
-                                  OnItemClick="OnItemClicked" />
+                                  OnItemClick="OnItemClicked"
+                                  FlowCards="SingleFullWidth" />
                     </div>
                 }
             </div>
