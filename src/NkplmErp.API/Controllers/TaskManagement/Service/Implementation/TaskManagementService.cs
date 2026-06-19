@@ -1,19 +1,17 @@
 using System.Data;
-using Dapper;
-using Microsoft.Data    .SqlClient;
 using NkplmErp.API.Controllers.TaskManagement.Model;
 using NkplmErp.API.Controllers.TaskManagement.Service.Interface;
+using NkplmErp.Shared.Repositories.Interface;
 
 namespace NkplmErp.API.Controllers.TaskManagement.Service.Implementation
 {
     public class TaskManagementService : ITaskManagementService
     {
-        private readonly string _connectionString;
+        private readonly IDapperRepository _dapperRepository;
 
-        public TaskManagementService(IConfiguration configuration)
+        public TaskManagementService(IDapperRepository dapperRepository)
         {
-            _connectionString = configuration.GetConnectionString("DefaultConnection")
-                ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+            _dapperRepository = dapperRepository;
         }
 
         public async Task<IEnumerable<TaskManagementResponseModel>> GetTasksAsync(
@@ -36,27 +34,23 @@ namespace NkplmErp.API.Controllers.TaskManagement.Service.Implementation
             var subCategoriesParam = string.IsNullOrWhiteSpace(subCategories) ? null : subCategories.Trim();
             var userIdParam = string.IsNullOrWhiteSpace(userId) ? null : userId.Trim();
 
-            using var connection = new SqlConnection(_connectionString);
-
             // The SP resolves the user's AssignedGauge from @UserId and enforces the factory
             // scope itself; @FactoryType only matters for a super-admin (null gauge). The SP
             // also applies the cascading @SubCategories gauge-method filter.
-            var rows = await connection.QueryAsync<TaskManagementResponseModel>(
+            var rows = await _dapperRepository.GetQueryResultAsync<TaskManagementResponseModel>(
                 "spTaskManagement",
                 new { Flag = safeFlag, StartDate = startDate, EndDate = endDate, OrderNo = orderNoParam, FactoryType = factoryTypeParam, UserId = userIdParam, SubCategories = subCategoriesParam },
-                commandType: CommandType.StoredProcedure);
+                CommandType.StoredProcedure);
 
-            return rows.ToList();
+            return rows;
         }
 
         public async Task<IEnumerable<string>> GetFactoryTypesAsync()
         {
-            using var connection = new SqlConnection(_connectionString);
-
-            var rows = await connection.QueryAsync<string?>(
+            var rows = await _dapperRepository.GetQueryResultAsync<string?>(
                 "spTaskManagement",
                 new { Flag = "FT" },
-                commandType: CommandType.StoredProcedure);
+                CommandType.StoredProcedure);
 
             return rows
                 .Where(r => !string.IsNullOrWhiteSpace(r))
@@ -69,15 +63,13 @@ namespace NkplmErp.API.Controllers.TaskManagement.Service.Implementation
             var factoryTypeParam = string.IsNullOrWhiteSpace(factoryType) ? null : factoryType.Trim();
             var userIdParam = string.IsNullOrWhiteSpace(userId) ? null : userId.Trim();
 
-            using var connection = new SqlConnection(_connectionString);
-
             // Flag 'SUB' returns the distinct gauge sub-methods for the active factory within
             // the date window (numeric -> 'general', tailor code -> name); the SP scopes it to
             // a restricted user's gauge.
-            var rows = await connection.QueryAsync<string?>(
+            var rows = await _dapperRepository.GetQueryResultAsync<string?>(
                 "spTaskManagement",
                 new { Flag = "SUB", FactoryType = factoryTypeParam, StartDate = startDate, EndDate = endDate, UserId = userIdParam },
-                commandType: CommandType.StoredProcedure);
+                CommandType.StoredProcedure);
 
             return rows
                 .Where(r => !string.IsNullOrWhiteSpace(r))
@@ -89,13 +81,11 @@ namespace NkplmErp.API.Controllers.TaskManagement.Service.Implementation
         {
             if (string.IsNullOrWhiteSpace(userId)) return null;
 
-            using var connection = new SqlConnection(_connectionString);
-
             // Flag 'GAUGE' returns the user's resolved AssignedGauge (NULL = super admin).
-            var gauge = await connection.ExecuteScalarAsync<string?>(
+            var gauge = await _dapperRepository.GetQueryFirstOrDefaultResultAsync<string?>(
                 "spTaskManagement",
                 new { Flag = "GAUGE", UserId = userId.Trim() },
-                commandType: CommandType.StoredProcedure);
+                CommandType.StoredProcedure);
 
             return string.IsNullOrWhiteSpace(gauge) ? null : gauge.Trim();
         }
