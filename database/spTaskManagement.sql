@@ -456,9 +456,12 @@ BEGIN
     --   numeric gauge      -> 'general'
     --   tailor code (T1..) -> the tailor NAME from tbl_tailor (e.g. T2 -> 'Laxaman Jee')
     --   anything else      -> the raw gauge text (e.g. 'Pashminalooms')
-    -- Scoped to @EffectiveFactory (NULL = all factories, e.g. admin on "All Factories";
-    -- a restricted user is locked to their own gauge), AND to the selected date window so
-    -- the options reflect only sub-categories that have rows overlapping the window.
+    -- A sub-category is returned ONLY when at least one of its rows is actually VISIBLE on the
+    -- board for the selected window. This mirrors the S/P/C/O/H flag logic EXACTLY -- In
+    -- Progress and On Hold are "sticky" (shown by start date, end date ignored) while
+    -- Scheduled / Completed / Overdue use window overlap -- so a chip can never appear and
+    -- then yield zero rows. Scoped to @EffectiveFactory and INNER JOINed to MasterPlan like
+    -- the board columns.
     IF (@Flag = 'SUB')
     BEGIN
         SELECT DISTINCT
@@ -467,19 +470,60 @@ BEGIN
                  WHEN tl.[name] IS NOT NULL
                  THEN LTRIM(RTRIM(tl.[name]))
                  ELSE LTRIM(RTRIM(mpd.[Guage])) END AS [SubCategory]
-        FROM [dbo].[MasterPlanDetail] mpd WITH (NOLOCK)
+        FROM [dbo].[MasterPlan] mp WITH (NOLOCK)
+        INNER JOIN [dbo].[MasterPlanDetail] mpd WITH (NOLOCK)
+            ON mpd.[MaterID] = mp.[MaterID]
         LEFT JOIN (SELECT [tid], MAX([name]) AS [name]
                    FROM [dbo].[tbl_tailor] WITH (NOLOCK) GROUP BY [tid]) tl
             ON tl.[tid] = mpd.[Guage]
         WHERE mpd.[Guage] IS NOT NULL
           AND LTRIM(RTRIM(mpd.[Guage])) <> ''
           AND (@EffectiveFactory IS NULL OR LOWER(mpd.[factory_type]) = LOWER(@EffectiveFactory))
-          -- Match the board's LOOSEST date rule. All columns require StartDate <= window end,
-          -- but In Progress and On Hold filter on the START date ONLY (no end-date cut-off).
-          -- Using window OVERLAP here would drop the chips whenever the visible rows are
-          -- In Progress / On Hold whose end date falls before the window start (e.g. June
-          -- tasks shown in a September window). So filter on the start date only.
+          -- StartDate <= window end is required by every flag
           AND (@EndDate IS NULL OR mpd.[StartDate] < DATEADD(DAY, 1, CAST(@EndDate AS DATE)))
+          AND
+          (
+              -- On Hold (sticky)
+              mpd.[plan_status] = 1
+              -- In Progress: started & still outstanding (sticky, no end-date gate)
+              OR (mpd.[plan_status] = 0 AND EXISTS (
+                      SELECT 1
+                      FROM [dbo].[MasterPlanDetailSize] s WITH (NOLOCK)
+                      INNER JOIN [dbo].[tbl_knitter_record_data] k WITH (NOLOCK) ON k.[plan_id] = s.[id]
+                      WHERE s.[MasterPlanDetailId] = mpd.[MasterPlanChildId]
+                        AND k.[pics] IS NOT NULL
+                        AND (k.[ret_pic] IS NULL OR k.[pics] <> k.[ret_pic])))
+              -- Completed: has a fully-returned piece (window overlap)
+              OR (mpd.[plan_status] = 0
+                  AND (@StartDate IS NULL OR mpd.[EndDate] >= CAST(@StartDate AS DATE))
+                  AND EXISTS (
+                      SELECT 1
+                      FROM [dbo].[MasterPlanDetailSize] s WITH (NOLOCK)
+                      INNER JOIN [dbo].[tbl_knitter_record_data] k WITH (NOLOCK) ON k.[plan_id] = s.[id]
+                      WHERE s.[MasterPlanDetailId] = mpd.[MasterPlanChildId]
+                        AND k.[pics] IS NOT NULL
+                        AND k.[pics] = k.[ret_pic]))
+              -- Scheduled: not started, not overdue, window overlap
+              OR (mpd.[plan_status] = 0
+                  AND mpd.[EndDate] >= CAST(GETDATE() AS DATE)
+                  AND (@StartDate IS NULL OR mpd.[EndDate] >= CAST(@StartDate AS DATE))
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM [dbo].[MasterPlanDetailSize] s WITH (NOLOCK)
+                      INNER JOIN [dbo].[tbl_knitter_record_data] k WITH (NOLOCK) ON k.[plan_id] = s.[id]
+                      WHERE s.[MasterPlanDetailId] = mpd.[MasterPlanChildId]
+                        AND k.[pics] IS NOT NULL))
+              -- Overdue: not started, past due, window overlap (+1-day grace at the start)
+              OR (mpd.[plan_status] = 0
+                  AND mpd.[EndDate] < CAST(GETDATE() AS DATE)
+                  AND (@StartDate IS NULL OR mpd.[EndDate] >= DATEADD(DAY, -1, CAST(@StartDate AS DATE)))
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM [dbo].[MasterPlanDetailSize] s WITH (NOLOCK)
+                      INNER JOIN [dbo].[tbl_knitter_record_data] k WITH (NOLOCK) ON k.[plan_id] = s.[id]
+                      WHERE s.[MasterPlanDetailId] = mpd.[MasterPlanChildId]
+                        AND k.[pics] IS NOT NULL))
+          )
         ORDER BY [SubCategory];
     END
 
