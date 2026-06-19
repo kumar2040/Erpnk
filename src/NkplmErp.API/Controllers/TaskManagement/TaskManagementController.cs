@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NkplmErp.API.Controllers.TaskManagement.Model;
 using NkplmErp.API.Controllers.TaskManagement.Service.Interface;
+using NkplmErp.Application.Interfaces;
 
 namespace NkplmErp.API.Controllers.TaskManagement
 {
@@ -11,9 +12,19 @@ namespace NkplmErp.API.Controllers.TaskManagement
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]
     [Authorize]
-    public class TaskManagementController(ITaskManagementService taskManagementService) : ControllerBase
+    public class TaskManagementController(
+        ITaskManagementService taskManagementService,
+        IRoleManagementService roleService) : ControllerBase
     {
         private readonly ITaskManagementService _taskManagementService = taskManagementService;
+        private readonly IRoleManagementService _roleService = roleService;
+
+        // Zero Trust: caller must have View on the TaskManagement module.
+        private async Task<bool> CanViewTasksAsync(string userId)
+        {
+            var perms = await _roleService.GetUserPermissionsAsync(userId);
+            return perms.CanView("TaskManagement");
+        }
 
         // GET api/v1/TaskManagement?flag=S|P|C|O&startDate=2026-06-16&endDate=2026-06-16&orderNo=Nksh26&factoryType=knit
         // flag: S Scheduled, P In Progress, C Completed, O Overdue (Overdue overlaps the date range like S/P/C, +1-day grace at the start).
@@ -31,6 +42,7 @@ namespace NkplmErp.API.Controllers.TaskManagement
             // Fail CLOSED: no resolvable identity => deny (never default to unrestricted).
             var userId = GetCurrentUserId();
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            if (!await CanViewTasksAsync(userId)) return Forbid();
 
             var data = await _taskManagementService.GetTasksAsync(flag, startDate, endDate, orderNo, factoryType, subCategories, userId);
             return Ok(data);
@@ -48,6 +60,7 @@ namespace NkplmErp.API.Controllers.TaskManagement
         {
             var userId = GetCurrentUserId();
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            if (!await CanViewTasksAsync(userId)) return Forbid();
 
             var subs = await _taskManagementService.GetSubCategoriesAsync(factoryType, startDate, endDate, userId);
             return Ok(subs);
@@ -62,6 +75,7 @@ namespace NkplmErp.API.Controllers.TaskManagement
         {
             var userId = GetCurrentUserId();
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            if (!await CanViewTasksAsync(userId)) return Forbid();
 
             var assignedGauge = await _taskManagementService.GetUserAssignedGaugeAsync(userId);
             var isRestricted = !string.IsNullOrWhiteSpace(assignedGauge);

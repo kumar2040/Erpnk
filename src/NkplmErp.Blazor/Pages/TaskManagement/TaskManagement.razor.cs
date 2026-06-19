@@ -8,6 +8,10 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
     public partial class TaskManagement
     {
         [Inject] private ITaskManagementManager TaskManager { get; set; } = default!;
+        [Inject] private NkplmErp.Blazor.Services.RoleManagement.PermissionService PermSvc { get; set; } = default!;
+
+        // True when the user lacks TaskManagement.View — the page shows Access Denied.
+        private bool AccessDenied;
 
         // ---- Filter state ----
         // Selected date window (the CompactDateRangeFilter binds these). Seeded in
@@ -74,6 +78,15 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
 
         protected override async Task OnInitializedAsync()
         {
+            // Zero Trust: gate the page by the TaskManagement view permission.
+            if (!PermSvc.IsLoaded)
+                await PermSvc.LoadPermissionsAsync();
+            if (!PermSvc.CanView("TaskManagement"))
+            {
+                AccessDenied = true;
+                return;
+            }
+
             // Default view: Scheduled + In Progress + Completed + Over Due (On Hold hidden).
             ShowBubble(6);
 

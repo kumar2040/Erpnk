@@ -1,7 +1,14 @@
 @page "/task"
 @attribute [Authorize]
 @using NkplmErp.Blazor.Pages.TaskManagement.Shared
+@using NkplmErp.Blazor.Shared
 
+@if (AccessDenied)
+{
+    <AccessDenied403 Message="You don’t have permission to view Task Management. If you need access, contact your administrator." />
+}
+else
+{
 <div class="main-body">
     <div class="page-header-container">
         <div class="header-row">
@@ -197,3 +204,4 @@
         </section>
     </div>
 </div>
+}
