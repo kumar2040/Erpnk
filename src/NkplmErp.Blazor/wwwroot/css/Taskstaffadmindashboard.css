@@ -781,6 +781,164 @@
         margin: 0;
     }
 
+/* ---- Knitter-detail In Progress card (TaskCard ShowKnitterDetails=true) ----
+   One card per knitter: PO No header, a Qty/Issue/Return row, the Knitter Id,
+   then a date-range + machine-count footer. Only the Progress column opts in;
+   every other card keeps the default body above. ---- */
+.boxBody.knitterCard {
+    gap: 0;
+}
+
+    /* Outline (stroke-based) SVG icons for the knitter card. fill:none keeps them
+       crisp line icons -- never the filled boxy blobs the material paths produced. */
+    .knitterCard .kc-ic {
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+        margin-right: 5px;
+        vertical-align: middle;
+        color: #6b7280;
+    }
+
+    .knitterCard .kc-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 8px;
+        margin-bottom: 8px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+        /* Order number (with bolt) grouped on the left of the header. */
+        .knitterCard .kc-order {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+    /* Customer code badge on the right; hovering it reveals the buyer name. */
+    .knitterCard .kc-code {
+        position: relative;
+        cursor: default;
+        font-size: 11px;
+        font-weight: 600;
+        color: #185FA5;
+        background: #E6F1FB;
+        border: 1px dashed #85B7EB;
+        border-radius: 10px;
+        padding: 2px 9px;
+    }
+
+        /* Buyer-name popup -- high z-index so it floats above neighbouring cards. */
+        .knitterCard .kc-pop {
+            position: absolute;
+            bottom: calc(100% + 8px);
+            right: 0;                 /* anchor to the badge's right edge -> grows left, into the card (no x-overflow) */
+            z-index: 1000;
+            background: #111827;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 500;
+            white-space: nowrap;
+            padding: 5px 9px;
+            border-radius: 6px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.12s ease;
+            pointer-events: none;
+        }
+
+            .knitterCard .kc-pop::after {
+                content: '';
+                position: absolute;
+                top: 100%;
+                right: 16px;           /* sit under the right-anchored badge */
+                border: 4px solid transparent;
+                border-top-color: #111827;
+            }
+
+        .knitterCard .kc-code:hover .kc-pop {
+            opacity: 1;
+            visibility: visible;
+        }
+
+    .knitterCard .kc-label {
+        font-size: 11px;
+        color: #6b7280;
+    }
+
+    .knitterCard .kc-po {
+        font-size: 14px;
+        font-weight: 700;
+        color: #111827;
+    }
+
+    .knitterCard .kc-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        margin-bottom: 8px;
+    }
+
+    .knitterCard .kc-stat {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .knitterCard .kc-stat-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        color: #9ca3af;
+    }
+
+    .knitterCard .kc-stat-val {
+        font-size: 14px;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .knitterCard .kc-issue {
+        color: #185FA5;
+    }
+
+    .knitterCard .kc-return {
+        color: #0F6E56;
+    }
+
+    .knitterCard .kc-knitter {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-bottom: 8px;
+    }
+
+    .knitterCard .kc-knitter-val {
+        font-size: 13px;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .knitterCard .kc-bottom {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 8px;
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+        font-size: 11px;
+        color: #6b7280;
+    }
+
+        .knitterCard .kc-bottom .kc-date {
+            display: flex;
+            align-items: center;
+        }
+
+    .knitterCard .kc-machines {
+        font-weight: 600;
+        color: #374151;
+    }
+
 .TodoBox .boxBody { border-color: #078ecf33; border-right: 5px solid #078ecf33; }
 .ProgressBox .boxBody { border-color: #e68c0233; border-right: 5px solid #e68c0233; }
 .CompleteBox .boxBody { border-color: #00c61e33; border-right: 5px solid #00c61e33; }

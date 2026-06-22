@@ -51,11 +51,12 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
 
         // How many board columns are visible (driven by the stat-card selection): a single
         // category shows one column, Work Load shows four. When only one is showing it takes
-        // the full row and flows its cards into a grid; Work Load keeps the 3-up column grid.
+        // the full row and flows its cards into a grid; Work Load uses a 4-up column grid
+        // (2-up on tablets) on laptop and above.
         private int VisibleBoxCount =>
             (Box1 ? 1 : 0) + (Box2 ? 1 : 0) + (Box3 ? 1 : 0) + (Box4 ? 1 : 0) + (Box5 ? 1 : 0);
         private bool SingleFullWidth => VisibleBoxCount == 1;
-        private string BoardColClass => SingleFullWidth ? "col-12" : "col-md-6 col-lg-4";
+        private string BoardColClass => SingleFullWidth ? "col-12" : "col-md-6 col-lg-3";
 
         // ---- Board data (loaded from the API) ----
         private List<TaskCardItem> todotasks = new();
@@ -154,7 +155,13 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
             RecurringTypeId = 1, // show the status flat badge
             StatusName = !string.IsNullOrWhiteSpace(r.PlaningStatus) ? r.PlaningStatus : r.OrderStatus,
             PriorityId = 0,      // knitting has no priority flag
-            Qty = r.Qty
+            Qty = r.Qty,
+            // Knitter-detail fields (populated only for the In Progress 'P' flag).
+            KnitterId = r.KnitterId,
+            Issue = r.Issue,
+            ReturnQty = r.ReturnQty,
+            CustomerCode = r.CustomerCode,
+            CustomerName = r.CustomerName
         };
 
         // ======================================================================

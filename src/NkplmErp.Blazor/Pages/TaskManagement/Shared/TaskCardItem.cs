@@ -35,5 +35,17 @@ namespace NkplmErp.Blazor.Pages.TaskManagement.Shared
 
         // Production quantity (knitting). Rendered as a neutral badge when set.
         public int? Qty { get; set; }
+
+        // ---- Knitter-detail Progress card (one card per knitter on a job) ----
+        // PO No is the existing TaskId (MasterPlanChildId). These three carry the
+        // per-knitter values from tbl_knitter_record_data.
+        public string? KnitterId { get; set; }   // knitter card_no
+        public int? Issue { get; set; }           // pics issued to the knitter
+        public int? ReturnQty { get; set; }       // ret_pic returned by the knitter
+
+        // Buyer for the line's order. CustomerCode shows beside the order no;
+        // CustomerName is revealed on hover over the code.
+        public string? CustomerCode { get; set; }
+        public string? CustomerName { get; set; }
     }
 }

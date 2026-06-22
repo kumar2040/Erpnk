@@ -28,6 +28,63 @@
     {
         @foreach (var item in Items)
         {
+            @if (UseKnitterLayout)
+            {
+                <div class="boxBody knitterCard" data-task-id="@item.TaskId" data-task-time="@item.TaskEndDate"
+                     @onclick="() => OnItemClick.InvokeAsync(item.TaskId)">
+
+                    <div class="kc-top">
+                        <span class="kc-order">
+                            <svg class="bolt-icon tc-ic me-1" viewBox="0 0 24 24"><path d="M12 2.02c-5.51 0-9.98 4.47-9.98 9.98s4.47 9.98 9.98 9.98 9.98-4.47 9.98-9.98S17.51 2.02 12 2.02zM11.48 20v-6.26H8L13 4v6.26h3.35L11.48 20z" /></svg>
+                            <span class="kc-po">@item.OrderNo</span>
+                        </span>
+                        @if (!string.IsNullOrWhiteSpace(item.CustomerCode))
+                        {
+                            <span class="kc-code">
+                                @item.CustomerCode
+                                @if (!string.IsNullOrWhiteSpace(item.CustomerName))
+                                {
+                                    <span class="kc-pop">@item.CustomerName</span>
+                                }
+                            </span>
+                        }
+                    </div>
+
+                    <div class="kc-stats">
+                        <div class="kc-stat">
+                            <span class="kc-stat-label">Qty</span>
+                            <span class="kc-stat-val">@item.Qty</span>
+                        </div>
+                        <div class="kc-stat">
+                            <span class="kc-stat-label">Issue</span>
+                            <span class="kc-stat-val kc-issue">@item.Issue</span>
+                        </div>
+                        <div class="kc-stat">
+                            <span class="kc-stat-label">Return</span>
+                            <span class="kc-stat-val kc-return">@item.ReturnQty</span>
+                        </div>
+                    </div>
+
+                    <div class="kc-knitter">
+                        <svg class="kc-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                        <span class="kc-label">Knitter Id:</span>
+                        <span class="kc-knitter-val">@item.KnitterId</span>
+                    </div>
+
+                    <div class="kc-bottom">
+                        <span class="kc-date">
+                            <svg class="kc-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+                            @item.TaskStartDate.ToString("dd MMM") - @item.TaskEndDate.ToString("dd MMM")
+                        </span>
+                        @if (item.MachineCount.HasValue)
+                        {
+                            <span class="kc-machines">Machines: @item.MachineCount</span>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
             <div class="boxBody" data-task-id="@item.TaskId" data-task-time="@item.TaskEndDate"
                  @onclick="() => OnItemClick.InvokeAsync(item.TaskId)">
 
@@ -76,6 +133,7 @@
                     </div>
                 </div>
             </div>
+            }
         }
     }
 </div>

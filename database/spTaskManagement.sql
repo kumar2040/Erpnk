@@ -179,42 +179,47 @@ BEGIN
     END
 
     --========================== In Progress ==========================
-    -- One row per detail line that is started AND still has an outstanding
-    -- piece. Filtered on the START DATE only (not gated on the end date), so
-    -- an outstanding line keeps showing from its start date on, even once it
-    -- is past due.
+    -- KNITTER-DETAIL view: ONE row per (line, knitter) instead of one per line.
+    -- A line's sizes are knitted by one or more knitters (tbl_knitter_record_data,
+    -- joined size -> line); each knitter who still has an OUTSTANDING piece on the
+    -- line gets its own card, so the same knitter on a different job (a different
+    -- MasterPlanChildId / PO No) is naturally a separate card. Filtered on the
+    -- START DATE only (not gated on the end date), like the original In Progress.
+    -- Issue/Return are that knitter's pics/ret_pic on the line (SUMmed across the
+    -- knitter's size rows -- a single value in the expected one-row-per-knitter
+    -- case). The displayed dates are the knitter's knd / will_ret_daate.
     IF (@Flag = 'P')
     BEGIN
         SELECT
-            mpd.[MasterPlanChildId]   AS [TaskId],
+            mpd.[MasterPlanChildId]   AS [TaskId],          -- PO No
             mp.[OrderNo]              AS [OrderNo],
-            mp.[OrderType]            AS [OrderType],
-            mp.[ProductionType]       AS [ProductionType],
             mpd.[factory_type]        AS [FactoryType],
-            mpd.[Machine]             AS [Machine],
-            CASE
-                WHEN mpd.[factory_type] <> 'knit' AND tl.[name] IS NOT NULL
-                    THEN tl.[name]                                  -- non-knit + tailor code (T1,T2,...) -> name
-                WHEN mpd.[factory_type] <> 'knit'
-                    THEN NULLIF(LTRIM(RTRIM(mpd.[Guage])), '')      -- non-knit, no tailor match -> raw gauge value
-                ELSE NULL                                           -- knit -> hide (no gauge numbers)
-            END                       AS [Guage],
             CAST(mpd.[Qty] AS INT)    AS [Qty],
+            tkrd.[knitter]            AS [KnitterId],
+            CAST(SUM(tkrd.[pics]) AS INT)               AS [Issue],      -- pics issued to the knitter
+            CAST(SUM(ISNULL(tkrd.[ret_pic], 0)) AS INT) AS [ReturnQty],  -- pics returned by the knitter
+            MIN(tkrd.[knd])              AS [StartDate],    -- knitter start (knd)
+            MAX(tkrd.[will_ret_daate])  AS [EndDate],      -- knitter will-return (will_ret_daate)
             CASE WHEN mpd.[Machine] <> '1'
                  THEN (SELECT COUNT(*) FROM [dbo].[MasterPlanDetail] m WITH (NOLOCK)
                        WHERE m.[MaterID] = mpd.[MaterID]
                          AND m.[factory_type] = 'knit'
                          AND m.[Machine] <> '1')
-                 ELSE NULL END
-                                      AS [MachineCount],   -- knit-machine count for the ORDER, sent ONLY on a card whose own Machine<>'1' (Machine='1' -> NULL)
-            mpd.[StartDate]           AS [StartDate],
-            mpd.[EndDate]             AS [EndDate],
-            mp.[OrderStatus]          AS [OrderStatus],
-            mpd.[PlaningStatus]       AS [PlaningStatus],
-            mp.[PlanWorkingStatus]    AS [PlanWorkingStatus]
+                 ELSE NULL END        AS [MachineCount],    -- per-ORDER knit-machine count (NULL when own Machine = '1')
+            MAX(c.[code])             AS [CustomerCode],    -- buyer code (tblcustomer.code), shown beside the order no
+            MAX(c.[customer_name])    AS [CustomerName]     -- buyer name, revealed on hover over the code
         FROM [dbo].[MasterPlan] mp WITH (NOLOCK)
         INNER JOIN [dbo].[MasterPlanDetail] mpd WITH (NOLOCK)
             ON mpd.[MaterID] = mp.[MaterID]
+        INNER JOIN [dbo].[MasterPlanDetailSize] mpds WITH (NOLOCK)
+            ON mpds.[MasterPlanDetailId] = mpd.[MasterPlanChildId]
+        INNER JOIN [dbo].[tbl_knitter_record_data] tkrd WITH (NOLOCK)
+            ON tkrd.[plan_id] = mpds.[id]
+        -- buyer (customer) for the line's order: size -> order -> customer
+        LEFT JOIN [dbo].[tbl_Order] o WITH (NOLOCK)
+            ON o.[order_id] = mpds.[order_id]
+        LEFT JOIN [dbo].[tblcustomer] c WITH (NOLOCK)
+            ON c.[customer_id] = o.[order_buyer]
         LEFT JOIN (SELECT [tid], MAX([name]) AS [name]
                    FROM [dbo].[tbl_tailor] WITH (NOLOCK) GROUP BY [tid]) tl
             ON tl.[tid] = mpd.[Guage]
@@ -230,16 +235,15 @@ BEGIN
                      THEN LOWER(LTRIM(RTRIM(tl.[name])))             -- tailor code (T2) -> name (Laxaman Jee)
                      ELSE LOWER(LTRIM(RTRIM(mpd.[Guage]))) END) IN (SELECT val FROM @SubList))
           AND mpd.[plan_status] = 0      -- exclude held lines (plan_status = 1 -> Hold column)
-          -- this LINE is started AND has an outstanding piece (outstanding implies started)
-          AND EXISTS (
-                SELECT 1
-                FROM [dbo].[MasterPlanDetailSize] mpds WITH (NOLOCK)
-                INNER JOIN [dbo].[tbl_knitter_record_data] tkrd WITH (NOLOCK)
-                    ON tkrd.[plan_id] = mpds.[id]
-                WHERE mpds.[MasterPlanDetailId] = mpd.[MasterPlanChildId]
-                  AND tkrd.[pics] IS NOT NULL
-                  AND (tkrd.[ret_pic] IS NULL OR tkrd.[pics] <> tkrd.[ret_pic]))
+          AND tkrd.[pics] IS NOT NULL    -- a started piece for this knitter
           AND (@EndDate IS NULL OR mpd.[StartDate] < DATEADD(DAY, 1, CAST(@EndDate AS DATE)))
+        -- one card per (line, knitter); mpd.MasterPlanChildId is the PK so the mpd
+        -- columns are constant within the group (added to GROUP BY for SQL Server).
+        GROUP BY mpd.[MasterPlanChildId], tkrd.[knitter], mp.[OrderNo],
+                 mpd.[factory_type], mpd.[Qty], mpd.[MaterID], mpd.[Machine], mpd.[StartDate]
+        -- keep only knitters who still have an outstanding piece on the line
+        HAVING SUM(CASE WHEN tkrd.[ret_pic] IS NULL OR tkrd.[pics] <> tkrd.[ret_pic]
+                        THEN 1 ELSE 0 END) > 0
         ORDER BY mpd.[StartDate] ASC;
     END
 

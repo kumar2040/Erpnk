@@ -22,6 +22,14 @@ namespace NkplmErp.Blazor.Pages.TaskManagement.Shared
         // the normal stacked column used inside the Work Load multi-column grid.
         [Parameter] public bool FlowCards { get; set; }
 
+        // When true on the In Progress column, the card body switches to the
+        // knitter-detail layout (PO No / Qty·Issue·Return / Knitter Id / dates·
+        // machines). Set only on the Progress column; every other card leaves this
+        // false and keeps the existing body.
+        [Parameter] public bool ShowKnitterDetails { get; set; }
+
+        private bool UseKnitterLayout => Variant == TaskVariant.Progress && ShowKnitterDetails;
+
         private int Count => Items?.Count ?? 0;
 
         // data-status attribute used by the drag/drop script (1..5)

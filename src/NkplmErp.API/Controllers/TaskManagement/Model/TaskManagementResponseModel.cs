@@ -19,6 +19,18 @@ namespace NkplmErp.API.Controllers.TaskManagement.Model
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
 
+        // Knitter-detail (In Progress card): one row per (line, knitter).
+        // KnitterId = tbl_knitter_record_data.knitter (card_no);
+        // Issue = SUM(pics); ReturnQty = SUM(ret_pic). Null for other flags.
+        public string? KnitterId { get; set; }
+        public int? Issue { get; set; }
+        public int? ReturnQty { get; set; }
+
+        // Buyer for the line's order (size -> order -> customer). Shown beside the
+        // order no (code) with the name revealed on hover.
+        public string? CustomerCode { get; set; }
+        public string? CustomerName { get; set; }
+
         public string? OrderStatus { get; set; }
         public string? PlaningStatus { get; set; }
         public string? PlanWorkingStatus { get; set; }
