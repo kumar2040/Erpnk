@@ -201,53 +201,70 @@
 </div>
 
 @* Order-detail modal — opened by clicking an order number in an In Progress card header.
-   Left: the knitter info (full customer name). Right: the return-pace chart (lazy-loaded). *@
-<Modal IsVisible="showOrderModal"
-       Title="@orderModalTitle"
-       Size="4xl"
-       OnClose="CloseOrderModal">
-    <ChildContent>
+   Left: a compact summary (buyer + stats). Right: the return-pace chart (lazy-loaded). *@
+<PanelModal IsVisible="showOrderModal"
+            Title="@orderModalTitle"
+            Icon="fa-solid fa-clipboard-list"
+            MaxWidth="960px"
+            OnClose="CloseOrderModal">
         @if (selectedOrder is not null)
         {
-            <div class="order-modal-grid">
-                @* Left: knitter info *@
-                <div class="order-info">
-                    <div class="order-info-row"><span class="oi-label">Order No</span><span class="oi-value">@selectedOrder.OrderNo</span></div>
-                    @{
-                        var customer = !string.IsNullOrWhiteSpace(selectedOrder.CustomerName)
-                            ? selectedOrder.CustomerName
-                            : selectedOrder.CustomerCode;
-                    }
+            var customer = !string.IsNullOrWhiteSpace(selectedOrder.CustomerName)
+                ? selectedOrder.CustomerName
+                : selectedOrder.CustomerCode;
+            var issue = selectedOrder.Issue ?? 0;
+            var ret = selectedOrder.ReturnQty ?? 0;
+            var pct = issue > 0 ? Math.Clamp((int)Math.Round(100.0 * ret / issue), 0, 100) : 0;
+
+            <div class="om-grid">
+                @* Left: summary *@
+                <div class="om-info">
                     @if (!string.IsNullOrWhiteSpace(customer))
                     {
-                        <div class="order-info-row"><span class="oi-label">Customer</span><span class="oi-value">@customer</span></div>
+                        <div class="om-eyebrow">Buyer</div>
+                        <div class="om-customer">@customer</div>
                     }
-                    <div class="order-info-row"><span class="oi-label">PO No</span><span class="oi-value">@selectedOrder.TaskId</span></div>
-                    <div class="order-info-row"><span class="oi-label">Knitter Id</span><span class="oi-value">@selectedOrder.KnitterId</span></div>
-                    <div class="order-info-row"><span class="oi-label">Qty</span><span class="oi-value">@selectedOrder.Qty</span></div>
-                    <div class="order-info-row"><span class="oi-label">Issue</span><span class="oi-value">@selectedOrder.Issue</span></div>
-                    <div class="order-info-row"><span class="oi-label">Return</span><span class="oi-value">@selectedOrder.ReturnQty</span></div>
-                    @if (selectedOrder.MachineCount.HasValue)
-                    {
-                        <div class="order-info-row"><span class="oi-label">Machines</span><span class="oi-value">@selectedOrder.MachineCount</span></div>
-                    }
-                    <div class="order-info-row"><span class="oi-label">Dates</span><span class="oi-value">@selectedOrder.TaskStartDate.ToString("dd MMM, yyyy") - @selectedOrder.TaskEndDate.ToString("dd MMM, yyyy")</span></div>
+                    <div class="om-meta">
+                        <span>PO @selectedOrder.TaskId</span>
+                        <span class="om-dot">•</span>
+                        <span>Knitter @selectedOrder.KnitterId</span>
+                    </div>
+                    <div class="om-dates">@selectedOrder.TaskStartDate.ToString("dd MMM") – @selectedOrder.TaskEndDate.ToString("dd MMM, yyyy")</div>
+
+                    <div class="om-stats">
+                        <div class="om-stat om-stat-blue">
+                            <div class="om-stat-label">Issued</div>
+                            <div class="om-stat-value">@issue</div>
+                        </div>
+                        <div class="om-stat om-stat-teal">
+                            <div class="om-stat-label">Returned</div>
+                            <div class="om-stat-value">@ret<span class="om-stat-sub"> / @issue</span></div>
+                            <div class="om-bar"><span style="width:@(pct)%"></span></div>
+                        </div>
+                        <div class="om-stat">
+                            <div class="om-stat-label">Order Qty</div>
+                            <div class="om-stat-value">@(selectedOrder.Qty?.ToString() ?? "—")</div>
+                        </div>
+                        <div class="om-stat">
+                            <div class="om-stat-label">Machines</div>
+                            <div class="om-stat-value">@(selectedOrder.MachineCount?.ToString() ?? "—")</div>
+                        </div>
+                    </div>
                 </div>
 
                 @* Right: return-pace chart — always shown (empty/sparse data still renders). *@
-                <div class="order-chart">
-                    <div class="order-chart-legend">
+                <div class="om-chart">
+                    <div class="om-chart-legend">
                         <span class="ocl-item"><span class="ocl-swatch" style="background:#185FA5"></span>Actual</span>
                         <span class="ocl-item"><span class="ocl-swatch ocl-dash"></span>Expected</span>
                     </div>
-                    <div class="order-chart-canvas">
+                    <div class="om-chart-canvas">
                         <ReturnPaceChart Start="selectedOrder.TaskStartDate"
                                          End="selectedOrder.TaskEndDate"
-                                         Issue="@(selectedOrder.Issue ?? 0)"
+                                         Issue="@issue"
                                          Points="returnPoints" />
                     </div>
                 </div>
             </div>
         }
-    </ChildContent>
-</Modal>
+</PanelModal>
