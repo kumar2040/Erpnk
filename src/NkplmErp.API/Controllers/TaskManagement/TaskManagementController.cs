@@ -53,6 +53,20 @@ namespace NkplmErp.API.Controllers.TaskManagement
             return Ok(subs);
         }
 
+        // GET api/v1/TaskManagement/knitter-returns?rId=177342
+        // Daily returned-piece counts for one In Progress knitter card's chart. rId comes
+        // from the card (flag 'P'); the SP scope-guards it to the caller's factory, so a
+        // tampered id returns nothing.
+        [HttpGet("knitter-returns")]
+        public async Task<IActionResult> GetKnitterReturns([FromQuery] string? rId = null)
+        {
+            var userId = GetCurrentUserId();
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var data = await _taskManagementService.GetKnitterReturnSeriesAsync(rId, userId);
+            return Ok(data);
+        }
+
         // GET api/v1/TaskManagement/scope
         // Tells the board what factory_type filter the current user is allowed to use:
         //   - super admin (AssignedGauge null): IsRestricted=false, FactoryTypes = every factory_type (editable dropdown).

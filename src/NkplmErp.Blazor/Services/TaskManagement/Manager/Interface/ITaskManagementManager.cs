@@ -22,5 +22,9 @@ namespace NkplmErp.Blazor.Services.TaskManagement.Manager.Interface
         // Distinct gauge sub-categories for the given factory within the date window
         // (cascading sub-filter options; tailor codes resolve to names).
         Task<List<string>> GetSubCategoriesAsync(string? factoryType, DateTime? startDate = null, DateTime? endDate = null);
+
+        // Daily returned-piece counts for one In Progress knitter card (chart data).
+        // rId comes from the card; null/blank returns an empty list without a call.
+        Task<List<KnitterReturnPointResponseModel>> GetKnitterReturnSeriesAsync(string? rId);
     }
 }

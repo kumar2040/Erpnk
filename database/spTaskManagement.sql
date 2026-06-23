@@ -76,7 +76,8 @@ alter PROCEDURE [dbo].[spTaskManagement]
     @OrderNo     NVARCHAR(50)  = NULL,  -- optional: contains-match on OrderNo (NULL/'' = all)
     @FactoryType   NVARCHAR(100) = NULL,  -- admin's factory dropdown pick (ignored for restricted users)
     @UserId        NVARCHAR(450) = NULL,  -- current user; their identity.Users.AssignedGauge locks the scope
-    @SubCategories NVARCHAR(MAX) = NULL   -- pipe-delimited gauge sub-methods ('general'|text); NULL/''/'all' = no sub-filter
+    @SubCategories NVARCHAR(MAX) = NULL,  -- pipe-delimited gauge sub-methods ('general'|text); NULL/''/'all' = no sub-filter
+    @RId           NVARCHAR(MAX) = NULL   -- flag 'KD' only: comma-delimited r_id list (the clicked card's knitter-record ids)
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -198,8 +199,11 @@ BEGIN
             tkrd.[knitter]            AS [KnitterId],
             CAST(SUM(tkrd.[pics]) AS INT)               AS [Issue],      -- pics issued to the knitter
             CAST(SUM(ISNULL(tkrd.[ret_pic], 0)) AS INT) AS [ReturnQty],  -- pics returned by the knitter
-            MIN(tkrd.[knd])              AS [StartDate],    -- knitter start (knd)
-            MAX(tkrd.[will_ret_daate])  AS [EndDate],      -- knitter will-return (will_ret_daate)
+            MIN(tkrd.[knd])              AS [StartDate],    -- lowest knitter start (knd)
+            -- Highest will-return date; when a knitter has NO planned return date
+            -- (will_ret_daate all NULL) fall back to the latest knd so EndDate is always a
+            -- real record date -- never NULL (which the UI would otherwise show as "today").
+            COALESCE(MAX(tkrd.[will_ret_daate]), MAX(tkrd.[knd])) AS [EndDate],
             CASE WHEN mpd.[Machine] <> '1'
                  THEN (SELECT COUNT(*) FROM [dbo].[MasterPlanDetail] m WITH (NOLOCK)
                        WHERE m.[MaterID] = mpd.[MaterID]
@@ -207,7 +211,8 @@ BEGIN
                          AND m.[Machine] <> '1')
                  ELSE NULL END        AS [MachineCount],    -- per-ORDER knit-machine count (NULL when own Machine = '1')
             MAX(c.[code])             AS [CustomerCode],    -- buyer code (tblcustomer.code), shown beside the order no
-            MAX(c.[customer_name])    AS [CustomerName]     -- buyer name, revealed on hover over the code
+            MAX(c.[customer_name])    AS [CustomerName],    -- buyer name, revealed on hover over the code
+            STRING_AGG(CONVERT(NVARCHAR(MAX), tkrd.[r_id]), ',') AS [RId]  -- knitter-record ids for the return-detail chart (flag 'KD')
         FROM [dbo].[MasterPlan] mp WITH (NOLOCK)
         INNER JOIN [dbo].[MasterPlanDetail] mpd WITH (NOLOCK)
             ON mpd.[MaterID] = mp.[MaterID]
@@ -245,6 +250,43 @@ BEGIN
         HAVING SUM(CASE WHEN tkrd.[ret_pic] IS NULL OR tkrd.[pics] <> tkrd.[ret_pic]
                         THEN 1 ELSE 0 END) > 0
         ORDER BY mpd.[StartDate] ASC;
+    END
+
+    --===================== Knitter return series =====================
+    -- Daily returned-piece counts for ONE knitter card's return-detail modal chart.
+    -- @RId is the comma-delimited r_id list emitted by flag 'P' for the clicked card.
+    -- One row per return DATE: how many pieces (item_no) were received that day,
+    -- excluding cancelled (cancell = 0) and zero-weight (r_wt > 0) rows -- matching the
+    -- system's existing received-piece definitions. Scope guard: a row is counted only
+    -- when its r_id maps to a line inside the caller's factory scope (@EffectiveFactory),
+    -- so a tampered @RId cannot read another factory's data.
+    IF (@Flag = 'KD')
+    BEGIN
+        ;WITH rid AS (
+            SELECT DISTINCT TRY_CONVERT(INT, LTRIM(RTRIM([value]))) AS [r_id]
+            FROM STRING_SPLIT(@RId, ',')
+            WHERE TRY_CONVERT(INT, LTRIM(RTRIM([value]))) IS NOT NULL
+        )
+        SELECT
+            -- receipt date + time, so the chart can place returns by the hour on a single-day axis
+            CAST(kr.[r_date] AS DATETIME) + CAST(ISNULL(kr.[r_time], '00:00:00') AS DATETIME) AS [ReturnAt],
+            COUNT(kr.[item_no])  AS [ReturnCount]
+        FROM [dbo].[tbl_knitter_recieved] kr WITH (NOLOCK)
+        INNER JOIN rid ON rid.[r_id] = kr.[item_id]
+        WHERE kr.[cancell] = 0
+          AND kr.[r_wt]   > 0
+          AND EXISTS (
+              SELECT 1
+              FROM [dbo].[tbl_knitter_record_data] tkrd WITH (NOLOCK)
+              INNER JOIN [dbo].[MasterPlanDetailSize] mpds WITH (NOLOCK)
+                  ON mpds.[id] = tkrd.[plan_id]
+              INNER JOIN [dbo].[MasterPlanDetail] mpd WITH (NOLOCK)
+                  ON mpd.[MasterPlanChildId] = mpds.[MasterPlanDetailId]
+              WHERE tkrd.[r_id] = kr.[item_id]
+                AND (@EffectiveFactory IS NULL OR LOWER(mpd.[factory_type]) = LOWER(@EffectiveFactory))
+          )
+        GROUP BY CAST(kr.[r_date] AS DATETIME) + CAST(ISNULL(kr.[r_time], '00:00:00') AS DATETIME)
+        ORDER BY [ReturnAt] ASC;
     END
 
     --=========================== Completed ===========================

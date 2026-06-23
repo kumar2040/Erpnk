@@ -31,5 +31,10 @@ namespace NkplmErp.API.Controllers.TaskManagement.Service.Interface
         // The current user's resolved gauge from identity.Users.AssignedGauge
         // (null/empty = super admin / unrestricted).
         Task<string?> GetUserAssignedGaugeAsync(string userId);
+
+        // Daily returned-piece counts for one In Progress knitter card (flag 'KD'),
+        // keyed by the card's r_id list. The SP scope-guards rId to the caller's factory.
+        // Blank rId -> empty (no call).
+        Task<IEnumerable<KnitterReturnPointResponseModel>> GetKnitterReturnSeriesAsync(string? rId, string userId);
     }
 }

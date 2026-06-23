@@ -17,6 +17,10 @@ namespace NkplmErp.Blazor.Pages.TaskManagement.Shared
         // Opening a card (read-only board; no edit/hold/delete/add actions).
         [Parameter] public EventCallback<int> OnItemClick { get; set; }
 
+        // Clicking the order number in the In Progress (knitter) card header.
+        // The page handles this to open the reusable order modal.
+        [Parameter] public EventCallback<TaskCardItem> OnOrderClick { get; set; }
+
         // When true (single-category full-width view) the card list flows into a responsive
         // grid instead of one vertical stack, so it fills the wider column. Default false =
         // the normal stacked column used inside the Work Load multi-column grid.

@@ -1,0 +1,50 @@
+@namespace NkplmErp.Blazor.Components
+
+<div class="rpc-wrap">
+    <svg viewBox="0 0 @F(Width) @F(Height)" class="rpc-svg" preserveAspectRatio="xMidYMid meet">
+
+        @* Y grid lines + value labels *@
+        @foreach (var t in _yTicks)
+        {
+            <line x1="@F(PadLeft)" y1="@F(t.Y)" x2="@F(Width - PadRight)" y2="@F(t.Y)" class="rpc-grid" />
+            <svg:text x="@F(PadLeft - 8)" y="@F(t.Y + 4)" text-anchor="end" class="rpc-axis">@t.Label</svg:text>
+        }
+
+        @* X date labels *@
+        @foreach (var t in _xTicks)
+        {
+            <svg:text x="@F(t.X)" y="@F(Height - PadBottom + 22)" text-anchor="middle" class="rpc-axis">@t.Label</svg:text>
+        }
+
+        @* Axis titles *@
+        <svg:text x="@F(PlotMidX)" y="@F(Height - 8)" text-anchor="middle" class="rpc-title">@_xAxisTitle</svg:text>
+        <svg:text transform="rotate(-90 16 @F(PlotMidY))" x="16" y="@F(PlotMidY)" text-anchor="middle" class="rpc-title">@YLabel</svg:text>
+
+        @* Expected (dashed) then Actual (solid) on top *@
+        <path d="@_expectedPath" class="rpc-line rpc-expected" />
+        <path d="@_actualPath" class="rpc-line rpc-actual" />
+
+        @foreach (var d in _expectedDots)
+        {
+            <circle cx="@F(d.X)" cy="@F(d.Y)" r="3.5" class="rpc-dot rpc-dot-expected" />
+        }
+        @foreach (var d in _actualDots)
+        {
+            <circle cx="@F(d.X)" cy="@F(d.Y)" r="3.5" class="rpc-dot rpc-dot-actual" />
+        }
+    </svg>
+</div>
+
+<style>
+    .rpc-wrap { width: 100%; height: 100%; }
+    .rpc-svg { width: 100%; height: 100%; display: block; }
+    .rpc-grid { stroke: #e2e8f0; stroke-width: 1; stroke-dasharray: 4; }
+    .rpc-axis { font-size: 13px; fill: #64748b; font-weight: 600; }
+    .rpc-title { font-size: 12px; fill: #475569; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+    .rpc-line { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+    .rpc-actual { stroke: #185FA5; }
+    .rpc-expected { stroke: #5F5E5A; stroke-dasharray: 7 5; }
+    .rpc-dot { stroke-width: 2; fill: #ffffff; }
+    .rpc-dot-actual { stroke: #185FA5; }
+    .rpc-dot-expected { stroke: #5F5E5A; }
+</style>

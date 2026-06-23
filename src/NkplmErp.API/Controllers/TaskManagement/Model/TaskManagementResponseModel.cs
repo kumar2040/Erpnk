@@ -31,6 +31,9 @@ namespace NkplmErp.API.Controllers.TaskManagement.Model
         public string? CustomerCode { get; set; }
         public string? CustomerName { get; set; }
 
+        // Comma-delimited knitter-record ids (flag 'P') — used by the return-detail chart.
+        public string? RId { get; set; }
+
         public string? OrderStatus { get; set; }
         public string? PlaningStatus { get; set; }
         public string? PlanWorkingStatus { get; set; }

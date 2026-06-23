@@ -89,5 +89,20 @@ namespace NkplmErp.API.Controllers.TaskManagement.Service.Implementation
 
             return string.IsNullOrWhiteSpace(gauge) ? null : gauge.Trim();
         }
+
+        public async Task<IEnumerable<KnitterReturnPointResponseModel>> GetKnitterReturnSeriesAsync(string? rId, string userId)
+        {
+            var ridParam = string.IsNullOrWhiteSpace(rId) ? null : rId.Trim();
+            if (ridParam is null) return Array.Empty<KnitterReturnPointResponseModel>();
+
+            // Flag 'KD' returns one row per return date (count of received item_no), scoped
+            // to the caller's factory via @UserId.
+            var rows = await _dapperRepository.GetQueryResultAsync<KnitterReturnPointResponseModel>(
+                "spTaskManagement",
+                new { Flag = "KD", RId = ridParam, UserId = userId },
+                CommandType.StoredProcedure);
+
+            return rows;
+        }
     }
 }

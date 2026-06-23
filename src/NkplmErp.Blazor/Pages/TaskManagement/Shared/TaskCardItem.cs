@@ -47,5 +47,9 @@ namespace NkplmErp.Blazor.Pages.TaskManagement.Shared
         // CustomerName is revealed on hover over the code.
         public string? CustomerCode { get; set; }
         public string? CustomerName { get; set; }
+
+        // Comma-delimited knitter-record ids for this (line, knitter) card. Passed to the
+        // return-detail modal chart endpoint to fetch the daily return series.
+        public string? RId { get; set; }
     }
 }

@@ -88,5 +88,32 @@ namespace NkplmErp.Blazor.Services.TaskManagement.Manager.Implementation
                 return new List<string>();
             }
         }
+
+        public async Task<List<KnitterReturnPointResponseModel>> GetKnitterReturnSeriesAsync(string? rId)
+        {
+            if (string.IsNullOrWhiteSpace(rId)) return new List<KnitterReturnPointResponseModel>();
+
+            try
+            {
+                var response = await _httpClient.GetAsync(TaskManagementEndpoint.KnitterReturns(rId));
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var data = await response.Content
+                        .ReadFromJsonAsync<List<KnitterReturnPointResponseModel>>();
+                    return data ?? new List<KnitterReturnPointResponseModel>();
+                }
+
+                var error = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("GetKnitterReturnSeriesAsync({RId}) returned {Status}: {Error}",
+                    rId, response.StatusCode, error);
+                return new List<KnitterReturnPointResponseModel>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetKnitterReturnSeriesAsync({RId}) failed", rId);
+                return new List<KnitterReturnPointResponseModel>();
+            }
+        }
     }
 }

@@ -157,6 +157,7 @@
                                   Variant="TaskVariant.Progress"
                                   Items="inprogresstasks"
                                   OnItemClick="OnItemClicked"
+                                  OnOrderClick="OnOrderClicked"
                                   FlowCards="SingleFullWidth"
                                   ShowKnitterDetails="true" />
                     </div>
@@ -198,3 +199,55 @@
         </section>
     </div>
 </div>
+
+@* Order-detail modal — opened by clicking an order number in an In Progress card header.
+   Left: the knitter info (full customer name). Right: the return-pace chart (lazy-loaded). *@
+<Modal IsVisible="showOrderModal"
+       Title="@orderModalTitle"
+       Size="4xl"
+       OnClose="CloseOrderModal">
+    <ChildContent>
+        @if (selectedOrder is not null)
+        {
+            <div class="order-modal-grid">
+                @* Left: knitter info *@
+                <div class="order-info">
+                    <div class="order-info-row"><span class="oi-label">Order No</span><span class="oi-value">@selectedOrder.OrderNo</span></div>
+                    @{
+                        var customer = !string.IsNullOrWhiteSpace(selectedOrder.CustomerName)
+                            ? selectedOrder.CustomerName
+                            : selectedOrder.CustomerCode;
+                    }
+                    @if (!string.IsNullOrWhiteSpace(customer))
+                    {
+                        <div class="order-info-row"><span class="oi-label">Customer</span><span class="oi-value">@customer</span></div>
+                    }
+                    <div class="order-info-row"><span class="oi-label">PO No</span><span class="oi-value">@selectedOrder.TaskId</span></div>
+                    <div class="order-info-row"><span class="oi-label">Knitter Id</span><span class="oi-value">@selectedOrder.KnitterId</span></div>
+                    <div class="order-info-row"><span class="oi-label">Qty</span><span class="oi-value">@selectedOrder.Qty</span></div>
+                    <div class="order-info-row"><span class="oi-label">Issue</span><span class="oi-value">@selectedOrder.Issue</span></div>
+                    <div class="order-info-row"><span class="oi-label">Return</span><span class="oi-value">@selectedOrder.ReturnQty</span></div>
+                    @if (selectedOrder.MachineCount.HasValue)
+                    {
+                        <div class="order-info-row"><span class="oi-label">Machines</span><span class="oi-value">@selectedOrder.MachineCount</span></div>
+                    }
+                    <div class="order-info-row"><span class="oi-label">Dates</span><span class="oi-value">@selectedOrder.TaskStartDate.ToString("dd MMM, yyyy") - @selectedOrder.TaskEndDate.ToString("dd MMM, yyyy")</span></div>
+                </div>
+
+                @* Right: return-pace chart — always shown (empty/sparse data still renders). *@
+                <div class="order-chart">
+                    <div class="order-chart-legend">
+                        <span class="ocl-item"><span class="ocl-swatch" style="background:#185FA5"></span>Actual</span>
+                        <span class="ocl-item"><span class="ocl-swatch ocl-dash"></span>Expected</span>
+                    </div>
+                    <div class="order-chart-canvas">
+                        <ReturnPaceChart Start="selectedOrder.TaskStartDate"
+                                         End="selectedOrder.TaskEndDate"
+                                         Issue="@(selectedOrder.Issue ?? 0)"
+                                         Points="returnPoints" />
+                    </div>
+                </div>
+            </div>
+        }
+    </ChildContent>
+</Modal>

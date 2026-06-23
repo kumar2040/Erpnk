@@ -34,7 +34,8 @@
                      @onclick="() => OnItemClick.InvokeAsync(item.TaskId)">
 
                     <div class="kc-top">
-                        <span class="kc-order">
+                        <span class="kc-order kc-order-link" title="View order @item.OrderNo"
+                              @onclick="() => OnOrderClick.InvokeAsync(item)" @onclick:stopPropagation>
                             <svg class="bolt-icon tc-ic me-1" viewBox="0 0 24 24"><path d="M12 2.02c-5.51 0-9.98 4.47-9.98 9.98s4.47 9.98 9.98 9.98 9.98-4.47 9.98-9.98S17.51 2.02 12 2.02zM11.48 20v-6.26H8L13 4v6.26h3.35L11.48 20z" /></svg>
                             <span class="kc-po">@item.OrderNo</span>
                         </span>

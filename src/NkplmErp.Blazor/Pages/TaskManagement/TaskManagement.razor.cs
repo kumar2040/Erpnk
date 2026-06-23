@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using NkplmErp.Blazor.Pages.TaskManagement.Shared;
+using NkplmErp.Blazor.Components;
 using NkplmErp.Blazor.Services.TaskManagement.Manager.Interface;
 using NkplmErp.Blazor.Services.TaskManagement.Model;
 
@@ -161,7 +162,8 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
             Issue = r.Issue,
             ReturnQty = r.ReturnQty,
             CustomerCode = r.CustomerCode,
-            CustomerName = r.CustomerName
+            CustomerName = r.CustomerName,
+            RId = r.RId
         };
 
         // ======================================================================
@@ -228,5 +230,41 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
         // Opening a card (read-only board; no edit/hold/delete/add actions).
         // ======================================================================
         private void OnItemClicked(int taskId) { }
+
+        // ======================================================================
+        // Order-detail modal (opened from an In Progress card header).
+        // showOrderModal toggles the reusable Modal; selectedOrder keeps the
+        // clicked card for the next step that fills the modal in. Empty for now.
+        // ======================================================================
+        private bool showOrderModal;
+        private TaskCardItem? selectedOrder;
+        private List<ReturnPacePoint> returnPoints = new();
+        private string orderModalTitle =>
+            selectedOrder is null ? "Order" : $"Order {selectedOrder.OrderNo}";
+
+        // Open the order modal for the clicked card and lazily load its return data. The
+        // ReturnPaceChart component does all the chart math (date-scaling, cumulative line,
+        // expected pace); the page just hands it the raw return points + the order's window.
+        private async Task OnOrderClicked(TaskCardItem item)
+        {
+            selectedOrder = item;
+            returnPoints = new();
+            showOrderModal = true;
+            StateHasChanged();
+
+            var points = await TaskManager.GetKnitterReturnSeriesAsync(item.RId);
+            returnPoints = (points ?? new())
+                .Select(p => new ReturnPacePoint { Date = p.ReturnAt, Count = p.ReturnCount })
+                .ToList();
+
+            StateHasChanged();
+        }
+
+        private void CloseOrderModal()
+        {
+            showOrderModal = false;
+            selectedOrder = null;
+            returnPoints = new();
+        }
     }
 }
