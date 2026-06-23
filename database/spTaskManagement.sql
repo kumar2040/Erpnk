@@ -290,21 +290,25 @@ BEGIN
         ORDER BY [ReturnAt] ASC;
     END
 
-    --===================== Knitter card styles =======================
-    -- Distinct (style, colour) pairs for one In Progress card's line. @TaskId is the card's
-    -- MasterPlanChildId (= MasterPlanDetailSize.MasterPlanDetailId). Shown as a 2-column table
-    -- in the return-detail modal. Scope-guarded to the caller's factory like the board.
+    --====================== Knitter card items =======================
+    -- One row per (style, colour, size) for an In Progress card's line, with qty SUMMED so
+    -- duplicate style+colour+size rows merge into a single line. @TaskId is the card's
+    -- MasterPlanChildId (= MasterPlanDetailSize.MasterPlanDetailId). Shown as the SN/Styles/
+    -- Colors/Size/Qty table in the return-detail modal. Scope-guarded to the caller's factory.
     IF (@Flag = 'KS')
     BEGIN
-        SELECT DISTINCT
-            s.[style_no] AS [StyleNo],
-            s.[color]    AS [Color]
+        SELECT
+            s.[style_no]                        AS [StyleNo],
+            s.[color]                           AS [Color],
+            s.[size]                            AS [Size],
+            CAST(SUM(s.[qty]) AS DECIMAL(18,2)) AS [Qty]
         FROM [dbo].[MasterPlanDetailSize] s WITH (NOLOCK)
         INNER JOIN [dbo].[MasterPlanDetail] mpd WITH (NOLOCK)
             ON mpd.[MasterPlanChildId] = s.[MasterPlanDetailId]
         WHERE s.[MasterPlanDetailId] = @TaskId
           AND (@EffectiveFactory IS NULL OR LOWER(mpd.[factory_type]) = LOWER(@EffectiveFactory))
-        ORDER BY [StyleNo], [Color];
+        GROUP BY s.[style_no], s.[color], s.[size]
+        ORDER BY s.[style_no], s.[color], s.[size];
     END
 
     --=========================== Completed ===========================

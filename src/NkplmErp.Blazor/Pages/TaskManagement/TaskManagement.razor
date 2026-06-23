@@ -252,51 +252,104 @@
                     </div>
                 </div>
 
-                @* Right: return-pace chart — always shown (empty/sparse data still renders). *@
+                @* Right: return-pace graph with a graph/table toggle (same height in both views). *@
                 <div class="om-chart">
-                    <div class="om-chart-legend">
-                        <span class="ocl-item"><span class="ocl-swatch" style="background:#185FA5"></span>Actual</span>
-                        <span class="ocl-item"><span class="ocl-swatch ocl-dash"></span>Expected</span>
+                    <div class="om-chart-top">
+                        <button type="button" class="om-toggle"
+                                @onclick="() => chartTableView = !chartTableView"
+                                title="@(chartTableView ? "Switch to graph" : "Switch to table")">
+                            <i class="fa-solid @(chartTableView ? "fa-arrow-up-right-dots" : "fa-table-list")"></i>
+                        </button>
+                        @if (!chartTableView)
+                        {
+                            <div class="om-chart-legend">
+                                <span class="ocl-item"><span class="ocl-swatch" style="background:#185FA5"></span>Actual</span>
+                                <span class="ocl-item"><span class="ocl-swatch ocl-dash"></span>Expected</span>
+                            </div>
+                        }
                     </div>
-                    <div class="om-chart-canvas">
-                        <ReturnPaceChart Start="selectedOrder.TaskStartDate"
-                                         End="selectedOrder.TaskEndDate"
-                                         Issue="@issue"
-                                         Points="returnPoints"
-                                         Width="470" Height="210"
-                                         PadLeft="44" PadRight="18" PadTop="14" PadBottom="38" />
-                    </div>
+
+                    @if (chartTableView)
+                    {
+                        <div class="om-chart-table-scroll">
+                            <table class="om-items-table">
+                                <thead>
+                                    <tr>
+                                        <th>SN</th>
+                                        <th>Qty</th>
+                                        <th>Issue</th>
+                                        <th>Receive</th>
+                                        <th>Receive Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (returnPoints.Count == 0)
+                                    {
+                                        <tr><td colspan="5" class="om-empty-cell">No returns yet</td></tr>
+                                    }
+                                    else
+                                    {
+                                        var rsn = 0;
+                                        foreach (var p in returnPoints)
+                                        {
+                                            rsn++;
+                                            <tr>
+                                                <td>@rsn</td>
+                                                <td>@(selectedOrder.Qty?.ToString() ?? "—")</td>
+                                                <td>@(selectedOrder.Issue?.ToString() ?? "—")</td>
+                                                <td>@p.Count</td>
+                                                <td>@p.Date.ToString("dd MMM yyyy HH:mm")</td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="om-chart-canvas">
+                            <ReturnPaceChart Start="selectedOrder.TaskStartDate"
+                                             End="selectedOrder.TaskEndDate"
+                                             Issue="@issue"
+                                             Points="returnPoints"
+                                             Width="470" Height="210"
+                                             PadLeft="44" PadRight="18" PadTop="14" PadBottom="38" />
+                        </div>
+                    }
                 </div>
             </div>
 
             @if (orderStyles.Count > 0)
             {
-                <div class="om-sc-grid">
-                    <div class="om-sc-col">
-                        <div class="om-sc-title">Styles</div>
-                        <div class="om-sc-scroll">
-                            <table class="om-sc-table">
-                                <tbody>
-                                    @foreach (var st in orderStyles.Select(s => s.StyleNo).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct())
-                                    {
-                                        <tr><td>@st</td></tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="om-sc-col">
-                        <div class="om-sc-title">Colours</div>
-                        <div class="om-sc-scroll">
-                            <table class="om-sc-table">
-                                <tbody>
-                                    @foreach (var c in orderStyles.Select(s => s.Color).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct())
-                                    {
-                                        <tr><td>@c</td></tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
+                <div class="om-items">
+                    <div class="om-items-title">Styles &amp; Colors</div>
+                    <div class="om-items-scroll">
+                        <table class="om-items-table">
+                            <thead>
+                                <tr>
+                                    <th>SN</th>
+                                    <th>Styles</th>
+                                    <th>Colors</th>
+                                    <th>Size</th>
+                                    <th>Qty</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{ var sn = 0; }
+                                @foreach (var s in orderStyles)
+                                {
+                                    sn++;
+                                    <tr>
+                                        <td>@sn</td>
+                                        <td>@s.StyleNo</td>
+                                        <td>@s.Color</td>
+                                        <td>@s.Size</td>
+                                        <td>@s.Qty.ToString("0.##")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             }

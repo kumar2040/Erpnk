@@ -237,6 +237,7 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
         // clicked card for the next step that fills the modal in. Empty for now.
         // ======================================================================
         private bool showOrderModal;
+        private bool chartTableView;   // false = pace graph, true = data table
         private TaskCardItem? selectedOrder;
         private List<ReturnPacePoint> returnPoints = new();
         private List<OrderStyleResponseModel> orderStyles = new();
@@ -251,6 +252,7 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
             selectedOrder = item;
             returnPoints = new();
             orderStyles = new();
+            chartTableView = false;   // always open on the graph
             showOrderModal = true;
             StateHasChanged();
 
