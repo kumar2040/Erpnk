@@ -205,7 +205,7 @@
 <PanelModal IsVisible="showOrderModal"
             Title="@orderModalTitle"
             Icon="fa-solid fa-clipboard-list"
-            MaxWidth="960px"
+            MaxWidth="860px"
             OnClose="CloseOrderModal">
         @if (selectedOrder is not null)
         {
@@ -262,9 +262,43 @@
                         <ReturnPaceChart Start="selectedOrder.TaskStartDate"
                                          End="selectedOrder.TaskEndDate"
                                          Issue="@issue"
-                                         Points="returnPoints" />
+                                         Points="returnPoints"
+                                         Width="470" Height="210"
+                                         PadLeft="44" PadRight="18" PadTop="14" PadBottom="38" />
                     </div>
                 </div>
             </div>
+
+            @if (orderStyles.Count > 0)
+            {
+                <div class="om-sc-grid">
+                    <div class="om-sc-col">
+                        <div class="om-sc-title">Styles</div>
+                        <div class="om-sc-scroll">
+                            <table class="om-sc-table">
+                                <tbody>
+                                    @foreach (var st in orderStyles.Select(s => s.StyleNo).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct())
+                                    {
+                                        <tr><td>@st</td></tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="om-sc-col">
+                        <div class="om-sc-title">Colours</div>
+                        <div class="om-sc-scroll">
+                            <table class="om-sc-table">
+                                <tbody>
+                                    @foreach (var c in orderStyles.Select(s => s.Color).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct())
+                                    {
+                                        <tr><td>@c</td></tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
         }
 </PanelModal>

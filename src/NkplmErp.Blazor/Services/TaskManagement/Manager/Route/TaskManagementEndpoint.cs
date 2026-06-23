@@ -24,6 +24,11 @@ namespace NkplmErp.Blazor.Services.TaskManagement.Manager.Route
         public static string KnitterReturns(string rId) =>
             $"{Base}/knitter-returns?rId={Uri.EscapeDataString(rId)}";
 
+        // Distinct (style, colour) pairs for one card (return-detail modal Style/Color table):
+        // api/v1/TaskManagement/order-styles?taskId=94
+        public static string OrderStyles(int taskId) =>
+            $"{Base}/order-styles?taskId={taskId}";
+
         // GET tasks for a column within a date range, optionally filtered by order no / factory / sub-category:
         // api/v1/TaskManagement?flag=S|P|C&startDate=2026-06-16&endDate=2026-06-16&orderNo=Nksh26&factoryType=knit&subCategories=general|T2
         public static string GetTasks(string flag, DateTime? startDate = null, DateTime? endDate = null, string? orderNo = null, string? factoryType = null, string? subCategories = null)

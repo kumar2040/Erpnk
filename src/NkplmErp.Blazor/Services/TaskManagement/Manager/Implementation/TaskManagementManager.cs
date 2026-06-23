@@ -115,5 +115,32 @@ namespace NkplmErp.Blazor.Services.TaskManagement.Manager.Implementation
                 return new List<KnitterReturnPointResponseModel>();
             }
         }
+
+        public async Task<List<OrderStyleResponseModel>> GetOrderStylesAsync(int taskId)
+        {
+            if (taskId <= 0) return new List<OrderStyleResponseModel>();
+
+            try
+            {
+                var response = await _httpClient.GetAsync(TaskManagementEndpoint.OrderStyles(taskId));
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var data = await response.Content
+                        .ReadFromJsonAsync<List<OrderStyleResponseModel>>();
+                    return data ?? new List<OrderStyleResponseModel>();
+                }
+
+                var error = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("GetOrderStylesAsync({TaskId}) returned {Status}: {Error}",
+                    taskId, response.StatusCode, error);
+                return new List<OrderStyleResponseModel>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetOrderStylesAsync({TaskId}) failed", taskId);
+                return new List<OrderStyleResponseModel>();
+            }
+        }
     }
 }

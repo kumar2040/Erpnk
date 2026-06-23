@@ -26,5 +26,9 @@ namespace NkplmErp.Blazor.Services.TaskManagement.Manager.Interface
         // Daily returned-piece counts for one In Progress knitter card (chart data).
         // rId comes from the card; null/blank returns an empty list without a call.
         Task<List<KnitterReturnPointResponseModel>> GetKnitterReturnSeriesAsync(string? rId);
+
+        // Distinct (style, colour) pairs for one In Progress card (Style/Color table).
+        // taskId is the card's MasterPlanChildId; <= 0 returns empty without a call.
+        Task<List<OrderStyleResponseModel>> GetOrderStylesAsync(int taskId);
     }
 }

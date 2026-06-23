@@ -46,7 +46,7 @@ public partial class ReturnPaceChart : ComponentBase
     private readonly List<(double X, double Y)> _actualDots = new();
     private readonly List<(double X, double Y)> _expectedDots = new();
     private readonly List<(double Y, string Label)> _yTicks = new();
-    private readonly List<(double X, string Label)> _xTicks = new();
+    private readonly List<(double X, string Label, string Anchor)> _xTicks = new();
 
     private double PlotMidX => PadLeft + (Width - PadLeft - PadRight) / 2;
     private double PlotMidY => PadTop + (Height - PadTop - PadBottom) / 2;
@@ -139,14 +139,17 @@ public partial class ReturnPaceChart : ComponentBase
             _yTicks.Add((YFor(v), v.ToString(CultureInfo.InvariantCulture)));
         }
 
-        // X ticks: 5 across a single day (clean 6h steps), else 6 dates.
+        // X ticks: spaced to the available width so labels never collide (~1 per 72px),
+        // with the first/last anchored to the plot edges so they don't clip.
         var spanDays = (axisEnd - axisStart).TotalDays;
-        var count = timeMode ? 5 : 6;
+        var maxLabels = timeMode ? 5 : 6;
+        var count = Math.Clamp((int)(plotW / 72.0), 2, maxLabels);
         for (var i = 0; i < count; i++)
         {
             var frac = (double)i / (count - 1);
             var dt = axisStart.AddSeconds(frac * totalSec);
-            _xTicks.Add((PadLeft + frac * plotW, FmtX(dt, spanDays, timeMode)));
+            var anchor = i == 0 ? "start" : (i == count - 1 ? "end" : "middle");
+            _xTicks.Add((PadLeft + frac * plotW, FmtX(dt, spanDays, timeMode), anchor));
         }
     }
 

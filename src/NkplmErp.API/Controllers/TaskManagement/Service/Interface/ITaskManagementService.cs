@@ -36,5 +36,9 @@ namespace NkplmErp.API.Controllers.TaskManagement.Service.Interface
         // keyed by the card's r_id list. The SP scope-guards rId to the caller's factory.
         // Blank rId -> empty (no call).
         Task<IEnumerable<KnitterReturnPointResponseModel>> GetKnitterReturnSeriesAsync(string? rId, string userId);
+
+        // Distinct (style, colour) pairs for one In Progress card (flag 'KS'), keyed by the
+        // card's MasterPlanChildId (taskId). Scope-guarded to the caller's factory.
+        Task<IEnumerable<OrderStyleResponseModel>> GetOrderStylesAsync(int taskId, string userId);
     }
 }

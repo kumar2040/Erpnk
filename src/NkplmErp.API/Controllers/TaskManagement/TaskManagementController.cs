@@ -67,6 +67,19 @@ namespace NkplmErp.API.Controllers.TaskManagement
             return Ok(data);
         }
 
+        // GET api/v1/TaskManagement/order-styles?taskId=94
+        // Distinct (style, colour) pairs for one In Progress card's line. taskId is the card's
+        // MasterPlanChildId; the SP scope-guards it to the caller's factory.
+        [HttpGet("order-styles")]
+        public async Task<IActionResult> GetOrderStyles([FromQuery] int taskId)
+        {
+            var userId = GetCurrentUserId();
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var data = await _taskManagementService.GetOrderStylesAsync(taskId, userId);
+            return Ok(data);
+        }
+
         // GET api/v1/TaskManagement/scope
         // Tells the board what factory_type filter the current user is allowed to use:
         //   - super admin (AssignedGauge null): IsRestricted=false, FactoryTypes = every factory_type (editable dropdown).

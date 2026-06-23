@@ -104,5 +104,19 @@ namespace NkplmErp.API.Controllers.TaskManagement.Service.Implementation
 
             return rows;
         }
+
+        public async Task<IEnumerable<OrderStyleResponseModel>> GetOrderStylesAsync(int taskId, string userId)
+        {
+            if (taskId <= 0) return Array.Empty<OrderStyleResponseModel>();
+
+            // Flag 'KS' returns the distinct (style, colour) pairs for the card's line,
+            // scoped to the caller's factory via @UserId.
+            var rows = await _dapperRepository.GetQueryResultAsync<OrderStyleResponseModel>(
+                "spTaskManagement",
+                new { Flag = "KS", TaskId = taskId, UserId = userId },
+                CommandType.StoredProcedure);
+
+            return rows;
+        }
     }
 }

@@ -77,7 +77,8 @@ alter PROCEDURE [dbo].[spTaskManagement]
     @FactoryType   NVARCHAR(100) = NULL,  -- admin's factory dropdown pick (ignored for restricted users)
     @UserId        NVARCHAR(450) = NULL,  -- current user; their identity.Users.AssignedGauge locks the scope
     @SubCategories NVARCHAR(MAX) = NULL,  -- pipe-delimited gauge sub-methods ('general'|text); NULL/''/'all' = no sub-filter
-    @RId           NVARCHAR(MAX) = NULL   -- flag 'KD' only: comma-delimited r_id list (the clicked card's knitter-record ids)
+    @RId           NVARCHAR(MAX) = NULL,  -- flag 'KD' only: comma-delimited r_id list (the clicked card's knitter-record ids)
+    @TaskId        INT           = NULL   -- flag 'KS' only: the card's MasterPlanChildId (its styles/colors)
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -287,6 +288,23 @@ BEGIN
           )
         GROUP BY CAST(kr.[r_date] AS DATETIME) + CAST(ISNULL(kr.[r_time], '00:00:00') AS DATETIME)
         ORDER BY [ReturnAt] ASC;
+    END
+
+    --===================== Knitter card styles =======================
+    -- Distinct (style, colour) pairs for one In Progress card's line. @TaskId is the card's
+    -- MasterPlanChildId (= MasterPlanDetailSize.MasterPlanDetailId). Shown as a 2-column table
+    -- in the return-detail modal. Scope-guarded to the caller's factory like the board.
+    IF (@Flag = 'KS')
+    BEGIN
+        SELECT DISTINCT
+            s.[style_no] AS [StyleNo],
+            s.[color]    AS [Color]
+        FROM [dbo].[MasterPlanDetailSize] s WITH (NOLOCK)
+        INNER JOIN [dbo].[MasterPlanDetail] mpd WITH (NOLOCK)
+            ON mpd.[MasterPlanChildId] = s.[MasterPlanDetailId]
+        WHERE s.[MasterPlanDetailId] = @TaskId
+          AND (@EffectiveFactory IS NULL OR LOWER(mpd.[factory_type]) = LOWER(@EffectiveFactory))
+        ORDER BY [StyleNo], [Color];
     END
 
     --=========================== Completed ===========================

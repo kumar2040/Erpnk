@@ -239,6 +239,7 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
         private bool showOrderModal;
         private TaskCardItem? selectedOrder;
         private List<ReturnPacePoint> returnPoints = new();
+        private List<OrderStyleResponseModel> orderStyles = new();
         private string orderModalTitle =>
             selectedOrder is null ? "Order" : $"Order {selectedOrder.OrderNo}";
 
@@ -249,6 +250,7 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
         {
             selectedOrder = item;
             returnPoints = new();
+            orderStyles = new();
             showOrderModal = true;
             StateHasChanged();
 
@@ -256,6 +258,7 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
             returnPoints = (points ?? new())
                 .Select(p => new ReturnPacePoint { Date = p.ReturnAt, Count = p.ReturnCount })
                 .ToList();
+            orderStyles = await TaskManager.GetOrderStylesAsync(item.TaskId);
 
             StateHasChanged();
         }
@@ -265,6 +268,7 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
             showOrderModal = false;
             selectedOrder = null;
             returnPoints = new();
+            orderStyles = new();
         }
     }
 }

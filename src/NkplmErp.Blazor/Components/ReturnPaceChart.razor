@@ -13,7 +13,7 @@
         @* X date labels *@
         @foreach (var t in _xTicks)
         {
-            <svg:text x="@F(t.X)" y="@F(Height - PadBottom + 22)" text-anchor="middle" class="rpc-axis">@t.Label</svg:text>
+            <svg:text x="@F(t.X)" y="@F(Height - PadBottom + 18)" text-anchor="@t.Anchor" class="rpc-axis">@t.Label</svg:text>
         }
 
         @* Axis titles *@
