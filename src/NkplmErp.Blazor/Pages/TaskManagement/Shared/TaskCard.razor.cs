@@ -21,6 +21,17 @@ namespace NkplmErp.Blazor.Pages.TaskManagement.Shared
         // The page handles this to open the reusable order modal.
         [Parameter] public EventCallback<TaskCardItem> OnOrderClick { get; set; }
 
+        // Scheduled-column actions (UI scaffold). When true, the header shows an "Add"
+        // button and every card shows an "Edit" button. Only the Scheduled column opts in;
+        // every other column leaves this false and stays read-only.
+        [Parameter] public bool ShowScheduleActions { get; set; }
+
+        // Header "Add" button -> page opens the Add Task modal.
+        [Parameter] public EventCallback OnAddTask { get; set; }
+
+        // Per-card "Edit" button -> page opens the Edit Task modal for that card.
+        [Parameter] public EventCallback<TaskCardItem> OnEditTask { get; set; }
+
         // When true (single-category full-width view) the card list flows into a responsive
         // grid instead of one vertical stack, so it fills the wider column. Default false =
         // the normal stacked column used inside the Work Load multi-column grid.

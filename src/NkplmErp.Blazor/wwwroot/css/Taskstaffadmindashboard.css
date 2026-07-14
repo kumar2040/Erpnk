@@ -835,6 +835,43 @@
     cursor: pointer;
 }
 
+/* Scheduled-column "Add" button (TaskCard ShowScheduleActions). margin-left:auto
+   keeps it pinned to the right of the header in every view. */
+.TaskBox .boxHead .taskAdd.tc-add-btn {
+    margin-left: auto;
+    gap: 3px;
+    border: 1px solid #078ecf55;
+    color: #0b3a5b;
+    font-size: 11px;
+}
+
+    .TaskBox .boxHead .taskAdd.tc-add-btn:hover { background-color: #078ecf55; }
+
+/* Full-width single-category view hides the column header; keep the Scheduled
+   column's header visible so its "Add" button stays reachable, but drop the now-
+   redundant title pill and count (the active stat card already shows them). */
+.TaskBox.flow-grid .boxHead.has-actions { display: flex; }
+
+    .TaskBox.flow-grid .boxHead.has-actions .taskFirst,
+    .TaskBox.flow-grid .boxHead.has-actions .TaskCount { display: none; }
+
+/* Per-card "Edit" button on Scheduled cards. */
+.TaskBox .boxBody .tc-edit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    border: 1px solid #078ecf55;
+    background: #078ecf14;
+    color: #0b3a5b;
+    border-radius: 6px;
+    padding: 1px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+    .TaskBox .boxBody .tc-edit-btn:hover { background: #078ecf2b; }
+
 .TaskBox .boxBody {
     display: flex;
     flex-direction: column;

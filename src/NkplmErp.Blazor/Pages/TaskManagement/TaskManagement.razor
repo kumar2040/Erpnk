@@ -146,6 +146,9 @@
                                   Variant="TaskVariant.Todo"
                                   Items="todotasks"
                                   OnItemClick="OnItemClicked"
+                                  ShowScheduleActions="true"
+                                  OnAddTask="OpenAddTaskModal"
+                                  OnEditTask="OpenEditTaskModal"
                                   FlowCards="SingleFullWidth" />
                     </div>
                 }
@@ -355,3 +358,134 @@
             }
         }
 </PanelModal>
+
+@* ============================================================================
+   Add / Edit Task modal — UI scaffold. Reuses the same PanelModal as the order
+   modal above. Opened by the Scheduled column's header "Add" button or any
+   Scheduled card's "Edit" button. Fields mirror the Add Task design. No backend
+   yet: Save only validates the required field and closes; nothing is persisted.
+   ============================================================================ *@
+<PanelModal IsVisible="showTaskEditor"
+            Title="@taskEditorTitle"
+            Icon="fa-solid fa-list-check"
+            MaxWidth="680px"
+            OnClose="CloseTaskEditor">
+    <div class="tf-form">
+        <div class="tf-row">
+            <label class="tf-label">Task Name</label>
+            <input class="tf-input" placeholder="Task Name" @bind="taskFormName" />
+        </div>
+
+        <div class="tf-row">
+            <label class="tf-label">Task Start Date</label>
+            <div class="tf-dual">
+                <input type="date" class="tf-input" @bind="taskFormStart" />
+                <label class="tf-label tf-label-inline">Task End Date</label>
+                <input type="date" class="tf-input" @bind="taskFormEnd" />
+            </div>
+        </div>
+
+        <div class="tf-row">
+            <label class="tf-label">Priority</label>
+            <select class="tf-input" @bind="taskFormPriority">
+                <option value="">Select</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+            </select>
+        </div>
+
+        <div class="tf-row">
+            <label class="tf-label">Task Description</label>
+            <input class="tf-input" placeholder="Add Task Description" @bind="taskFormDescription" />
+        </div>
+
+        <div class="tf-row">
+            <label class="tf-label">Notification Date</label>
+            <input type="date" class="tf-input" @bind="taskFormNotifyDate" />
+        </div>
+
+        <div class="tf-row">
+            <label class="tf-label">Progress Update</label>
+            <select class="tf-input" @bind="taskFormFrequency">
+                <option value="">Select Update Frequency</option>
+                <option value="Daily">Daily</option>
+                <option value="Weekly">Weekly</option>
+                <option value="Monthly">Monthly</option>
+            </select>
+        </div>
+
+        <div class="tf-row">
+            <label class="tf-label tf-label-strong">Task Assigned To</label>
+            <div class="tf-radios">
+                <label><input type="radio" name="tf-assign" checked="@(!taskFormAssignGroup)"
+                              @onchange="@(() => taskFormAssignGroup = false)" /> Individual Staff</label>
+                <label><input type="radio" name="tf-assign" checked="@taskFormAssignGroup"
+                              @onchange="@(() => taskFormAssignGroup = true)" /> Group</label>
+            </div>
+        </div>
+
+        <div class="tf-row">
+            <label class="tf-label">@(taskFormAssignGroup ? "Group" : "Staff")</label>
+            <select class="tf-input" @bind="taskFormStaff">
+                <option value="">Select</option>
+                <option value="Bim Li">Bim Li</option>
+                <option value="Staff 2">Staff 2</option>
+                <option value="Staff 3">Staff 3</option>
+            </select>
+        </div>
+
+        <div class="tf-row">
+            <label class="tf-label tf-label-strong">
+                Upload Documents <span class="tf-hint">(less than 1MB)</span>
+            </label>
+            <label class="tf-file">
+                <span class="tf-file-name">@(string.IsNullOrEmpty(taskFormFileName) ? "Please upload a file" : taskFormFileName)</span>
+                <InputFile OnChange="OnTaskFileSelected" class="tf-file-input" />
+            </label>
+        </div>
+
+        @if (!string.IsNullOrEmpty(taskFormError))
+        {
+            <div class="tf-error">@taskFormError</div>
+        }
+
+        <div class="tf-actions">
+            <button type="button" class="tf-save" @onclick="SaveTask">Save Task</button>
+        </div>
+    </div>
+</PanelModal>
+
+<style>
+    .tf-form { display: flex; flex-direction: column; gap: 14px; padding: 4px 2px; }
+    .tf-row { display: grid; grid-template-columns: 150px 1fr; align-items: center; gap: 12px; }
+    .tf-label { color: #0e7490; font-weight: 600; font-size: 13px; margin: 0; }
+    .tf-label-strong { color: #1f2937; }
+    .tf-label-inline { white-space: nowrap; text-align: center; }
+    .tf-input {
+        width: 100%; height: 36px; padding: 6px 10px; font-size: 13px;
+        border: 1px solid #b9d6e2; border-radius: 6px; background: #fff; color: #1f2937;
+    }
+    .tf-input:focus { outline: none; border-color: #0e7490; box-shadow: 0 0 0 2px rgba(14,116,144,0.15); }
+    .tf-dual { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; }
+    .tf-radios { display: flex; gap: 24px; align-items: center; font-size: 13px; color: #1f2937; }
+    .tf-radios label { display: flex; align-items: center; gap: 6px; margin: 0; cursor: pointer; }
+    .tf-hint { color: #dc2626; font-weight: 700; font-size: 11px; }
+    .tf-file {
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        border: 1px solid #b9d6e2; border-radius: 6px; padding: 6px 10px; cursor: pointer; background: #fff;
+    }
+    .tf-file-name { color: #6b7280; font-size: 13px; }
+    .tf-file-input { font-size: 12px; max-width: 150px; }
+    .tf-actions { display: flex; justify-content: center; margin-top: 6px; }
+    .tf-save {
+        background: #1a3353; color: #fff; border: 0; border-radius: 6px;
+        padding: 8px 24px; font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .tf-save:hover { background: #24466e; }
+    .tf-error { color: #dc2626; font-size: 12px; font-weight: 600; text-align: center; }
+    @@media (max-width: 560px) {
+        .tf-row { grid-template-columns: 1fr; }
+        .tf-dual { grid-template-columns: 1fr; }
+    }
+</style>

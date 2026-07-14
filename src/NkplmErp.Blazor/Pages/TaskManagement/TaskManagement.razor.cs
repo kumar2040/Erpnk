@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
 using NkplmErp.Blazor.Pages.TaskManagement.Shared;
 using NkplmErp.Blazor.Components;
 using NkplmErp.Blazor.Services.TaskManagement.Manager.Interface;
@@ -271,6 +272,78 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
             selectedOrder = null;
             returnPoints = new();
             orderStyles = new();
+        }
+
+        // ======================================================================
+        // Add / Edit Task modal (UI scaffold, reuses PanelModal). The Scheduled
+        // column's header "Add" button and each Scheduled card's "Edit" button
+        // open this. No persistence yet — Save only validates and closes.
+        // ======================================================================
+        private bool showTaskEditor;
+        private string taskEditorTitle = "Add Task";
+        private string? taskFormError;
+
+        // Form fields (mirror the Add Task design). Reset on every open.
+        private string taskFormName = "";
+        private DateTime? taskFormStart = DateTime.Today;
+        private DateTime? taskFormEnd = DateTime.Today;
+        private string taskFormPriority = "";
+        private string taskFormDescription = "";
+        private DateTime? taskFormNotifyDate = DateTime.Today;
+        private string taskFormFrequency = "";
+        private bool taskFormAssignGroup;          // false = Individual Staff, true = Group
+        private string taskFormStaff = "";
+        private string? taskFormFileName;
+
+        private void OpenAddTaskModal()
+        {
+            ResetTaskForm();
+            taskEditorTitle = "Add Task";
+            showTaskEditor = true;
+        }
+
+        // Edit opens the same form. Blank for now: the Scheduled cards carry knitting
+        // data (order no, gauge) that doesn't map to these to-do fields, so there is
+        // nothing meaningful to prefill yet.
+        private void OpenEditTaskModal(TaskCardItem item)
+        {
+            ResetTaskForm();
+            taskEditorTitle = "Edit Task";
+            showTaskEditor = true;
+        }
+
+        private void CloseTaskEditor() => showTaskEditor = false;
+
+        private void SaveTask()
+        {
+            // UI-only scaffold: validate the one required field, then close. No API/DB yet.
+            if (string.IsNullOrWhiteSpace(taskFormName))
+            {
+                taskFormError = "Task Name is required.";
+                return;
+            }
+            showTaskEditor = false;
+        }
+
+        private void OnTaskFileSelected(InputFileChangeEventArgs e)
+        {
+            // Capture the name only — nothing is uploaded or stored in this scaffold.
+            taskFormFileName = e.File?.Name;
+        }
+
+        private void ResetTaskForm()
+        {
+            taskFormError = null;
+            taskFormName = "";
+            taskFormStart = DateTime.Today;
+            taskFormEnd = DateTime.Today;
+            taskFormPriority = "";
+            taskFormDescription = "";
+            taskFormNotifyDate = DateTime.Today;
+            taskFormFrequency = "";
+            taskFormAssignGroup = false;
+            taskFormStaff = "";
+            taskFormFileName = null;
         }
     }
 }
