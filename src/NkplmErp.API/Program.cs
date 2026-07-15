@@ -83,6 +83,16 @@ builder.Services.AddAuthentication(options =>
     {
         OnMessageReceived = context =>
         {
+            // SignalR (WebSocket) sends the JWT as the access_token query param on hub
+            // requests — pick it up so [Authorize] hubs authenticate.
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+            {
+                context.Token = accessToken;
+                return Task.CompletedTask;
+            }
+
             var cookieToken = context.Request.Cookies["X-Auth-Token"];
             if (!string.IsNullOrEmpty(cookieToken))
             {
@@ -141,8 +151,15 @@ builder.Services.AddScoped<IBuyerOrderSummaryService, NkplmErp.Infrastructure.Se
 builder.Services.AddScoped<ILookupService, NkplmErp.Infrastructure.Services.LookupService>();
 builder.Services.AddScoped<IProductionPlanningService, NkplmErp.Infrastructure.Services.ProductionPlanningService>();
 builder.Services.AddScoped<IRoleManagementService, RoleManagementService>();
+builder.Services.AddScoped<IKnitterManagementService, NkplmErp.Infrastructure.Services.KnitterManagementService>();
+builder.Services.AddScoped<IMachineManagementService, NkplmErp.Infrastructure.Services.MachineManagementService>();
+builder.Services.AddScoped<IBomService, NkplmErp.Infrastructure.Services.BomService>();
 builder.Services.AddScoped<NkplmErp.Shared.Repositories.Interface.IDapperRepository, NkplmErp.Shared.Repositories.Implementation.DapperRepository>();
 builder.Services.AddScoped<NkplmErp.API.Controllers.TaskManagement.Service.Interface.ITaskManagementService, NkplmErp.API.Controllers.TaskManagement.Service.Implementation.TaskManagementService>();
+builder.Services.AddScoped<IPoTaskService, NkplmErp.Infrastructure.Services.PoTaskService>();
+builder.Services.AddSingleton<INotificationPublisher, NkplmErp.API.Hubs.SignalRNotificationPublisher>();
+builder.Services.AddSignalR();
+builder.Services.AddHostedService<NkplmErp.API.Services.PoTaskReminderService>();
 
 builder.Services.AddMemoryCache();
 builder.Services.AddFido2(options =>
@@ -300,5 +317,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<NkplmErp.API.Hubs.NotificationHub>("/hubs/notifications");
 
 app.Run();

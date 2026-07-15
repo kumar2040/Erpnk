@@ -1,0 +1,163 @@
+@using NkplmErp.Shared.DTOs
+@using NkplmErp.Blazor.Services.PoTask
+@using NkplmErp.Blazor.Services.Auth
+@using Microsoft.AspNetCore.SignalR.Client
+@inject PoTaskApiClient Api
+@inject NavigationManager Nav
+@inject IConfiguration Config
+@inject TokenProvider TokenProvider
+@inject NkplmErp.Blazor.Services.Toast.ToastService Toast
+@implements IAsyncDisposable
+
+<div class="relative">
+    <button class="relative flex h-10 w-10 items-center justify-center rounded-full text-amber-500 hover:bg-gray-50 transition-colors"
+            @onclick="Toggle" title="Notifications">
+        <i class="oi oi-bell" style="font-size: 1.25rem;"></i>
+        @if (_unread > 0)
+        {
+            <span class="absolute top-2 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                @(_unread > 9 ? "9+" : _unread.ToString())
+            </span>
+        }
+    </button>
+
+    @if (_open)
+    {
+        <div class="absolute right-0 mt-2 w-80 rounded-xl border border-gray-100 bg-white shadow-lg z-50">
+            <div class="flex items-center justify-between border-b border-gray-100 px-4 py-2">
+                <span class="text-sm font-bold text-gray-800">Notifications</span>
+                @if (_unread > 0)
+                {
+                    <button class="text-xs text-blue-600 hover:underline" @onclick="MarkAll">Mark all read</button>
+                }
+            </div>
+            <div style="max-height: 360px; overflow-y: auto;">
+                @if (_items.Count == 0)
+                {
+                    <div class="px-4 py-6 text-center text-xs text-gray-400">No notifications</div>
+                }
+                else
+                {
+                    @foreach (var n in _items)
+                    {
+                        <button class="block w-full border-b border-gray-50 px-4 py-2 text-left hover:bg-gray-50 @(n.IsRead ? "" : "bg-blue-50/40")"
+                                @onclick="() => Open(n)">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-semibold text-gray-800">
+                                    @(n.Kind == "R" ? "⏰ " : "")@n.Title
+                                </span>
+                                <span class="text-[10px] text-gray-400">@n.CreatedDate.ToString("dd MMM HH:mm")</span>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(n.Body))
+                            {
+                                <div class="truncate text-[11px] text-gray-500">@n.Body</div>
+                            }
+                        </button>
+                    }
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private int _unread;
+    private bool _open;
+    private List<PoTaskNotificationDto> _items = new();
+    private HubConnection? _hub;
+    private System.Threading.Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Initial state from the API.
+        _items = await Api.GetNotificationsAsync();
+        _unread = await Api.GetUnreadCountAsync();
+
+        await ConnectHubAsync();
+
+        // Safety net: reconcile the unread count every 2 min in case the hub drops
+        // between auto-reconnect attempts. Push is the primary path; this is backup.
+        _timer = new System.Threading.Timer(async _ => await ReconcileAsync(), null,
+            TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(2));
+    }
+
+    private async Task ConnectHubAsync()
+    {
+        try
+        {
+            var apiBase = Config["ApiBaseUrl"] ?? "http://localhost:5270/";
+            var hubUrl = apiBase.TrimEnd('/') + "/hubs/notifications";
+
+            _hub = new HubConnectionBuilder()
+                .WithUrl(hubUrl, options =>
+                {
+                    options.AccessTokenProvider = () => Task.FromResult(TokenProvider.Token);
+                })
+                .WithAutomaticReconnect()
+                .Build();
+
+            // Real-time delivery: badge + toast the instant the server pushes.
+            _hub.On<PoTaskNotificationDto>("ReceiveNotification", async n =>
+            {
+                await InvokeAsync(() =>
+                {
+                    _items.Insert(0, n);
+                    if (_items.Count > 30) _items = _items.Take(30).ToList();
+                    if (!n.IsRead) _unread++;
+                    Toast.ShowInfo(string.IsNullOrWhiteSpace(n.Body) ? n.Title : $"{n.Title} — {n.Body}");
+                    StateHasChanged();
+                });
+            });
+
+            // On reconnect, re-sync (we may have missed pushes while disconnected).
+            _hub.Reconnected += async _ => await ReconcileAsync();
+
+            await _hub.StartAsync();
+        }
+        catch
+        {
+            // Hub unavailable -> the 2-min reconcile + bell reads keep things working.
+            _hub = null;
+        }
+    }
+
+    private async Task ReconcileAsync()
+    {
+        _items = await Api.GetNotificationsAsync();
+        _unread = await Api.GetUnreadCountAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task Toggle()
+    {
+        _open = !_open;
+        if (_open)
+            _items = await Api.GetNotificationsAsync();
+    }
+
+    private async Task MarkAll()
+    {
+        await Api.MarkAllReadAsync();
+        foreach (var n in _items) n.IsRead = true;
+        _unread = 0;
+    }
+
+    private async Task Open(PoTaskNotificationDto n)
+    {
+        if (!n.IsRead)
+        {
+            await Api.MarkReadAsync(n.NotificationId);
+            n.IsRead = true;
+            _unread = Math.Max(0, _unread - 1);
+        }
+        _open = false;
+        Nav.NavigateTo("/tasks");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _timer?.Dispose();
+        if (_hub is not null)
+            await _hub.DisposeAsync();
+    }
+}

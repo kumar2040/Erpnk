@@ -1328,6 +1328,135 @@ public class ProductionPlanningService : IProductionPlanningService
         return result;
     }
 
+    // Normalize a gauge value so the skill map and plan rows match (e.g. "2.5" == 2.5).
+    private static string NormGauge(string? g)
+    {
+        var t = (g ?? string.Empty).Trim();
+        return decimal.TryParse(t, out var d) ? d.ToString(System.Globalization.CultureInfo.InvariantCulture) : t.ToLowerInvariant();
+    }
+
+    // Skill-aware knitter staffing feasibility per day in [from,to].
+    // Per day, machines occupied (each needing a knitter skilled in its gauge) are
+    // matched to distinct skilled knitters via bipartite maximum matching (Kuhn's).
+    // A day is staffable iff every running machine can be matched.
+    public async Task<List<KnitterStaffingDayDto>> GetKnitterStaffingAsync(DateTime? fromDate = null, DateTime? toDate = null)
+    {
+        var result = new List<KnitterStaffingDayDto>();
+        var from = (fromDate ?? DateTime.Today).Date;
+        var to = (toDate ?? from.AddDays(41)).Date;
+
+        // gauge -> set of knitter cards skilled in it
+        var skillByGauge = new Dictionary<string, List<string>>();
+        // machines running: (machineId, gaugeKey, start, end)
+        var machines = new List<(int MachineId, string Gauge, DateTime Start, DateTime End)>();
+
+        try
+        {
+            using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync();
+            using var command = new SqlCommand("sp_GetKnitterStaffingData", connection) { CommandType = CommandType.StoredProcedure };
+            command.Parameters.AddWithValue("@fromDate", from);
+            command.Parameters.AddWithValue("@toDate", to);
+
+            using var reader = await command.ExecuteReaderAsync();
+
+            // Result 1: skill map
+            while (await reader.ReadAsync())
+            {
+                var card = reader["CardNo"]?.ToString()?.Trim();
+                var gauge = NormGauge(reader["Gauge"]?.ToString());
+                if (string.IsNullOrEmpty(card) || string.IsNullOrEmpty(gauge)) continue;
+                if (!skillByGauge.TryGetValue(gauge, out var list)) { list = new List<string>(); skillByGauge[gauge] = list; }
+                if (!list.Contains(card)) list.Add(card);
+            }
+
+            // Result 2: running knit machines
+            if (await reader.NextResultAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    if (reader["MachineID"] == DBNull.Value) continue;
+                    int mid = Convert.ToInt32(reader["MachineID"]);
+                    var gauge = NormGauge(reader["Guage"]?.ToString());
+                    var s = Convert.ToDateTime(reader["StartDate"]).Date;
+                    var e = Convert.ToDateTime(reader["EndDate"]).Date;
+                    machines.Add((mid, gauge, s, e));
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"GetKnitterStaffingAsync Error: {ex.Message}");
+            throw;
+        }
+
+        for (var d = from; d <= to; d = d.AddDays(1))
+        {
+            // One slot per distinct machine running this day (Saturdays carry no work
+            // unless a plan spans them - the plan's own start/end already reflect that).
+            var slots = machines
+                .Where(m => d >= m.Start && d <= m.End)
+                .GroupBy(m => m.MachineId)
+                .Select(g => g.First().Gauge)
+                .ToList();
+            if (slots.Count == 0) continue;
+
+            var (matched, unmatchedGauges) = MaxMatch(slots, skillByGauge);
+            result.Add(new KnitterStaffingDayDto
+            {
+                Date = d,
+                MachinesRunning = slots.Count,
+                KnittersMatched = matched,
+                ShortBy = slots.Count - matched,
+                BottleneckGauges = string.Join(", ", unmatchedGauges.Distinct())
+            });
+        }
+
+        return result;
+    }
+
+    // Kuhn's bipartite maximum matching: slots (machines) -> knitters skilled in the slot's gauge.
+    private static (int Matched, List<string> UnmatchedGauges) MaxMatch(
+        List<string> slots, Dictionary<string, List<string>> skillByGauge)
+    {
+        // Index knitters.
+        var knitterIndex = new Dictionary<string, int>();
+        foreach (var kv in skillByGauge)
+            foreach (var card in kv.Value)
+                if (!knitterIndex.ContainsKey(card)) knitterIndex[card] = knitterIndex.Count;
+
+        var matchKnitter = new int[knitterIndex.Count];
+        for (int i = 0; i < matchKnitter.Length; i++) matchKnitter[i] = -1;
+
+        bool TryAssign(int slot, bool[] visited)
+        {
+            var gauge = slots[slot];
+            if (!skillByGauge.TryGetValue(gauge, out var cards)) return false;
+            foreach (var card in cards)
+            {
+                int k = knitterIndex[card];
+                if (visited[k]) continue;
+                visited[k] = true;
+                if (matchKnitter[k] == -1 || TryAssign(matchKnitter[k], visited))
+                {
+                    matchKnitter[k] = slot;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        int matched = 0;
+        var unmatchedGauges = new List<string>();
+        for (int s = 0; s < slots.Count; s++)
+        {
+            var visited = new bool[knitterIndex.Count];
+            if (TryAssign(s, visited)) matched++;
+            else unmatchedGauges.Add(slots[s]);
+        }
+        return (matched, unmatchedGauges);
+    }
+
     public async Task<bool> SaveKnitterAssignmentAsync(int masterPlanDetailId, string cardNo, string? knitterName, string? assignedBy)
     {
         try
@@ -1379,7 +1508,11 @@ public class ProductionPlanningService : IProductionPlanningService
                                 switch (col)
                                 {
                                     case "cardno": dto.CardNo = reader[i].ToString() ?? string.Empty; break;
+                                    case "knittername": dto.KnitterName = reader[i].ToString() ?? string.Empty; break;
                                     case "planid": dto.PlanId = Convert.ToInt32(reader[i]); break;
+                                    case "gauge": dto.Gauge = reader[i].ToString() ?? string.Empty; break;
+                                    case "machine": dto.Machine = reader[i].ToString() ?? string.Empty; break;
+                                    case "orderid": dto.OrderId = reader[i].ToString() ?? string.Empty; break;
                                     case "fromdate": dto.FromDate = Convert.ToDateTime(reader[i]); break;
                                     case "todate": dto.ToDate = Convert.ToDateTime(reader[i]); break;
                                     case "status": dto.Status = reader[i].ToString() ?? "Assigned"; break;

@@ -1,0 +1,343 @@
+@page "/tasks"
+@attribute [Authorize]
+@using NkplmErp.Shared.DTOs
+@using NkplmErp.Blazor.Shared
+@using Microsoft.AspNetCore.Components.Forms
+
+@if (AccessDenied)
+{
+    <AccessDenied403 Message="You don’t have permission to view Tasks. If you need access, contact your administrator." />
+}
+else
+{
+<div class="main-body">
+    <div class="page-header-container">
+        <div class="header-row">
+            <div class="page-title-section">
+                <h1 class="page-title">Tasks</h1>
+            </div>
+
+            <div class="compact-filters">
+                <div class="filter-item">
+                    <div class="seg">
+                        <button class="seg-btn @(MineOnly ? "" : "on")" @onclick="() => SetScope(false)">All</button>
+                        <button class="seg-btn @(MineOnly ? "on" : "")" @onclick="() => SetScope(true)">My tasks</button>
+                    </div>
+                </div>
+
+                <div class="filter-item">
+                    <input type="text" class="compact-search" placeholder="Search Order No"
+                           value="@orderNo" @onchange="OnOrderNoChanged" />
+                </div>
+
+                @if (CanEdit)
+                {
+                    <div class="filter-item">
+                        <button type="button" class="add-btn" @onclick="OpenAdd">
+                            <span>+ Add task</span>
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Stat cards -->
+        <div class="stats-grid">
+            <div class="stat-card stat-scheduled"><div class="stat-content"><div class="stat-label">Scheduled</div><div class="stat-value">@Count("S")</div></div></div>
+            <div class="stat-card stat-progress"><div class="stat-content"><div class="stat-label">In Progress</div><div class="stat-value">@Count("P")</div></div></div>
+            <div class="stat-card stat-hold"><div class="stat-content"><div class="stat-label">On Hold</div><div class="stat-value">@Count("H")</div></div></div>
+            <div class="stat-card stat-completed"><div class="stat-content"><div class="stat-label">Completed</div><div class="stat-value">@Count("C")</div></div></div>
+            <div class="stat-card stat-overdue"><div class="stat-content"><div class="stat-label">Over Due</div><div class="stat-value">@Count("O")</div></div></div>
+        </div>
+    </div>
+
+    <div class="board-row">
+        @foreach (var col in Columns)
+        {
+            <div class="board-col @col.Css">
+                <div class="col-head"><span class="dot"></span> @col.Title <span class="cnt">@Count(col.Flag)</span></div>
+                @if (loading)
+                {
+                    <div class="col-empty">Loading…</div>
+                }
+                else if (Cards(col.Flag).Count == 0)
+                {
+                    <div class="col-empty">—</div>
+                }
+                else
+                {
+                    @foreach (var card in Cards(col.Flag))
+                    {
+                        <div class="tcard" @onclick="() => OpenDetail(card.TaskId)">
+                            <div class="tcard-title">@(string.IsNullOrWhiteSpace(card.Title) ? "(untitled)" : card.Title)</div>
+                            <div class="tcard-meta">
+                                <span>@card.StageName</span>
+                                @if (!string.IsNullOrWhiteSpace(card.OrderNo)) { <span>· PO @card.OrderNo</span> }
+                                @if (card.DueDate is not null) { <span>· due @card.DueDate.Value.ToString("dd MMM")</span> }
+                            </div>
+                            <div class="tcard-foot">
+                                <span class="people">
+                                    @if (card.AssigneeTotal > 0)
+                                    {
+                                        <span class="rollup">@card.AssigneeDone/@card.AssigneeTotal</span>
+                                    }
+                                </span>
+                                @if (card.PriorityName is not null)
+                                {
+                                    <span class="prio p-@card.PriorityId">@card.PriorityName</span>
+                                }
+                            </div>
+
+                            @if (MineOnly && card.MyStatus is not null)
+                            {
+                                <div class="my-step" @onclick:stopPropagation="true">
+                                    <button class="step @(card.MyStatus == "S" ? "on" : "")" @onclick='() => MyUpdate(card.TaskId, "S")'>Scheduled</button>
+                                    <button class="step @(card.MyStatus == "P" ? "on" : "")" @onclick='() => MyUpdate(card.TaskId, "P")'>In progress</button>
+                                    <button class="step @(card.MyStatus == "C" ? "on" : "")" @onclick='() => MyUpdate(card.TaskId, "C")'>Complete</button>
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@* ---------------------------------------------------------------- Add Task modal *@
+@if (showAdd)
+{
+    <div class="modal-backdrop-tm" @onclick="CloseAdd">
+        <div class="modal-card" @onclick:stopPropagation="true">
+            <div class="modal-head">
+                <h3>Add task</h3>
+                <button class="modal-x" @onclick="CloseAdd"><span>✕</span></button>
+            </div>
+            <div class="modal-body addform">
+                <div class="frow">
+                    <label class="flbl">Task Name</label>
+                    <input type="text" @bind="newTask.Title" placeholder="Task Name" />
+                </div>
+
+                <div class="frow">
+                    <label class="flbl">Task Start Date</label>
+                    <div class="fpair">
+                        <DatePicker @bind-Value="newTask.StartDate" Placeholder="Start date" />
+                        <label class="flbl inline">Task End Date</label>
+                        <DatePicker @bind-Value="newTask.DueDate" Placeholder="End date" MinDate="newTask.StartDate" />
+                    </div>
+                </div>
+
+                <div class="frow">
+                    <label class="flbl">Priority</label>
+                    <select @bind="newTask.PriorityId">
+                        <option value="">Select</option>
+                        <option value="1">Low</option>
+                        <option value="2">Medium</option>
+                        <option value="3">High</option>
+                        <option value="4">Urgent</option>
+                    </select>
+                </div>
+
+                <div class="frow">
+                    <label class="flbl">Task Description</label>
+                    <div class="fwithbtn">
+                        <input type="text" @bind="newChecklistText" placeholder="Add Task Description"
+                               @onkeydown="@(e => { if (e.Key == "Enter") AddChecklistLine(); })" />
+                        <button type="button" class="plus-btn" title="Add line" @onclick="AddChecklistLine">+</button>
+                    </div>
+                </div>
+                @if (newTask.ChecklistItems.Count > 0)
+                {
+                    <div class="frow">
+                        <span class="flbl"></span>
+                        <div class="chk-items">
+                            @foreach (var it in newTask.ChecklistItems)
+                            {
+                                <span class="chk-chip">@it <span class="x" @onclick="@(() => RemoveChecklistLine(it))">✕</span></span>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <div class="frow">
+                    <label class="flbl">Notification Date</label>
+                    <DatePicker @bind-Value="newTask.NotificationDate" Placeholder="Notification date" />
+                </div>
+
+                <div class="frow">
+                    <label class="flbl">Progress Update</label>
+                    <select @bind="newTask.UpdateFrequency">
+                        <option value="">Select Update Frequency</option>
+                        <option value="1">Daily</option>
+                        <option value="2">Weekly</option>
+                        <option value="3">Biweekly</option>
+                        <option value="4">Monthly</option>
+                    </select>
+                </div>
+
+                <div class="fsection">Task Assigned To</div>
+                <div class="frow">
+                    <div class="radio-row">
+                        <label><input type="radio" name="assign" checked="@(!assignGroup)" @onchange="() => assignGroup = false" /> Individual Staff</label>
+                        <label><input type="radio" name="assign" checked="@assignGroup" @onchange="() => assignGroup = true" /> Group</label>
+                    </div>
+                </div>
+
+                @if (assignGroup)
+                {
+                    <div class="frow">
+                        <label class="flbl">Group</label>
+                        <select @bind="selectedGroupId">
+                            <option value="0">Select group…</option>
+                            @foreach (var g in groups)
+                            {
+                                <option value="@g.GroupId">@g.GroupName (@g.MemberCount)</option>
+                            }
+                        </select>
+                    </div>
+                }
+                else
+                {
+                    <div class="frow">
+                        <label class="flbl">Staff</label>
+                        <select value="@staffPick" @onchange="AddStaff">
+                            <option value="">Add staff…</option>
+                            @foreach (var s in staff.Where(s => !selectedStaff.Contains(s.UserId)))
+                            {
+                                <option value="@s.UserId">@(string.IsNullOrWhiteSpace(s.FullName) ? s.Email : s.FullName)</option>
+                            }
+                        </select>
+                    </div>
+                    @if (selectedStaff.Count > 0)
+                    {
+                        <div class="frow">
+                            <span class="flbl"></span>
+                            <div class="chk-items">
+                                @foreach (var id in selectedStaff)
+                                {
+                                    <span class="staff-chip">@StaffName(id) <span class="x" @onclick="@(() => RemoveStaff(id))">✕</span></span>
+                                }
+                            </div>
+                        </div>
+                    }
+                    @if (selectedStaff.Count > 1)
+                    {
+                        <div class="frow">
+                            <label class="flbl">Completion rule</label>
+                            <select @bind="newTask.CompletionRule">
+                                <option value="1">All must complete</option>
+                                <option value="2">Any one completes</option>
+                                <option value="3">Quorum</option>
+                            </select>
+                        </div>
+                    }
+                }
+
+                <div class="fsection">Upload Documents <span class="lt1">(less than 1MB)</span></div>
+                <div class="dropzone @(isDragging ? "drag" : "")"
+                     @ondragenter="() => isDragging = true"
+                     @ondragleave="() => isDragging = false"
+                     @ondragover:preventDefault="true">
+                    <InputFile OnChange="OnFileSelected" class="dz-input" />
+                    <div class="dz-inner">
+                        <span class="dz-ic">⬆</span>
+                        @if (string.IsNullOrEmpty(attachmentName))
+                        {
+                            <span class="dz-text">Drag &amp; drop a file here, or <b>click to browse</b></span>
+                        }
+                        else
+                        {
+                            <span class="dz-file">@attachmentName</span>
+                        }
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(addError))
+                {
+                    <div class="err">@addError</div>
+                }
+
+                <div class="modal-actions">
+                    <button class="save-btn" disabled="@saving" @onclick="SaveAsync">
+                        @(saving ? "Saving…" : "Save Task")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ---------------------------------------------------------------- Detail drawer *@
+@if (showDetail && detail?.Task is not null)
+{
+    <div class="modal-backdrop-tm" @onclick="CloseDetail">
+        <div class="modal-card" @onclick:stopPropagation="true">
+            <div class="modal-head">
+                <h3>@detail.Task.Title <span class="muted">· @detail.Task.StageName</span></h3>
+                <button class="modal-x" @onclick="CloseDetail"><span>✕</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-meta">
+                    @if (!string.IsNullOrWhiteSpace(detail.Task.OrderNo)) { <span class="chip">PO @detail.Task.OrderNo</span> }
+                    <span class="chip">@detail.Task.StatusName</span>
+                    @if (detail.Task.PriorityName is not null) { <span class="chip">@detail.Task.PriorityName</span> }
+                    @if (detail.Task.DueDate is not null) { <span class="chip">Due @detail.Task.DueDate.Value.ToString("yyyy-MM-dd")</span> }
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(detail.Task.Detail))
+                {
+                    <p class="detail-text">@detail.Task.Detail</p>
+                }
+
+                <div class="detail-section">Assignees (rolls up: @RuleName(detail.Task.CompletionRule))</div>
+                @if (detail.Assignees.Count == 0)
+                {
+                    <div class="muted">No assignees — single-owner task.</div>
+                }
+                else
+                {
+                    <div class="assignee-list">
+                        @foreach (var a in detail.Assignees)
+                        {
+                            <div class="assignee-row">
+                                <span class="a-name">@(string.IsNullOrWhiteSpace(a.UserName) ? a.UserId : a.UserName)</span>
+                                <span class="a-status s-@a.Status">@StatusName(a.Status)</span>
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (detail.Checklist.Count > 0)
+                {
+                    <div class="detail-section">Checklist</div>
+                    @foreach (var c in detail.Checklist)
+                    {
+                        <label class="check-row">
+                            <input type="checkbox" checked="@c.IsDone" @onchange="() => ToggleChecklist(c.ChecklistId)" />
+                            <span class="@(c.IsDone ? "done" : "")">@c.Text</span>
+                        </label>
+                    }
+                }
+
+                @if (CanEdit)
+                {
+                    <div class="modal-actions wrap">
+                        <button class="mini-btn b-prog" @onclick='() => OverrideAsync("P")'>Mark in progress</button>
+                        <button class="mini-btn b-done" @onclick='() => OverrideAsync("C")'>Mark complete</button>
+                        @if (detail.Task.Status == "H")
+                        {
+                            <button class="mini-btn b-resolve" @onclick="ResolveAsync">Resolve hold</button>
+                        }
+                        else
+                        {
+                            <button class="mini-btn b-hold" @onclick="HoldAsync">Hold</button>
+                        }
+                        <button class="mini-btn b-cancel" @onclick="CancelAsync">Cancel</button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+}

@@ -527,6 +527,30 @@ public class ProductionPlanningService : IProductionPlanningService
         }
     }
 
+    public async Task<List<KnitterStaffingDayDto>> GetKnitterStaffingAsync(DateTime? fromDate = null, DateTime? toDate = null)
+    {
+        var url = "api/v1/ProductionPlanning/knitter-staffing";
+        var queryParams = new List<string>();
+        if (fromDate.HasValue) queryParams.Add($"fromDate={fromDate.Value:yyyy-MM-dd}");
+        if (toDate.HasValue) queryParams.Add($"toDate={toDate.Value:yyyy-MM-dd}");
+        if (queryParams.Count > 0) url += "?" + string.Join("&", queryParams);
+
+        try
+        {
+            var response = await _httpClient.GetAsync(url);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<List<KnitterStaffingDayDto>>() ?? new List<KnitterStaffingDayDto>();
+            }
+            throw new HttpRequestException($"API Error {response.StatusCode}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in GetKnitterStaffingAsync");
+            throw;
+        }
+    }
+
     public async Task<List<KnitterDto>> GetKnittersByGaugeAsync(string? gauge = null)
     {
         var url = "api/v1/ProductionPlanning/knitters-by-gauge";

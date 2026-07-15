@@ -74,8 +74,40 @@ builder.Services.AddHttpClient<RoleManagementApiClient>(client =>
 })
 .AddHttpMessageHandler<AuthenticationDelegatingHandler>();
 
+// Knitter Management
+builder.Services.AddHttpClient<NkplmErp.Blazor.Services.KnitterManagement.KnitterManagementApiClient>(client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddHttpMessageHandler<AuthenticationDelegatingHandler>();
+
+// Machine Management
+builder.Services.AddHttpClient<NkplmErp.Blazor.Services.MachineManagement.MachineManagementApiClient>(client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddHttpMessageHandler<AuthenticationDelegatingHandler>();
+
+// Bill of Materials (yarn requirement)
+builder.Services.AddHttpClient<NkplmErp.Blazor.Services.Bom.BomApiClient>(client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddHttpMessageHandler<AuthenticationDelegatingHandler>();
+
 // Task Management board
 builder.Services.AddHttpClient<NkplmErp.Blazor.Services.TaskManagement.Manager.Interface.ITaskManagementManager, NkplmErp.Blazor.Services.TaskManagement.Manager.Implementation.TaskManagementManager>(client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddHttpMessageHandler<AuthenticationDelegatingHandler>();
+
+// PO lifecycle task board (new /tasks page)
+builder.Services.AddHttpClient<NkplmErp.Blazor.Services.PoTask.PoTaskApiClient>(client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
@@ -119,7 +151,21 @@ static bool IsSafeReturnUrl(string? url)
 var isDevelopment = app.Environment.IsDevelopment();
 app.MapPost("/auth/set-token", async (HttpContext context) =>
 {
-    var token = context.Request.Form["token"].ToString();
+    // Read the posted form ASYNCHRONOUSLY. The sync context.Request.Form accessor can
+    // throw BadHttpRequestException ("Unexpected end of request content") when the
+    // hidden-form POST body arrives truncated (a duplicate/cancelled submit, or an
+    // HTTPS redirect dropping the body). Read async and fail gracefully back to login.
+    IFormCollection form;
+    try
+    {
+        form = await context.Request.ReadFormAsync();
+    }
+    catch (Exception)
+    {
+        return Results.Redirect("/login");
+    }
+
+    var token = form["token"].ToString();
     if (!string.IsNullOrEmpty(token))
     {
         var cookieOptions = new CookieOptions
@@ -132,10 +178,9 @@ app.MapPost("/auth/set-token", async (HttpContext context) =>
         };
         context.Response.Cookies.Append("X-Auth-Token", token, cookieOptions);
     }
-    await Task.CompletedTask;
 
     // After login, return the user to where they were (session-expiry deep link), else dashboard.
-    var returnUrl = context.Request.Form["returnUrl"].ToString();
+    var returnUrl = form["returnUrl"].ToString();
     return Results.Redirect(IsSafeReturnUrl(returnUrl) ? returnUrl : "/main-dashboard");
 });
 

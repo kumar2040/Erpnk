@@ -400,15 +400,20 @@
                         {
                             <div class="mt-4">
                                 <h4 class="text-[11px] font-bold text-navy mb-1 uppercase tracking-wide">Order Summary</h4>
+                                @{
+                                    var shipDate = SelectedOrders.LastOrDefault()?.OrderLDate;
+                                    var shipStr = (shipDate.HasValue && shipDate.Value > DateTime.MinValue) ? shipDate.Value.ToString("dd-MMM-yyyy") : "--";
+                                }
                                 <div class="border border-border rounded overflow-hidden">
                                     <table class="nk-table compact-table w-full">
                                         <thead class="bg-sky-50">
                                             <tr>
                                                 <th class="text-left">Knit Type</th>
                                                 <th class="text-center">Qty</th>
-                                              
+
                                                 <th class="text-center">Styles</th>
                                                  <th class="text-center">EST.Date</th>
+                                                 <th class="text-center">Ship Date</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -423,15 +428,17 @@
                                                   
                                                     <td class="text-center text-muted">@item.StyleCount</td>
                                                     <td class="text-center text-muted">@(item.EstEndDate?.ToString("dd-MMM") ?? "--")</td>
+                                                    <td class="text-center text-navy font-bold">@shipStr</td>
                                                 </tr>
                                             }
                                         </tbody>
                                         <tfoot class="bg-sky-50 font-bold border-t border-border">
                                             <tr>
-                                                <td class="text-right text-navy uppercase text-[9px] pr-2">Total</td>
+                                                <td class="text-left text-navy uppercase text-[9px]">Total</td>
                                                 <td class="text-center text-navy">@Mode1Analysis.DetailedAnalysis.Sum(x => x.TotalQty).ToString("N0")</td>
                                                 <td class="text-center text-navy">@Mode1Analysis.DetailedAnalysis.Sum(x => x.StyleCount)</td>
                                                 <td class="text-center text-muted">--</td>
+                                                <td class="text-center text-navy">@shipStr</td>
                                             </tr>
                                         </tfoot>
                                     </table>
@@ -620,6 +627,17 @@
                                             }
                                         }
                                     </tbody>
+                                    <tfoot class="sticky bottom-0 bg-white">
+                                        <tr style="border-top: 2px solid var(--navy); background:#eef2f7;">
+                                            <td class="text-center font-bold text-[10px]" style="color:#222;">&nbsp;</td>
+                                            <td class="text-right font-bold uppercase text-[9px] pr-2" style="color:#222;">Total</td>
+                                            <td class="text-center font-bold pr-6" style="color:#222;">@PlanningDetail.MachineStatus.Where(i => i.NewOrderQty > 0).Sum(i => i.NewOrderQty).ToString("N0")</td>
+                                            <td></td>
+                                            <td></td>
+                                            <td></td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
                                 </table>
                             </div>
                         </div>
@@ -2070,6 +2088,33 @@
                                             this gauge has <b>@GaugeKnitterCount</b> knitters and some are committed to other plans in this window,
                                             so auto-selection kept <b>@SelectedMachinesList.Count</b> machine(s) instead of @KnitterIdealN.
                                             Overtime / Work Saturdays on the selected machines can recover the dates without extra knitters.
+                                            <button type="button" @onclick="OpenKnitterSchedule"
+                                                    class="ml-1 underline font-bold text-amber-700 hover:text-amber-900 cursor-pointer">
+                                                <i class="fa-solid fa-calendar-week mr-0.5"></i>View knitter schedule
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+
+                                @if (ShowStaffingAdvisory && SelectedKnitType == "Knit" && WindowStaffing.Any())
+                                {
+                                    <div class="mt-2 p-2 bg-sky-50 border border-sky-200 rounded-lg text-[10px] flex items-start gap-2 shadow-sm">
+                                        <i class="fa-solid fa-users-gear text-sky-600 mt-0.5"></i>
+                                        <div style="color:#222;">
+                                            <span class="font-bold">Skill-aware staffing (preview):</span>
+                                            <b>@WindowStaffing.Count</b> day(s) in this window can't be fully staffed by skilled knitters
+                                            (factory-wide, cross-gauge):
+                                            @foreach (var s in WindowStaffing.Take(4))
+                                            {
+                                                <span class="inline-block ml-1 px-1.5 py-0.5 rounded bg-white border border-sky-200">
+                                                    @s.Date.ToString("dd-MMM"): gauge @s.BottleneckGauges short by @s.ShortBy
+                                                </span>
+                                            }
+                                            @if (WindowStaffing.Count > 4)
+                                            {
+                                                <span class="ml-1">…</span>
+                                            }
+                                            <span class="block text-[9px] text-slate-500 mt-0.5">Advisory only — does not change the machine selection yet.</span>
                                         </div>
                                     </div>
                                 }
@@ -3388,6 +3433,90 @@
                         }
                         Approve &amp; Plan (@BulkRows.Count(r => r.Selected))
                     </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (IsKnitterScheduleOpen)
+    {
+        <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center" style="z-index: 9000;" @onclick="CloseKnitterSchedule">
+            <div class="bg-white rounded-xl border border-slate-200 shadow-2xl w-full mx-4 overflow-hidden" style="max-width: 720px;" @onclick:stopPropagation>
+                <div class="px-4 py-3 flex items-center justify-between" style="background: var(--navy); color: #fff;">
+                    <span class="font-bold text-[12px] uppercase tracking-wide"><i class="fa-solid fa-calendar-week mr-2" style="color: var(--teal);"></i>Knitter Schedule &middot; Gauge @SelectedModalGauge</span>
+                    <button @onclick="CloseKnitterSchedule" style="background:none;border:none;color:#fff;cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="p-4" style="max-height: 64vh; overflow:auto;">
+                    @if (IsLoadingKnitterSchedule)
+                    {
+                        <div class="text-center py-6 text-[12px]" style="color: var(--muted);"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading...</div>
+                    }
+                    else
+                    {
+                        var busyCount = ScheduleKnitters.Count(k => ScheduleBusy.Any(b => string.Equals(b.CardNo?.Trim(), k.CardNo?.Trim(), StringComparison.OrdinalIgnoreCase)));
+                        var freeCount = ScheduleKnitters.Count - busyCount;
+                        <div class="flex items-center gap-3 mb-3 text-[11px]">
+                            <span class="px-2 py-1 rounded font-bold" style="background:#fdecea;color:#b11f1f;">Committed: @busyCount</span>
+                            <span class="px-2 py-1 rounded font-bold" style="background:#eafaf1;color:#1f8a4c;">Free: @freeCount</span>
+                            <span class="text-slate-500">of @ScheduleKnitters.Count knitters on gauge @SelectedModalGauge</span>
+                        </div>
+
+                        <table class="nk-table compact-table w-full text-[10px]">
+                            <thead>
+                                <tr style="background:#f1f5fa;">
+                                    <th class="text-left py-1.5">Knitter</th>
+                                    <th class="text-center py-1.5">Card</th>
+                                    <th class="text-center py-1.5">Status</th>
+                                    <th class="text-left py-1.5">Committed To</th>
+                                    <th class="text-center py-1.5">From</th>
+                                    <th class="text-center py-1.5">To</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var k in ScheduleKnitters.OrderBy(x => x.KnitterName))
+                                {
+                                    var windows = ScheduleBusy.Where(b => string.Equals(b.CardNo?.Trim(), k.CardNo?.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
+                                    @if (windows.Count == 0)
+                                    {
+                                        <tr class="border-b border-slate-100">
+                                            <td class="text-left py-1.5 font-bold text-navy">@k.KnitterName</td>
+                                            <td class="text-center py-1.5 text-slate-500">@k.CardNo</td>
+                                            <td class="text-center py-1.5"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold" style="background:#eafaf1;color:#1f8a4c;">Free</span></td>
+                                            <td class="text-left py-1.5 text-slate-400 italic">—</td>
+                                            <td class="text-center py-1.5 text-slate-400">—</td>
+                                            <td class="text-center py-1.5 text-slate-400">—</td>
+                                        </tr>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var w in windows)
+                                        {
+                                            <tr class="border-b border-slate-100" style="background:#fff7f6;">
+                                                <td class="text-left py-1.5 font-bold text-navy">@k.KnitterName</td>
+                                                <td class="text-center py-1.5 text-slate-500">@k.CardNo</td>
+                                                <td class="text-center py-1.5"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold" style="background:#fdecea;color:#b11f1f;">Busy</span></td>
+                                                <td class="text-left py-1.5 text-navy">
+                                                    @(string.IsNullOrEmpty(w.Machine) ? "" : w.Machine)
+                                                    @(string.IsNullOrEmpty(w.OrderId) ? "" : $"· Order {w.OrderId}")
+                                                    <span class="text-slate-400">(@w.Status)</span>
+                                                </td>
+                                                <td class="text-center py-1.5">@w.FromDate.ToString("dd-MMM-yyyy")</td>
+                                                <td class="text-center py-1.5">@w.ToDate.ToString("dd-MMM-yyyy")</td>
+                                            </tr>
+                                        }
+                                    }
+                                }
+                                @if (!ScheduleKnitters.Any())
+                                {
+                                    <tr><td colspan="6" class="text-center py-6 text-slate-400 italic">No knitters found for this gauge.</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                        <div class="text-[9px] text-slate-500 mt-2">Busy windows come from saved knitter assignments (Master page). A knitter with no row is currently free.</div>
+                    }
+                </div>
+                <div class="px-4 py-3 flex justify-end border-t border-slate-100" style="background:#fafbfc;">
+                    <button @onclick="CloseKnitterSchedule" class="text-[11px] h-8 px-4 rounded border border-slate-200 bg-white font-bold text-navy cursor-pointer">Close</button>
                 </div>
             </div>
         </div>

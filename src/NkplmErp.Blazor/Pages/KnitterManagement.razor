@@ -1,0 +1,187 @@
+@page "/knitter-management"
+@using NkplmErp.Shared.DTOs
+@using NkplmErp.Blazor.Services.KnitterManagement
+
+<PageTitle>Knitter Management — NKPLM ERP</PageTitle>
+
+@if (AccessDenied)
+{
+    <AccessDenied403 Message="You don’t have permission to view Knitter Management. If you need access, contact your administrator." />
+}
+else
+{
+<div class="km-container">
+
+    <!-- ===================== HEADER ===================== -->
+    <div class="km-header">
+        <div class="km-header-left">
+            <span class="km-shield-icon">🧶</span>
+            <div>
+                <h1 class="km-title">Knitter Management</h1>
+                <p class="km-subtitle">Add knitters, assign gauges, and activate / deactivate them</p>
+            </div>
+        </div>
+        @if (!string.IsNullOrEmpty(StatusMessage))
+        {
+            <div class="km-toast @(IsError ? "km-toast-error" : "km-toast-success")">@StatusMessage</div>
+        }
+    </div>
+
+    <!-- ===================== 2-PANEL LAYOUT ===================== -->
+    <div class="km-panels">
+
+        <!-- ===== PANEL 1: ADD / EDIT FORM ===== -->
+        @if (CanEditKnitterMgmt)
+        {
+            <div class="km-panel">
+                <div class="km-panel-header">
+                    <span class="km-panel-icon">@(EditKnitter.Flag == 2 ? "✏️" : "➕")</span>
+                    <span class="km-panel-title">@(EditKnitter.Flag == 2 ? $"Edit Knitter #{EditKnitter.CardNo}" : "New Knitter")</span>
+                </div>
+                <div class="km-panel-body">
+                    <div class="km-form-row">
+                        <label>Knitter Name *</label>
+                        <input class="km-input" @bind="EditKnitter.KnitterName" placeholder="e.g. Ram Bahadur" id="input-knitter-name" />
+                    </div>
+                    <div class="km-form-row">
+                        <label>PR Salary</label>
+                        <input class="km-input" type="number" step="0.01" @bind="EditKnitter.PRSalary" placeholder="Optional" id="input-knitter-salary" />
+                    </div>
+
+                    <div class="km-form-row">
+                        <label>Gauges</label>
+                        <div class="km-scope-builder">
+                            <input class="km-input km-scope-val" list="gauge-options" @bind="NewGauge"
+                                   placeholder="e.g. 7GG · 12GG · handknit" id="input-knitter-gauge"
+                                   @onkeydown="OnGaugeKeyDown" />
+                            <datalist id="gauge-options">
+                                @foreach (var g in GaugeOptions)
+                                {
+                                    <option value="@g" />
+                                }
+                            </datalist>
+                            <button class="km-btn km-btn-ghost km-btn-sm" @onclick="AddGauge" id="btn-add-gauge">+ Add</button>
+                        </div>
+                        @if (EditKnitter.Gauges.Any())
+                        {
+                            <div class="km-chips">
+                                @foreach (var g in EditKnitter.Gauges)
+                                {
+                                    <span class="km-chip">@g<a class="km-chip-x" @onclick="() => RemoveGauge(g)" title="Remove">✕</a></span>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="km-scope-hint">No gauges assigned yet — this knitter won't appear in any gauge's pool.</div>
+                        }
+                    </div>
+
+                    <div class="km-form-row km-form-check">
+                        <label class="km-switch">
+                            <input type="checkbox" @bind="EditKnitter.IsActive" id="chk-knitter-active" />
+                            <span>Active</span>
+                        </label>
+                    </div>
+
+                    <div class="km-form-actions">
+                        <button class="km-btn km-btn-success" @onclick="SaveKnitter" id="btn-save-knitter">💾 Save</button>
+                        @if (EditKnitter.Flag == 2)
+                        {
+                            <button class="km-btn km-btn-ghost" @onclick="NewKnitterForm" id="btn-cancel-knitter">Cancel</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- ===== PANEL 2: KNITTER LIST ===== -->
+        <div class="km-panel km-panel-wide">
+            <div class="km-panel-header">
+                <span class="km-panel-icon">👷</span>
+                <span class="km-panel-title">Knitters <span class="km-panel-subtitle">@Knitters.Count</span></span>
+                <input class="km-input km-search" @bind="SearchText" @bind:event="oninput" placeholder="🔍 Search name or gauge…" id="input-search" />
+            </div>
+            <div class="km-panel-body">
+                @if (IsLoading)
+                {
+                    <div class="km-loading">Loading knitters…</div>
+                }
+                else if (!FilteredKnitters.Any())
+                {
+                    <div class="km-empty">No knitters found.</div>
+                }
+                else
+                {
+                    <div class="km-table-wrap">
+                        <table class="km-table">
+                            <thead>
+                                <tr>
+                                    <th>S.N</th>
+                                    <th>Card #</th>
+                                    <th>Name</th>
+                                    <th>Gauges</th>
+                                    <th>Salary</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{ var sn = 0; }
+                                @foreach (var k in FilteredKnitters)
+                                {
+                                    sn++;
+                                    <tr class="@(EditKnitter.CardNo == k.CardNo && EditKnitter.Flag == 2 ? "km-row-selected" : "")">
+                                        <td class="km-mono km-muted">@sn</td>
+                                        <td class="km-mono">@k.CardNo</td>
+                                        <td>@k.KnitterName</td>
+                                        <td>
+                                            @if (k.Gauges.Any())
+                                            {
+                                                <div class="km-chips km-chips-compact">
+                                                    @foreach (var g in k.Gauges)
+                                                    {
+                                                        <span class="km-chip km-chip-static">@g</span>
+                                                    }
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span class="km-muted">—</span>
+                                            }
+                                        </td>
+                                        <td class="km-mono">@(k.PRSalary?.ToString("0.##") ?? "—")</td>
+                                        <td>
+                                            @if (k.IsActive)
+                                            {
+                                                <span class="km-badge km-badge-active">Active</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="km-badge km-badge-inactive">Inactive</span>
+                                            }
+                                        </td>
+                                        <td class="km-actions-cell">
+                                            @if (CanEditKnitterMgmt)
+                                            {
+                                                <button class="km-btn km-btn-icon" title="Edit" @onclick="() => EditKnitterAction(k)" id="btn-edit-@k.CardNo">✏️</button>
+                                                <button class="km-btn km-btn-icon" title="@(k.IsActive ? "Deactivate" : "Activate")"
+                                                        @onclick="() => ToggleActive(k)" id="btn-active-@k.CardNo">@(k.IsActive ? "🚫" : "✅")</button>
+                                            }
+                                            @if (CanDeleteKnitterMgmt)
+                                            {
+                                                <button class="km-btn km-btn-icon km-btn-danger" title="Delete" @onclick="() => DeleteKnitter(k)" id="btn-del-@k.CardNo">🗑️</button>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+    </div>
+</div>
+}

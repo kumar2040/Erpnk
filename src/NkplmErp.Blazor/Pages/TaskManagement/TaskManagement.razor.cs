@@ -8,6 +8,14 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
     public partial class TaskManagement
     {
         [Inject] private ITaskManagementManager TaskManager { get; set; } = default!;
+        [Inject] private NkplmErp.Blazor.Services.RoleManagement.PermissionService PermSvc { get; set; } = default!;
+
+        // True when the user lacks TaskManagement.View — the page shows Access Denied.
+        private bool AccessDenied;
+
+        // MySQL sync state (manual "Sync" button).
+        private bool isSyncing;
+        private string? syncMsg;
 
         // ---- Filter state ----
         // Selected date window (the CompactDateRangeFilter binds these). Seeded in
@@ -55,7 +63,17 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
         private int VisibleBoxCount =>
             (Box1 ? 1 : 0) + (Box2 ? 1 : 0) + (Box3 ? 1 : 0) + (Box4 ? 1 : 0) + (Box5 ? 1 : 0);
         private bool SingleFullWidth => VisibleBoxCount == 1;
-        private string BoardColClass => SingleFullWidth ? "col-12" : "col-md-6 col-lg-4";
+        // Width = 12 / (visible columns) so all status columns sit on ONE row
+        // (e.g. Scheduled · In Progress · Completed · Over Due side by side).
+        // 5 columns use equal-width flex ("col") since Bootstrap has no col-2.4.
+        private string BoardColClass => VisibleBoxCount switch
+        {
+            1 => "col-12",
+            2 => "col-6",
+            3 => "col-4",
+            4 => "col-3",
+            _ => "col"
+        };
 
         // ---- Board data (loaded from the API) ----
         private List<TaskCardItem> todotasks = new();
@@ -74,6 +92,15 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
 
         protected override async Task OnInitializedAsync()
         {
+            // Zero Trust: gate the page by the TaskManagement view permission.
+            if (!PermSvc.IsLoaded)
+                await PermSvc.LoadPermissionsAsync();
+            if (!PermSvc.CanView("TaskManagement"))
+            {
+                AccessDenied = true;
+                return;
+            }
+
             // Default view: Scheduled + In Progress + Completed + Over Due (On Hold hidden).
             ShowBubble(6);
 
@@ -89,6 +116,27 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
                 selectedFactoryType = scope.AssignedGauge;
 
             await LoadBoardAsync();   // also (re)loads the cascading sub-category options
+        }
+
+        // Manual MySQL -> SQL Server pull, then refresh the board. Guarded so a second
+        // click can't run a concurrent sync.
+        private async Task SyncNowAsync()
+        {
+            if (isSyncing) return;
+            isSyncing = true;
+            syncMsg = null;
+            try
+            {
+                var r = await TaskManager.SyncAsync();
+                syncMsg = r.Ran
+                    ? $"Synced from MySQL — {r.Total} new row(s)."
+                    : (string.IsNullOrWhiteSpace(r.Message) ? "Sync skipped." : r.Message);
+                await LoadBoardAsync();   // show any newly pulled rows
+            }
+            finally
+            {
+                isSyncing = false;
+            }
         }
 
         // ======================================================================

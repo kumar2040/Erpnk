@@ -1,7 +1,14 @@
 @page "/task"
 @attribute [Authorize]
 @using NkplmErp.Blazor.Pages.TaskManagement.Shared
+@using NkplmErp.Blazor.Shared
 
+@if (AccessDenied)
+{
+    <AccessDenied403 Message="You don’t have permission to view Task Management. If you need access, contact your administrator." />
+}
+else
+{
 <div class="main-body">
     <div class="page-header-container">
         <div class="header-row">
@@ -65,8 +72,23 @@
                                            OnSelectAll="OnAllSubCategoriesSelected" />
                     </div>
                 }
+
+                @* Manual pull of new knitter rows from MySQL (linked server). Kept as an
+                   explicit action — NOT auto-run on load — so the board stays fast. *@
+                <div class="filter-item">
+                    <button type="button" class="compact-select" style="height:32px;cursor:pointer;font-weight:600;"
+                            disabled="@isSyncing" @onclick="SyncNowAsync"
+                            title="Pull new knitter records from MySQL">
+                        @if (isSyncing) { <span>Syncing…</span> } else { <span>↻ Sync</span> }
+                    </button>
+                </div>
             </div>
         </div>
+
+        @if (!string.IsNullOrEmpty(syncMsg))
+        {
+            <div class="selected-filter-row"><span class="selected-filter-label">@syncMsg</span></div>
+        }
 
         @* Selected gauge/method readout — removable tags for the active picks, shown below
            the filter bar only when something is selected. Each tag removes itself; "Clear
@@ -197,3 +219,4 @@
         </section>
     </div>
 </div>
+}

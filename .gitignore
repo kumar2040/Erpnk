@@ -12,3 +12,7 @@
 # --- Build artifacts (should never be committed; they also copy secrets) ---
 **/bin/
 **/obj/
+*.sql
+/database
+*.sql
+*.sql

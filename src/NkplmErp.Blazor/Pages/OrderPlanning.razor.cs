@@ -468,6 +468,73 @@ public partial class OrderPlanning
     private bool KnitterWindowLimited { get; set; }
     private int KnitterIdealN { get; set; }
 
+    // ADVISORY ONLY (Phase 1): skill-aware factory staffing for the plan window.
+    // Days that cannot be fully staffed by skilled knitters (bipartite matching across
+    // ALL gauges). Does NOT influence machine selection - purely informational.
+    // Hidden for now: set true to show the preview strip (engine stays built either way).
+    private bool ShowStaffingAdvisory { get; set; } = false;
+    private List<KnitterStaffingDayDto> WindowStaffing { get; set; } = new();
+
+    // ---- Knitter schedule popup: who (of this gauge's knitters) is busy, from-to ----
+    private bool IsKnitterScheduleOpen { get; set; }
+    private bool IsLoadingKnitterSchedule { get; set; }
+    private List<KnitterDto> ScheduleKnitters { get; set; } = new();
+    private List<KnitterBusyDto> ScheduleBusy { get; set; } = new();
+
+    private async Task OpenKnitterSchedule()
+    {
+        IsKnitterScheduleOpen = true;
+        IsLoadingKnitterSchedule = true;
+        ScheduleKnitters = new();
+        ScheduleBusy = new();
+        StateHasChanged();
+        try
+        {
+            var knitters = await PlanningService.GetKnittersByGaugeAsync(SelectedModalGauge);
+            var busy = await PlanningService.GetKnitterBusyAsync();
+            ScheduleKnitters = knitters.ToList();
+            var cards = ScheduleKnitters.Select(k => k.CardNo?.Trim()).Where(c => !string.IsNullOrEmpty(c)).ToHashSet();
+            // This gauge's knitters that are still committed (not completed).
+            ScheduleBusy = busy
+                .Where(b => cards.Contains(b.CardNo?.Trim()) && !string.Equals(b.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(b => b.FromDate)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"OpenKnitterSchedule error: {ex.Message}");
+        }
+        finally
+        {
+            IsLoadingKnitterSchedule = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseKnitterSchedule()
+    {
+        IsKnitterScheduleOpen = false;
+        StateHasChanged();
+    }
+
+    private async Task LoadWindowStaffing()
+    {
+        WindowStaffing = new();
+        if (!ShowStaffingAdvisory || SelectedKnitType != "Knit") return; // hidden -> skip the call too
+        try
+        {
+            var from = DateTime.Today;
+            var to = GetKnitDeadline() ?? DateTime.Today.AddDays(42);
+            if (to < from) to = from.AddDays(42);
+            var all = await PlanningService.GetKnitterStaffingAsync(from, to);
+            WindowStaffing = all.Where(s => !s.Staffable).ToList(); // only the problem days
+        }
+        catch
+        {
+            WindowStaffing = new(); // advisory - never break planning on failure
+        }
+    }
+
     // A machine kept running by the new plan occupies a knitter until the common
     // finish; every other gauge machine occupies one until its own free date. At no
     // day in the window may occupied machines exceed the gauge's knitter count.
@@ -1202,6 +1269,57 @@ public partial class OrderPlanning
         return max == DateTime.MinValue ? PlanEndDate : max;
     }
 
+    // Start/end window a single selected machine would occupy under the current plan.
+    private (DateTime Start, DateTime End) GetMachineWindow(MachinePlaningDto machine)
+    {
+        var start = GetMachinePlanStartDate(machine.FreeDate);
+        decimal capPerMc = (BaseDays > 0) ? (BaseQty / BaseDays) * OvertimeFactor : 0;
+        decimal qty = SizeAllocationRows.Any()
+            ? GetMachineAllocatedQty(machine.Machine_ID)
+            : PlanQty / (decimal)Math.Max(1, SelectedMachinesList.Count);
+        double days = capPerMc > 0 ? (double)(qty / capPerMc) : 0;
+        return (start, AddWorkingDays(start, days));
+    }
+
+    // Factory-wide knitter ceiling: on no working day may total busy machines (all
+    // gauges) exceed total knitters (1 knitter runs 1 machine at a time). Returns the
+    // worst offending day + the machine count it would need, or null if within capacity.
+    private async Task<(DateTime Day, int Needed, int Knitters)?> CheckKnitterCapacityAsync()
+    {
+        if (SelectedKnitType != "Knit" || SelectedMachinesList == null || !SelectedMachinesList.Any())
+            return null;
+
+        var windows = SelectedMachinesList.Select(GetMachineWindow).ToList();
+        var from = windows.Min(w => w.Start).Date;
+        var to = windows.Max(w => w.End).Date;
+
+        int knitters;
+        List<KnitterStaffingDayDto> staffing;
+        try
+        {
+            // Knit-only busy machines per day (weave/silk use no knitters).
+            staffing = await PlanningService.GetKnitterStaffingAsync(from, to);
+            // Factory total knitters comes from the report.
+            var report = await PlanningService.GetPlaningReportAsync(from, to);
+            knitters = report.FirstOrDefault()?.TotalKnitters ?? 0;
+        }
+        catch { return null; } // never block a save because the capacity lookup failed
+
+        if (knitters <= 0) return null;
+
+        (DateTime Day, int Needed, int Knitters)? worst = null;
+        for (var d = from; d <= to; d = d.AddDays(1))
+        {
+            if (d.DayOfWeek == DayOfWeek.Saturday && !WorkSaturday) continue; // holiday
+            int existing = staffing.FirstOrDefault(r => r.Date.Date == d.Date)?.MachinesRunning ?? 0;
+            int added = windows.Count(w => d.Date >= w.Start.Date && d.Date <= w.End.Date);
+            int total = existing + added;
+            if (total > knitters && (worst == null || total > worst.Value.Needed))
+                worst = (d, total, knitters);
+        }
+        return worst;
+    }
+
     // Total currently allocated to a machine across all size rows.
     private decimal GetMachineAllocatedQty(int machineId) =>
         SizeAllocationRows.Sum(r => r.PerMachine.TryGetValue(machineId, out var q) ? q : 0);
@@ -1403,6 +1521,21 @@ public partial class OrderPlanning
             {
                 ShowAlert("Machine Selection Required", "Please select at least one machine from the dropdown popover checklist to allocate your Knit planning quota.", "warning");
                 return;
+            }
+
+            // Factory-wide knitter ceiling: total busy machines on any day must not
+            // exceed total knitters (1 knitter per machine). Hard block.
+            var capHit = await CheckKnitterCapacityAsync();
+            if (capHit != null)
+            {
+                if (!IsBulkBusy)
+                {
+                    ShowAlert("Knitter capacity exceeded",
+                        $"On {capHit.Value.Day:dd-MMM-yyyy} this plan would need {capHit.Value.Needed} machines running at once, " +
+                        $"but the factory has only {capHit.Value.Knitters} knitters (1 knitter runs 1 machine). " +
+                        "Reduce machines, or shift the dates so they don't overlap other plans.", "warning");
+                }
+                return; // block the save
             }
         }
 
@@ -2239,6 +2372,7 @@ public partial class OrderPlanning
             {
                 AutoSelectKnitMachines();
                 IsMachineDropdownOpen = true;
+                await LoadWindowStaffing(); // advisory skill-aware staffing (no effect on selection)
             }
 
             IsLoadingModalStyles = false;

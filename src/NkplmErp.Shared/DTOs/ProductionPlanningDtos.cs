@@ -303,7 +303,11 @@ public class KnitterDto
 public class KnitterBusyDto
 {
     public string CardNo { get; set; } = string.Empty;
+    public string KnitterName { get; set; } = string.Empty;
     public int PlanId { get; set; }          // MasterPlanChildId of the busy plan
+    public string Gauge { get; set; } = string.Empty;
+    public string Machine { get; set; } = string.Empty;
+    public string OrderId { get; set; } = string.Empty;
     public DateTime FromDate { get; set; }
     public DateTime ToDate { get; set; }
     public string Status { get; set; } = "Assigned"; // Assigned / Completed
@@ -349,6 +353,18 @@ public class PlaningReportDayDto
     public int TotalKnitters { get; set; }
     public string DayName { get; set; } = string.Empty;
     public bool IsSaturday { get; set; }
+}
+
+// Skill-aware knitter staffing feasibility for a single day. Result of the
+// bipartite matching (machine-needing-gauge <-> knitter-skilled-in-gauge).
+public class KnitterStaffingDayDto
+{
+    public DateTime Date { get; set; }
+    public int MachinesRunning { get; set; }   // knit machines occupied that day
+    public int KnittersMatched { get; set; }   // machines that CAN be staffed (max matching)
+    public bool Staffable => MachinesRunning <= KnittersMatched;
+    public int ShortBy { get; set; }           // machines that cannot be staffed
+    public string BottleneckGauges { get; set; } = string.Empty; // gauges left unstaffed
 }
 
 // One pivoted row for the Master Planning page (MasterPlan + MasterPlanDetail + MasterPlanDetailSize).
