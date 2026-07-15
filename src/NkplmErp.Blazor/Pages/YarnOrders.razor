@@ -1,0 +1,187 @@
+@page "/yarn-orders"
+@using NkplmErp.Shared.DTOs
+
+<PageTitle>Saved Yarn Orders</PageTitle>
+
+@if (AccessDenied)
+{
+    <div class="yo-denied">
+        <h3>Access denied</h3>
+        <p>You don't have permission to view yarn orders.</p>
+    </div>
+}
+else
+{
+    <div class="yo-wrap">
+
+        <div class="yo-header">
+            <h1 class="yo-title">Saved Yarn Orders <small>PLACED PURCHASE ORDERS</small></h1>
+        </div>
+
+        <div class="yo-split">
+
+            @* ============ LEFT : ORDER LIST ============ *@
+            <div class="yo-col">
+                <div class="yo-col-head">
+                    <div class="t"><span class="dot imp"></span> Yarn Orders</div>
+                    <span class="count">@FilteredOrders.Count()</span>
+                </div>
+                <div class="yo-col-tools">
+                    <input class="yo-input" placeholder="🔍 Search yarn order no" @bind="Search" @bind:event="oninput" />
+                </div>
+                <div class="yo-col-body">
+                    @if (IsLoadingList)
+                    {
+                        <div class="yo-empty">Loading…</div>
+                    }
+                    else if (!FilteredOrders.Any())
+                    {
+                        <div class="yo-empty">No yarn orders placed yet.</div>
+                    }
+                    else
+                    {
+                        @foreach (var o in FilteredOrders)
+                        {
+                            <div class="yo-card @(Selected?.YoId == o.YoId ? "active" : "")" @onclick="@(() => SelectOrderAsync(o))">
+                                <div class="row1">
+                                    <span class="no">@o.YoNo</span>
+                                    <span class="kg">@o.TotalKg.ToString("N2") kg</span>
+                                </div>
+                                <div class="row2">
+                                    <span class="date">@o.CreatedDate.ToString("dd MMM yyyy, HH:mm")</span>
+                                    <span class="meta">@o.LineCount line · @o.OrderCount order</span>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+
+            @* ============ RIGHT : DETAIL ============ *@
+            <div class="yo-col yo-detail">
+                <div class="yo-col-head">
+                    <div class="t">
+                        <span class="dot need"></span> Order Detail
+                        @if (Selected != null)
+                        {
+                            <span class="ord-tag">@Selected.YoNo</span>
+                        }
+                    </div>
+                </div>
+
+                @if (Selected == null)
+                {
+                    <div class="yo-col-body"><div class="yo-empty">Select a yarn order on the left to view its lines.</div></div>
+                }
+                else
+                {
+                    <div class="yo-strip">
+                        <div><div class="k">Placed</div><div class="v">@Selected.CreatedDate.ToString("dd MMM yyyy, HH:mm")</div></div>
+                        <div><div class="k">By</div><div class="v">@(string.IsNullOrWhiteSpace(Selected.CreatedBy) ? "—" : Selected.CreatedBy)</div></div>
+                        <div><div class="k">Need</div><div class="v need">@Selected.TotalKg.ToString("N2") kg</div></div>
+                        <div><div class="k">Order (cones)</div><div class="v imp">@DetailOrderKg.ToString("N0") kg</div></div>
+                        <div><div class="k">Status</div><div class="v">@Selected.Status</div></div>
+                    </div>
+                    <div class="yo-col-body">
+                        @if (!string.IsNullOrEmpty(StatusMessage))
+                        {
+                            <div class="yo-status @(IsError ? "err" : "ok")">@StatusMessage</div>
+                        }
+
+                        @if (IsLoadingDetail)
+                        {
+                            <div class="yo-empty">Loading detail…</div>
+                        }
+                        else if (!Detail.Any())
+                        {
+                            <div class="yo-empty">No lines on this order.</div>
+                        }
+                        else
+                        {
+                            @if (VendorOrders.Any())
+                            {
+                                <div class="vplaced">
+                                    <div class="vplaced-h">Placed vendor orders</div>
+                                    @foreach (var v in VendorOrders)
+                                    {
+                                        <div class="vplaced-card">
+                                            <div class="vplaced-row">
+                                                <span class="vno">@v.VyoNo</span>
+                                                <span class="vname">@(string.IsNullOrWhiteSpace(v.Vendor) ? "—" : v.Vendor)</span>
+                                                <span class="vmeta">@v.LineCount line · @v.TotalKg.ToString("N2") kg</span>
+                                                <span class="vstat">@v.Status</span>
+                                                <button class="vxl-btn" title="Download Excel PO" @onclick="@(() => DownloadVendorExcelAsync(v))">⬇ Excel</button>
+                                            </div>
+                                            <div class="vlife">
+                                                <label class="vlife-lbl">Departure</label>
+                                                <input type="date" class="vlife-date" value="@DepartureEdit.GetValueOrDefault(v.VyoId)"
+                                                       @onchange="@(e => DepartureEdit[v.VyoId] = e.Value?.ToString() ?? "")" />
+                                                <button class="vlife-save" @onclick="@(() => SaveDepartureAsync(v))">Save</button>
+
+                                                <label class="vlife-lbl">Arrival</label>
+                                                <input type="date" class="vlife-date" value="@ArrivalEdit.GetValueOrDefault(v.VyoId)"
+                                                       @onchange="@(e => ArrivalEdit[v.VyoId] = e.Value?.ToString() ?? "")" />
+                                                <button class="vlife-save" @onclick="@(() => SaveArrivalAsync(v))">Save</button>
+
+                                                <button class="vlife-drop" title="Vendor dropped a color" @onclick="@(() => DropColorAsync(v))">⚠ Drop color</button>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+
+                            @foreach (var vg in VendorGroups)
+                            {
+                                var placed = VendorPlaced(vg.Key);
+                                var canPlace = vg.Key != "— No vendor —" && !placed;
+                                <div class="vgroup">
+                                    <div class="vhead">
+                                        <div class="vh-left">
+                                            <span class="vh-name">@vg.Key</span>
+                                            <span class="vh-meta">@vg.Count() line · @vg.Sum(x => x.ImportKg).ToString("N2") kg</span>
+                                        </div>
+                                        @if (placed)
+                                        {
+                                            <span class="vh-badge done">✓ ordered</span>
+                                        }
+                                        else if (canPlace)
+                                        {
+                                            <button class="vh-btn" disabled="@(PlacingVendor != null)"
+                                                    @onclick="@(() => PlaceVendorOrderAsync(vg.Key, vg.ToList()))">
+                                                @(PlacingVendor == vg.Key ? "Placing…" : "📦 Place order")
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <span class="vh-badge muted">no vendor</span>
+                                        }
+                                    </div>
+                                    <table class="yo-table">
+                                        <tbody>
+                                            @foreach (var d in vg)
+                                            {
+                                                <tr>
+                                                    <td class="l"><span class="yname">@d.Display</span></td>
+                                                    <td class="l">
+                                                        <span class="colorcell">@d.Color</span>
+                                                        @if (!string.IsNullOrWhiteSpace(d.Ply))
+                                                        {
+                                                            <span class="sub">@d.Ply ply</span>
+                                                        }
+                                                    </td>
+                                                    <td class="l"><span class="ochip">@d.OrderNo</span></td>
+                                                    <td>@d.ImportKg.ToString("N2")</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+            </div>
+
+        </div>
+    </div>
+}

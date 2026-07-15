@@ -1,0 +1,39 @@
+<div class="dp @(Disabled ? "disabled" : "")">
+    <div class="dp-field" @onclick="Toggle">
+        <span class="dp-text @(HasValue ? "" : "ph")">@DisplayText</span>
+        <span class="dp-ic">📅</span>
+    </div>
+
+    @if (_open)
+    {
+        <div class="dp-backdrop" @onclick="Close"></div>
+        <div class="dp-pop" @onclick:stopPropagation="true">
+            <div class="dp-head">
+                <button type="button" class="dp-nav" @onclick="PrevYear" title="Previous year">«</button>
+                <button type="button" class="dp-nav" @onclick="PrevMonth" title="Previous month">‹</button>
+                <div class="dp-title">@_view.ToString("MMMM yyyy")</div>
+                <button type="button" class="dp-nav" @onclick="NextMonth" title="Next month">›</button>
+                <button type="button" class="dp-nav" @onclick="NextYear" title="Next year">»</button>
+            </div>
+
+            <div class="dp-grid dp-wd">
+                @foreach (var w in WeekDays)
+                {
+                    <div class="dp-wdcell">@w</div>
+                }
+            </div>
+
+            <div class="dp-grid">
+                @foreach (var d in GridDays())
+                {
+                    <button type="button" class="@DayClass(d)" disabled="@IsDisabledDay(d)" @onclick="() => PickDay(d)">@d.Day</button>
+                }
+            </div>
+
+            <div class="dp-foot">
+                <button type="button" class="dp-link" @onclick="GoToday">Today</button>
+                <button type="button" class="dp-link clear" @onclick="Clear">Clear</button>
+            </div>
+        </div>
+    }
+</div>

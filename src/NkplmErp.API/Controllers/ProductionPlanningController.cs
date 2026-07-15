@@ -2,6 +2,8 @@ using System.Security.Claims;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using NkplmErp.Application.Interfaces;
 using NkplmErp.Shared.DTOs;
 
@@ -15,11 +17,22 @@ public class ProductionPlanningController : ControllerBase
 {
     private readonly IProductionPlanningService _productionPlanningService;
     private readonly IRoleManagementService _roleService;
+    private readonly IPoTaskService _poTaskService;
+    private readonly IConfiguration _configuration;
+    private readonly ILogger<ProductionPlanningController> _logger;
 
-    public ProductionPlanningController(IProductionPlanningService productionPlanningService, IRoleManagementService roleService)
+    public ProductionPlanningController(
+        IProductionPlanningService productionPlanningService,
+        IRoleManagementService roleService,
+        IPoTaskService poTaskService,
+        IConfiguration configuration,
+        ILogger<ProductionPlanningController> logger)
     {
         _productionPlanningService = productionPlanningService;
         _roleService = roleService;
+        _poTaskService = poTaskService;
+        _configuration = configuration;
+        _logger = logger;
     }
 
     private string GetCurrentUserId() =>
@@ -243,6 +256,28 @@ public class ProductionPlanningController : ControllerBase
             request.OvertimeHours,
             request.WorkSaturday
         );
+
+        // Automation hook: a saved plan line auto-creates a per-gauge Planning task
+        // (RefId = MasterPlanChildId), assigned to the master role's members (who then
+        // get a real-time bell push). Idempotent per gauge line. Best-effort: never fail
+        // the save because the task hook errored.
+        try
+        {
+            var masterRole = _configuration["TaskAutomation:MasterRoleName"] ?? "Master";
+            var masters = (await _roleService.GetAllUsersWithRolesAsync())
+                .Where(u => string.Equals(u.RoleName, masterRole, StringComparison.OrdinalIgnoreCase))
+                .Select(u => u.UserId)
+                .Distinct()
+                .ToList();
+
+            await _poTaskService.EnsurePlanningTaskAsync(
+                request.OrderNo, request.KnitType, request.Guage, result, masters, GetCurrentUserId());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Planning auto-task hook failed for order {OrderNo}", request.OrderNo);
+        }
+
         return Ok(result);
     }
 
@@ -350,6 +385,13 @@ public class ProductionPlanningController : ControllerBase
     public async Task<IActionResult> GetPlaningReport([FromQuery] DateTime? fromDate = null, [FromQuery] DateTime? toDate = null)
     {
         var result = await _productionPlanningService.GetPlaningReportAsync(fromDate, toDate);
+        return Ok(result);
+    }
+
+    [HttpGet("knitter-staffing")]
+    public async Task<IActionResult> GetKnitterStaffing([FromQuery] DateTime? fromDate = null, [FromQuery] DateTime? toDate = null)
+    {
+        var result = await _productionPlanningService.GetKnitterStaffingAsync(fromDate, toDate);
         return Ok(result);
     }
 

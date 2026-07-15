@@ -42,5 +42,10 @@ public interface IProductionPlanningService
     // Parent plan id (MasterPlanDetailId) of a size line - for Zero-Trust ownership
     // checks on size-line endpoints. Default impl for HTTP-client implementations.
     Task<int> GetSizeLinePlanIdAsync(int sizeLineId) => Task.FromResult(0);
+
+    // Skill-aware knitter staffing feasibility per day (advisory). Default impl so the
+    // HTTP-client overrides only what it needs.
+    Task<List<KnitterStaffingDayDto>> GetKnitterStaffingAsync(DateTime? fromDate = null, DateTime? toDate = null)
+        => Task.FromResult(new List<KnitterStaffingDayDto>());
 }
 

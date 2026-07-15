@@ -1,0 +1,230 @@
+@page "/bom"
+@using NkplmErp.Shared.DTOs
+
+<PageTitle>Bill of Materials</PageTitle>
+
+@if (AccessDenied)
+{
+    <div class="bom-denied">
+        <h3>Access denied</h3>
+        <p>You don't have permission to view the Bill of Materials.</p>
+    </div>
+}
+else
+{
+    <div class="bom-wrap">
+
+        <div class="bom-header">
+            <h1 class="bom-title">Bill of Materials <small>YARN REQUIREMENT · IMPORT DECISION</small></h1>
+            <div class="bom-flow">PENDING ORDERS &nbsp;→&nbsp; CALCULATE BOM &nbsp;→&nbsp; PLACE YARN ORDER</div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(StatusMessage))
+        {
+            <div class="bom-status @(IsError ? "err" : "ok")">@StatusMessage</div>
+        }
+
+        <div class="bom-pipe">
+
+            @* ============ COLUMN 1 : ORDERS / BOM PENDING ============ *@
+            <div class="bom-col">
+                <div class="bom-col-head">
+                    <div class="t"><span class="dot pend"></span> Orders — BOM Pending</div>
+                    <span class="count">@FilteredOrders.Count()</span>
+                </div>
+                <div class="bom-col-tools">
+                    <input type="month" class="bom-input" value="@SelectedMonth.ToString("yyyy-MM")"
+                           @onchange="@(e => SelectedMonthStr = $"{e.Value}-01")" />
+                    <input class="bom-input" placeholder="🔍 Search order no" @bind="OrderSearch" @bind:event="oninput" />
+                </div>
+                <div class="bom-col-body">
+                    @if (IsLoadingOrders)
+                    {
+                        <div class="bom-empty">Loading orders…</div>
+                    }
+                    else if (!FilteredOrders.Any())
+                    {
+                        <div class="bom-empty">No orders for this month.</div>
+                    }
+                    else
+                    {
+                        @foreach (var o in FilteredOrders)
+                        {
+                            <div class="bom-ord @(o.OrderNo == SelectedOrderNo ? "active" : "")"
+                                 @onclick="@(() => SelectOrderAsync(o.OrderNo))">
+                                <div class="no">@o.OrderNo</div>
+                                <div class="foot">
+                                    <span>@o.MonthName @o.Year</span>
+                                    <span class="pill">@o.TotalPieces.ToString("N0") pcs</span>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+
+            @* ============ COLUMN 2 : CALCULATION ============ *@
+            <div class="bom-col">
+                <div class="bom-col-head">
+                    <div class="t">
+                        <span class="dot need"></span> BOM Calculation
+                        @if (!string.IsNullOrEmpty(SelectedOrderNo))
+                        {
+                            <span class="ord-tag">@SelectedOrderNo</span>
+                        }
+                    </div>
+                    @if (!string.IsNullOrEmpty(SelectedOrderNo))
+                    {
+                        <button class="bom-btn ghost" @onclick="RecalculateAsync">↻ Recalculate</button>
+                    }
+                </div>
+                @if (!string.IsNullOrEmpty(SelectedOrderNo) && !IsCalculating && YarnLines.Any())
+                {
+                    <div class="bom-strip">
+                        <div><div class="k">Need</div><div class="v need">@TotalNeed.ToString("N1") kg</div></div>
+                        <div><div class="k">Store</div><div class="v store">@TotalStock.ToString("N1") kg</div></div>
+                        <div><div class="k">Import</div><div class="v imp">@TotalImport.ToString("N1") kg</div></div>
+                        <div><div class="k">Lines</div><div class="v">@YarnLines.Count</div></div>
+                    </div>
+                }
+                <div class="bom-col-body">
+                    @if (string.IsNullOrEmpty(SelectedOrderNo))
+                    {
+                        <div class="bom-empty">Select an order on the left to calculate its yarn requirement.</div>
+                    }
+                    else if (IsCalculating)
+                    {
+                        <div class="bom-empty">Calculating yarn requirement…</div>
+                    }
+                    else if (!YarnLines.Any())
+                    {
+                        <div class="bom-empty">No yarn requirement found for @SelectedOrderNo (nothing remaining to knit).</div>
+                    }
+                    else
+                    {
+                        <table class="bom-table">
+                            <thead>
+                                <tr>
+                                    <th class="l">Color</th>
+                                    <th>Req</th>
+                                    <th>Backlog</th>
+                                    <th>Store</th>
+                                    <th>Short</th>
+                                    <th>Decision</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var grp in YarnLines.GroupBy(l => l.ProductId))
+                                {
+                                    <tr class="grp-row">
+                                        <td class="l" colspan="6">@(string.IsNullOrWhiteSpace(grp.First().YarnName) ? grp.Key : grp.First().YarnName)</td>
+                                    </tr>
+                                    @foreach (var l in grp)
+                                    {
+                                        <tr class="@(l.IsImport ? "shortage" : "")">
+                                            <td class="l">
+                                                <span class="colorcell">@l.OrderColor</span>
+                                                @if (!string.IsNullOrWhiteSpace(l.StylePly))
+                                                {
+                                                    <span class="sub">@l.StylePly ply</span>
+                                                }
+                                            </td>
+                                            <td class="need">@l.SelfWt.ToString("N2")</td>
+                                            <td>@l.OthWt.ToString("N1")</td>
+                                            <td>
+                                                @l.StockQty.ToString("N1")
+                                                <div class="storebd" title="Main / PLM / Knitter">M @l.MainQty.ToString("N1") · P @l.PlmQty.ToString("N1") · K @l.KnitterQty.ToString("N1")</div>
+                                            </td>
+                                            <td class="@(l.ShortfallKg < 0 ? "short-pos" : "short-neg")">
+                                                @if (l.IsImport)
+                                                {
+                                                    <span class="qtyedit">
+                                                        <input type="number" step="0.5" min="0" class="qtyinput"
+                                                               @bind="l.OrderQtyKg" @bind:event="oninput" /> kg
+                                                    </span>
+                                                    <div class="storebd">need @l.ImportKg.ToString("N2")</div>
+                                                }
+                                                else
+                                                {
+                                                    @("+" + l.ShortfallKg.ToString("N1"))
+                                                }
+                                            </td>
+                                            <td>
+                                                <span class="pill @(l.IsImport ? "imp" : "ins")">@(l.IsImport ? "IMPORT" : "STOCK")</span>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td class="l">TOTAL · @YarnLines.Count lines</td>
+                                    <td>@TotalSelf.ToString("N0")</td>
+                                    <td>@YarnLines.Sum(l => l.OthWt).ToString("N0")</td>
+                                    <td>@TotalStock.ToString("N0")</td>
+                                    <td class="@(YarnLines.Sum(l => l.ShortfallKg) < 0 ? "short-pos" : "short-neg")">@YarnLines.Sum(l => l.ShortfallKg).ToString("N0")</td>
+                                    <td><span class="pill imp">@ImportLineCount</span></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    }
+                </div>
+                @if (ImportLineCount > 0)
+                {
+                    <div class="bom-col-foot">
+                        <button class="bom-btn primary" @onclick="AddImportLinesToBasket">
+                            ＋ Add @ImportLineCount import line(s) to Yarn Order →
+                        </button>
+                    </div>
+                }
+            </div>
+
+            @* ============ COLUMN 3 : YARN ORDER BASKET ============ *@
+            <div class="bom-col">
+                <div class="bom-col-head">
+                    <div class="t"><span class="dot imp"></span> Yarn Order — To Place</div>
+                    <span class="count">@Basket.Count</span>
+                </div>
+                <div class="bom-col-body">
+                    @if (Basket.Count == 0)
+                    {
+                        <div class="bom-empty">Import lines you add from the calculation appear here, ready to order.</div>
+                    }
+                    else
+                    {
+                        @foreach (var l in Basket)
+                        {
+                            <div class="bom-line">
+                                <div class="top">
+                                    <div class="ly">@l.Display</div>
+                                    <span class="qty">@l.OrderedKg.ToString("N2") kg</span>
+                                    <span class="x" @onclick="@(() => RemoveFromBasket(l))">✕</span>
+                                </div>
+                                <div class="line-meta">
+                                    <span class="sub">@l.OrderColor@(string.IsNullOrWhiteSpace(l.StylePly) ? "" : $" · {l.StylePly}ply") · need @l.NeedKg.ToString("N2")</span>
+                                    <span class="orders">
+                                        @foreach (var ord in l.Orders)
+                                        {
+                                            <span class="ochip">@ord</span>
+                                        }
+                                    </span>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+                <div class="bom-col-foot">
+                    <div class="basket-tot">
+                        <span>Order @(BasketOrderCount > 0 ? $"· {Basket.Count} line / {BasketOrderCount} order" : "")</span>
+                        <span class="imp-txt">@BasketOrderedKg.ToString("N2") kg <span class="sub">(need @BasketNeedKg.ToString("N2"))</span></span>
+                    </div>
+                    <div class="basket-actions">
+                        <button class="bom-btn ghost" @onclick="ClearBasket" disabled="@(Basket.Count == 0 || IsPlacing)">Clear</button>
+                        <button class="bom-btn import" @onclick="PlaceYarnOrderAsync" disabled="@(Basket.Count == 0 || IsPlacing)">@(IsPlacing ? "Placing…" : "📦 Place Yarn Order")</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+}

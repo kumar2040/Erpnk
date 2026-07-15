@@ -24,7 +24,11 @@ BEGIN
 
     SELECT DISTINCT
         ka.[card_no]                AS CardNo,
+        ka.[knitter_name]           AS KnitterName,
         sz.[MasterPlanDetailId]     AS PlanId,   -- MasterPlanChildId of the plan
+        ka.[gauge]                  AS Gauge,
+        ka.[machine]                AS Machine,
+        ka.[order_id]               AS OrderId,
         ka.[start_date]             AS FromDate,
         ka.[end_date]               AS ToDate,
         ISNULL(ka.[status], 'Assigned') AS [Status]

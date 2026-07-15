@@ -1,0 +1,161 @@
+@page "/machine-management"
+@using NkplmErp.Shared.DTOs
+@using NkplmErp.Blazor.Services.MachineManagement
+
+<PageTitle>Machine Management — NKPLM ERP</PageTitle>
+
+@if (AccessDenied)
+{
+    <AccessDenied403 Message="You don’t have permission to view Machine Management. If you need access, contact your administrator." />
+}
+else
+{
+<div class="km-container">
+
+    <!-- ===================== HEADER ===================== -->
+    <div class="km-header">
+        <div class="km-header-left">
+            <span class="km-shield-icon">🛠️</span>
+            <div>
+                <h1 class="km-title">Machine Management</h1>
+                <p class="km-subtitle">Add knit machines, set their gauge, and activate / deactivate them</p>
+            </div>
+        </div>
+        @if (!string.IsNullOrEmpty(StatusMessage))
+        {
+            <div class="km-toast @(IsError ? "km-toast-error" : "km-toast-success")">@StatusMessage</div>
+        }
+    </div>
+
+    <!-- ===================== 2-PANEL LAYOUT ===================== -->
+    <div class="km-panels">
+
+        <!-- ===== PANEL 1: ADD / EDIT FORM ===== -->
+        @if (CanEditMachineMgmt)
+        {
+            <div class="km-panel">
+                <div class="km-panel-header">
+                    <span class="km-panel-icon">@(EditMachine.Flag == 2 ? "✏️" : "➕")</span>
+                    <span class="km-panel-title">@(EditMachine.Flag == 2 ? $"Edit Machine #{EditMachine.MachineId}" : "New Machine")</span>
+                </div>
+                <div class="km-panel-body">
+                    <div class="km-form-row">
+                        <label>Machine No *</label>
+                        <input class="km-input" @bind="EditMachine.MachineNo" placeholder="e.g. KN-56" id="input-machine-no" />
+                    </div>
+                    <div class="km-form-row">
+                        <label>Gauge</label>
+                        <input class="km-input" list="gauge-options" @bind="EditMachine.Gauge" placeholder="e.g. 7GG · 12GG" id="input-machine-gauge" />
+                        <datalist id="gauge-options">
+                            @foreach (var g in GaugeOptions)
+                            {
+                                <option value="@g" />
+                            }
+                        </datalist>
+                    </div>
+                    <div class="km-form-row">
+                        <label>Size</label>
+                        <input class="km-input" @bind="EditMachine.Size" placeholder="Optional" id="input-machine-size" />
+                    </div>
+
+                    <div class="km-form-row km-form-check">
+                        <label class="km-switch">
+                            <input type="checkbox" @bind="EditMachine.IsActive" id="chk-machine-active" />
+                            <span>Active</span>
+                        </label>
+                    </div>
+
+                    <div class="km-form-actions">
+                        <button class="km-btn km-btn-success" @onclick="SaveMachine" id="btn-save-machine">💾 Save</button>
+                        @if (EditMachine.Flag == 2)
+                        {
+                            <button class="km-btn km-btn-ghost" @onclick="NewMachineForm" id="btn-cancel-machine">Cancel</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- ===== PANEL 2: MACHINE LIST ===== -->
+        <div class="km-panel km-panel-wide">
+            <div class="km-panel-header">
+                <span class="km-panel-icon">⚙️</span>
+                <span class="km-panel-title">Machines <span class="km-panel-subtitle">@Machines.Count</span></span>
+                <input class="km-input km-search" @bind="SearchText" @bind:event="oninput" placeholder="🔍 Search no, gauge or size…" id="input-search" />
+            </div>
+            <div class="km-panel-body">
+                @if (IsLoading)
+                {
+                    <div class="km-loading">Loading machines…</div>
+                }
+                else if (!FilteredMachines.Any())
+                {
+                    <div class="km-empty">No machines found.</div>
+                }
+                else
+                {
+                    <div class="km-table-wrap">
+                        <table class="km-table">
+                            <thead>
+                                <tr>
+                                    <th>S.N</th>
+                                    <th>Machine No</th>
+                                    <th>Gauge</th>
+                                    <th>Size</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{ var sn = 0; }
+                                @foreach (var m in FilteredMachines)
+                                {
+                                    sn++;
+                                    <tr class="@(EditMachine.MachineId == m.MachineId && EditMachine.Flag == 2 ? "km-row-selected" : "")">
+                                        <td class="km-mono km-muted">@sn</td>
+                                        <td>@m.MachineNo</td>
+                                        <td>
+                                            @if (!string.IsNullOrWhiteSpace(m.Gauge))
+                                            {
+                                                <span class="km-chip km-chip-static">@m.Gauge</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="km-muted">—</span>
+                                            }
+                                        </td>
+                                        <td>@(string.IsNullOrWhiteSpace(m.Size) ? "—" : m.Size)</td>
+                                        <td>
+                                            @if (m.IsActive)
+                                            {
+                                                <span class="km-badge km-badge-active">Active</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="km-badge km-badge-inactive">Inactive</span>
+                                            }
+                                        </td>
+                                        <td class="km-actions-cell">
+                                            @if (CanEditMachineMgmt)
+                                            {
+                                                <button class="km-btn km-btn-icon" title="Edit" @onclick="() => EditMachineAction(m)" id="btn-edit-@m.MachineId">✏️</button>
+                                                <button class="km-btn km-btn-icon" title="@(m.IsActive ? "Deactivate" : "Activate")"
+                                                        @onclick="() => ToggleActive(m)" id="btn-active-@m.MachineId">@(m.IsActive ? "🚫" : "✅")</button>
+                                            }
+                                            @if (CanDeleteMachineMgmt)
+                                            {
+                                                <button class="km-btn km-btn-icon km-btn-danger" title="Delete" @onclick="() => DeleteMachine(m)" id="btn-del-@m.MachineId">🗑️</button>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+    </div>
+</div>
+}

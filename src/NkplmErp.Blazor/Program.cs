@@ -90,8 +90,24 @@ builder.Services.AddHttpClient<NkplmErp.Blazor.Services.MachineManagement.Machin
 })
 .AddHttpMessageHandler<AuthenticationDelegatingHandler>();
 
+// Bill of Materials (yarn requirement)
+builder.Services.AddHttpClient<NkplmErp.Blazor.Services.Bom.BomApiClient>(client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddHttpMessageHandler<AuthenticationDelegatingHandler>();
+
 // Task Management board
 builder.Services.AddHttpClient<NkplmErp.Blazor.Services.TaskManagement.Manager.Interface.ITaskManagementManager, NkplmErp.Blazor.Services.TaskManagement.Manager.Implementation.TaskManagementManager>(client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddHttpMessageHandler<AuthenticationDelegatingHandler>();
+
+// PO lifecycle task board (new /tasks page)
+builder.Services.AddHttpClient<NkplmErp.Blazor.Services.PoTask.PoTaskApiClient>(client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
