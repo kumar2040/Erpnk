@@ -11,6 +11,8 @@
     <PackageReference Include="Fido2" Version="4.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="9.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.Components.QuickGrid" Version="9.0.0" />
+	  <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.2" />
+
   </ItemGroup>
 
   <PropertyGroup>
