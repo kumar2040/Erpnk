@@ -110,5 +110,76 @@ namespace NkplmErp.Blazor.Services.TaskManagement.Manager.Implementation
                 return new SyncResultModel { Message = "Sync failed." };
             }
         }
+
+        // ---- Order return-detail modal (KH / KD / KS) ----
+
+        public async Task<KnitterSummaryResponseModel?> GetKnitterSummaryAsync(int taskId)
+        {
+            if (taskId <= 0) return null;
+
+            try
+            {
+                var response = await _httpClient.GetAsync(TaskManagementEndpoint.KnitterSummary(taskId));
+                if (response.IsSuccessStatusCode)
+                    return await response.Content.ReadFromJsonAsync<KnitterSummaryResponseModel>();
+
+                var error = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("GetKnitterSummaryAsync({TaskId}) returned {Status}: {Error}", taskId, response.StatusCode, error);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetKnitterSummaryAsync({TaskId}) failed", taskId);
+                return null;
+            }
+        }
+
+        public async Task<List<KnitterReturnPointResponseModel>> GetKnitterReturnSeriesAsync(string? rId)
+        {
+            if (string.IsNullOrWhiteSpace(rId)) return new List<KnitterReturnPointResponseModel>();
+
+            try
+            {
+                var response = await _httpClient.GetAsync(TaskManagementEndpoint.KnitterReturns(rId));
+                if (response.IsSuccessStatusCode)
+                {
+                    var data = await response.Content.ReadFromJsonAsync<List<KnitterReturnPointResponseModel>>();
+                    return data ?? new List<KnitterReturnPointResponseModel>();
+                }
+
+                var error = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("GetKnitterReturnSeriesAsync({RId}) returned {Status}: {Error}", rId, response.StatusCode, error);
+                return new List<KnitterReturnPointResponseModel>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetKnitterReturnSeriesAsync({RId}) failed", rId);
+                return new List<KnitterReturnPointResponseModel>();
+            }
+        }
+
+        public async Task<List<OrderStyleResponseModel>> GetOrderStylesAsync(int taskId)
+        {
+            if (taskId <= 0) return new List<OrderStyleResponseModel>();
+
+            try
+            {
+                var response = await _httpClient.GetAsync(TaskManagementEndpoint.OrderStyles(taskId));
+                if (response.IsSuccessStatusCode)
+                {
+                    var data = await response.Content.ReadFromJsonAsync<List<OrderStyleResponseModel>>();
+                    return data ?? new List<OrderStyleResponseModel>();
+                }
+
+                var error = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("GetOrderStylesAsync({TaskId}) returned {Status}: {Error}", taskId, response.StatusCode, error);
+                return new List<OrderStyleResponseModel>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetOrderStylesAsync({TaskId}) failed", taskId);
+                return new List<OrderStyleResponseModel>();
+            }
+        }
     }
 }

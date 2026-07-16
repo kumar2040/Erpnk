@@ -138,16 +138,15 @@ public class BomApiClient
         catch (Exception ex) { _logger.LogError(ex, "{Label} failed", label); return false; }
     }
 
-    /// <summary>Flag that the vendor dropped a color (raises a Yarn-issue task).</summary>
-    public async Task<bool> DropColorAsync(int vyoId, string color, string? note = null)
+    /// <summary>Flag one or more dropped colors on a vendor sub-order; returns the server result (Succeeded/Message) or null.</summary>
+    public async Task<DropColorResult?> DropColorsAsync(int vyoId, DropColorRequest request)
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync(
-                $"{Base}/vendor-orders/{vyoId}/drop-color",
-                new DropColorRequest { Color = color, Note = note });
-            return response.IsSuccessStatusCode;
+            var response = await _httpClient.PostAsJsonAsync($"{Base}/vendor-orders/{vyoId}/drop-color", request);
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<DropColorResult>();
         }
-        catch (Exception ex) { _logger.LogError(ex, "DropColorAsync failed"); return false; }
+        catch (Exception ex) { _logger.LogError(ex, "DropColorsAsync failed"); return null; }
     }
 }

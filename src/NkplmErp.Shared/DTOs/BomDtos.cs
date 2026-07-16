@@ -183,10 +183,20 @@ public class SetVendorOrderDateRequest
     public DateTime Date { get; set; }
 }
 
-/// <summary>Flag that the vendor dropped a color on a vendor sub-order.</summary>
+/// <summary>Flag that the vendor dropped one or more colors on a vendor sub-order.</summary>
 public class DropColorRequest
 {
-    public string Color { get; set; } = string.Empty;
-    public string? ProductId { get; set; }
+    /// <summary>Colors the vendor can't supply, as shown on the order line (e.g. "Eco Gravel 25579").</summary>
+    public List<string> Colors { get; set; } = new();
     public string? Note { get; set; }
+}
+
+/// <summary>
+/// Result of flagging dropped colors. NOTE: persistence is intentionally deferred for now —
+/// the endpoint acknowledges success without writing to the DB (see BomController.DropColor).
+/// </summary>
+public class DropColorResult
+{
+    public bool Succeeded { get; set; }
+    public string Message { get; set; } = string.Empty;
 }

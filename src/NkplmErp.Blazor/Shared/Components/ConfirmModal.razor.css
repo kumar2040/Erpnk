@@ -1,0 +1,22 @@
+/* Reusable confirmation dialog (ConfirmModal.razor). Frame only — the body is the
+   caller's ChildContent, styled by the caller's own (scoped) CSS. */
+.cm-overlay{position:fixed;inset:0;z-index:1100;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.5);padding:20px;font-family:'Inter',system-ui,sans-serif}
+.cm-card{width:100%;max-width:440px;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 25px 55px -12px rgba(15,23,42,.5),0 0 0 1px rgba(0,0,0,.05);animation:cm-pop .16s ease-out}
+.cm-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 18px 10px}
+.cm-head-l{display:flex;align-items:center;gap:11px;min-width:0}
+.cm-ic{width:34px;height:34px;flex:none;border-radius:9px;background:#eef2f7;display:grid;place-items:center;font-size:16px}
+.cm-ic.danger{background:rgba(220,38,38,.12)}
+.cm-title{font-size:15.5px;font-weight:800;color:#1a3353;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cm-x{background:none;border:0;color:#94a3b8;font-size:14px;cursor:pointer;padding:3px 7px;border-radius:6px;line-height:1}
+.cm-x:hover{background:#f1f5f9;color:#475569}
+.cm-body{padding:2px 18px 6px;font-size:13px;color:#334155}
+.cm-foot{display:flex;justify-content:flex-end;gap:9px;padding:14px 18px 18px}
+.cm-btn{border:0;border-radius:9px;padding:9px 17px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit}
+.cm-btn:disabled{opacity:.55;cursor:not-allowed}
+.cm-btn.ghost{background:#fff;color:#475569;border:1.4px solid #d6dbe4}
+.cm-btn.ghost:hover:not(:disabled){background:#f8fafc}
+.cm-btn.primary{background:#1a3353;color:#fff}
+.cm-btn.primary:hover:not(:disabled){filter:brightness(1.12)}
+.cm-btn.danger{background:#dc2626;color:#fff}
+.cm-btn.danger:hover:not(:disabled){filter:brightness(1.06)}
+@keyframes cm-pop{from{opacity:0;transform:scale(.97) translateY(6px)}to{opacity:1;transform:none}}

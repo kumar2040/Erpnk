@@ -76,7 +76,9 @@ alter PROCEDURE [dbo].[spTaskManagement]
     @OrderNo     NVARCHAR(50)  = NULL,  -- optional: contains-match on OrderNo (NULL/'' = all)
     @FactoryType   NVARCHAR(100) = NULL,  -- admin's factory dropdown pick (ignored for restricted users)
     @UserId        NVARCHAR(450) = NULL,  -- current user; their identity.Users.AssignedGauge locks the scope
-    @SubCategories NVARCHAR(MAX) = NULL   -- pipe-delimited gauge sub-methods ('general'|text); NULL/''/'all' = no sub-filter
+    @SubCategories NVARCHAR(MAX) = NULL,  -- pipe-delimited gauge sub-methods ('general'|text); NULL/''/'all' = no sub-filter
+    @RId           NVARCHAR(MAX) = NULL,  -- flag 'KD': comma-delimited r_id list (a line's knitter-record ids)
+    @TaskId        INT           = NULL   -- flags 'KS'/'KH': the card's MasterPlanChildId
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -525,6 +527,98 @@ BEGIN
                         AND k.[pics] IS NOT NULL))
           )
         ORDER BY [SubCategory];
+    END
+
+    --===================== Knitter return series (KD) ================
+    -- Daily returned-piece counts for ONE line's return-detail modal chart. @RId is the
+    -- comma-delimited r_id list emitted by flag 'KH' for the clicked card. One row per return
+    -- DATE(+time); excludes cancelled (cancell=0) and zero-weight (r_wt>0) rows. Scope guard:
+    -- a row counts only when its r_id maps to a line inside the caller's factory scope.
+    IF (@Flag = 'KD')
+    BEGIN
+        ;WITH rid AS (
+            SELECT DISTINCT TRY_CONVERT(INT, LTRIM(RTRIM([value]))) AS [r_id]
+            FROM STRING_SPLIT(@RId, ',')
+            WHERE TRY_CONVERT(INT, LTRIM(RTRIM([value]))) IS NOT NULL
+        )
+        SELECT
+            CAST(kr.[r_date] AS DATETIME) + CAST(ISNULL(kr.[r_time], '00:00:00') AS DATETIME) AS [ReturnAt],
+            COUNT(kr.[item_no])  AS [ReturnCount]
+        FROM [dbo].[tbl_knitter_recieved] kr WITH (NOLOCK)
+        INNER JOIN rid ON rid.[r_id] = kr.[item_id]
+        WHERE kr.[cancell] = 0
+          AND kr.[r_wt]   > 0
+          AND EXISTS (
+              SELECT 1
+              FROM [dbo].[tbl_knitter_record_data] tkrd WITH (NOLOCK)
+              INNER JOIN [dbo].[MasterPlanDetailSize] mpds WITH (NOLOCK)
+                  ON mpds.[id] = tkrd.[plan_id]
+              INNER JOIN [dbo].[MasterPlanDetail] mpd WITH (NOLOCK)
+                  ON mpd.[MasterPlanChildId] = mpds.[MasterPlanDetailId]
+              WHERE tkrd.[r_id] = kr.[item_id]
+                AND (@EffectiveFactory IS NULL OR LOWER(mpd.[factory_type]) = LOWER(@EffectiveFactory))
+          )
+        GROUP BY CAST(kr.[r_date] AS DATETIME) + CAST(ISNULL(kr.[r_time], '00:00:00') AS DATETIME)
+        ORDER BY [ReturnAt] ASC;
+    END
+
+    --====================== Knitter card items (KS) ==================
+    -- One row per (style, colour, size) for a card's line, qty SUMMED. @TaskId is the card's
+    -- MasterPlanChildId (= MasterPlanDetailSize.MasterPlanDetailId). Scope-guarded to factory.
+    IF (@Flag = 'KS')
+    BEGIN
+        SELECT
+            s.[style_no]                        AS [StyleNo],
+            s.[color]                           AS [Color],
+            s.[size]                            AS [Size],
+            CAST(SUM(s.[qty]) AS DECIMAL(18,2)) AS [Qty]
+        FROM [dbo].[MasterPlanDetailSize] s WITH (NOLOCK)
+        INNER JOIN [dbo].[MasterPlanDetail] mpd WITH (NOLOCK)
+            ON mpd.[MasterPlanChildId] = s.[MasterPlanDetailId]
+        WHERE s.[MasterPlanDetailId] = @TaskId
+          AND (@EffectiveFactory IS NULL OR LOWER(mpd.[factory_type]) = LOWER(@EffectiveFactory))
+        GROUP BY s.[style_no], s.[color], s.[size]
+        ORDER BY s.[style_no], s.[color], s.[size];
+    END
+
+    --=================== Knitter line summary (KH) ===================
+    -- ONE aggregated row for a single line (@TaskId = MasterPlanChildId): buyer, issued /
+    -- returned totals, order qty, knit-machine count, planned dates and the r_id list for the
+    -- chart. LEFT JOIN to the knitter records so a line with no knitting yet still returns
+    -- buyer/qty/machines (Issue/Return = 0, RId = NULL). Scope-guarded to the caller's factory.
+    IF (@Flag = 'KH')
+    BEGIN
+        SELECT
+            mpd.[MasterPlanChildId]   AS [TaskId],
+            mp.[OrderNo]              AS [OrderNo],
+            CAST(mpd.[Qty] AS INT)    AS [Qty],
+            CAST(ISNULL(SUM(tkrd.[pics]), 0) AS INT)               AS [Issue],
+            CAST(ISNULL(SUM(ISNULL(tkrd.[ret_pic], 0)), 0) AS INT) AS [ReturnQty],
+            MIN(tkrd.[knd])                                        AS [StartDate],
+            COALESCE(MAX(tkrd.[will_ret_daate]), MAX(tkrd.[knd]))  AS [EndDate],
+            CASE WHEN mpd.[Machine] <> '1'
+                 THEN (SELECT COUNT(*) FROM [dbo].[MasterPlanDetail] m WITH (NOLOCK)
+                       WHERE m.[MaterID] = mpd.[MaterID]
+                         AND m.[factory_type] = 'knit'
+                         AND m.[Machine] <> '1')
+                 ELSE NULL END        AS [MachineCount],
+            MAX(c.[code])             AS [CustomerCode],
+            MAX(c.[customer_name])    AS [CustomerName],
+            STRING_AGG(CONVERT(NVARCHAR(MAX), tkrd.[r_id]), ',') AS [RId]
+        FROM [dbo].[MasterPlan] mp WITH (NOLOCK)
+        INNER JOIN [dbo].[MasterPlanDetail] mpd WITH (NOLOCK)
+            ON mpd.[MaterID] = mp.[MaterID]
+        INNER JOIN [dbo].[MasterPlanDetailSize] mpds WITH (NOLOCK)
+            ON mpds.[MasterPlanDetailId] = mpd.[MasterPlanChildId]
+        LEFT JOIN [dbo].[tbl_knitter_record_data] tkrd WITH (NOLOCK)
+            ON tkrd.[plan_id] = mpds.[id]
+        LEFT JOIN [dbo].[tbl_Order] o WITH (NOLOCK)
+            ON o.[order_id] = mpds.[order_id]
+        LEFT JOIN [dbo].[tblcustomer] c WITH (NOLOCK)
+            ON c.[customer_id] = o.[order_buyer]
+        WHERE mpd.[MasterPlanChildId] = @TaskId
+          AND (@EffectiveFactory IS NULL OR LOWER(mpd.[factory_type]) = LOWER(@EffectiveFactory))
+        GROUP BY mpd.[MasterPlanChildId], mp.[OrderNo], mpd.[Qty], mpd.[MaterID], mpd.[Machine];
     END
 
     --========================== Current gauge =========================

@@ -199,34 +199,33 @@ public class BomController(
         return Ok(new { ok = true });
     }
 
-    /// <summary>Flag that the vendor dropped a color; raises a Yarn-issue exception task.</summary>
+    /// <summary>
+    /// Flag one or more dropped colors on a vendor sub-order.
+    /// NOTE: persistence is intentionally DEFERRED for now — this validates the request and
+    /// returns success WITHOUT writing to the database or raising a yarn-issue task. When the
+    /// drop-color data model is ready, wire the write back in here (via _bomService /
+    /// _poTaskService.RaiseExceptionAsync, Stage 10) using the selected colors + note.
+    /// </summary>
     [HttpPost("vendor-orders/{vyoId:int}/drop-color")]
     public async Task<IActionResult> DropColor(int vyoId, [FromBody] DropColorRequest request)
     {
         if (!await CanEditAsync()) return Forbid();
-        if (string.IsNullOrWhiteSpace(request?.Color))
-            return BadRequest("Color is required.");
 
-        var export = await _bomService.GetYarnVendorOrderAsync(vyoId);
-        if (export.Header == null) return NotFound("Vendor order not found.");
+        var colors = (request?.Colors ?? new List<string>())
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Select(c => c.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
-        var firstOrder = export.Lines.Select(l => l.OrderNo).FirstOrDefault(o => !string.IsNullOrWhiteSpace(o));
-        try
+        if (colors.Count == 0)
+            return BadRequest(new DropColorResult { Succeeded = false, Message = "Select at least one color to drop." });
+
+        // Deferred: no DB write / no task creation yet — just acknowledge success.
+        return Ok(new DropColorResult
         {
-            await _poTaskService.RaiseExceptionAsync(new RaiseExceptionRequest
-            {
-                OrderNo = firstOrder,
-                Stage = 10,   // Yarn issue
-                Title = $"Vendor dropped color {request.Color} — {export.Header.Vendor} ({export.Header.VyoNo})",
-                Detail = $"Vendor {export.Header.Vendor} dropped color '{request.Color}' on {export.Header.VyoNo}." +
-                         (string.IsNullOrWhiteSpace(request.Note) ? "" : $" Note: {request.Note}")
-            }, GetCurrentUserId());
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Drop-color exception hook failed.");
-        }
-        return Ok(new { ok = true });
+            Succeeded = true,
+            Message = $"{colors.Count} color(s) flagged as dropped: {string.Join(", ", colors)}."
+        });
     }
 
     // Resolve task assignees: the configured yarn role's members PLUS the acting user.

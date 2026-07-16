@@ -26,6 +26,14 @@ namespace NkplmErp.API.Controllers.TaskManagement
             return perms.CanView("TaskManagement");
         }
 
+        // The return-detail endpoints (KH/KD/KS) are consumed by BOTH the Task board and the
+        // PO Tasks board, so either module's View permission is sufficient.
+        private async Task<bool> CanViewTaskOrPoAsync(string userId)
+        {
+            var perms = await _roleService.GetUserPermissionsAsync(userId);
+            return perms.CanView("TaskManagement") || perms.CanView("PoTask");
+        }
+
         // GET api/v1/TaskManagement?flag=S|P|C|O&startDate=2026-06-16&endDate=2026-06-16&orderNo=Nksh26&factoryType=knit
         // flag: S Scheduled, P In Progress, C Completed, O Overdue (Overdue overlaps the date range like S/P/C, +1-day grace at the start).
         // factoryType: admin's chosen factory. ZERO TRUST — the SP reads the caller's
@@ -106,6 +114,48 @@ namespace NkplmErp.API.Controllers.TaskManagement
 
             var result = await _taskManagementService.SyncKnitterRecordsAsync();
             return Ok(result);
+        }
+
+        // GET api/v1/TaskManagement/knitter-summary?taskId=94
+        // Aggregated buyer/issued/returned/machines/qty/dates/RId for one line (KH). taskId is
+        // the card's MasterPlanChildId; the SP scope-guards it to the caller's factory.
+        [HttpGet("knitter-summary")]
+        public async Task<IActionResult> GetKnitterSummary([FromQuery] int taskId)
+        {
+            var userId = GetCurrentUserId();
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            if (!await CanViewTaskOrPoAsync(userId)) return Forbid();
+
+            var data = await _taskManagementService.GetKnitterSummaryAsync(taskId, userId);
+            return Ok(data);
+        }
+
+        // GET api/v1/TaskManagement/knitter-returns?rId=177342
+        // Daily returned-piece counts for one line's chart (KD). rId comes from the summary;
+        // the SP scope-guards it to the caller's factory, so a tampered id returns nothing.
+        [HttpGet("knitter-returns")]
+        public async Task<IActionResult> GetKnitterReturns([FromQuery] string? rId = null)
+        {
+            var userId = GetCurrentUserId();
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            if (!await CanViewTaskOrPoAsync(userId)) return Forbid();
+
+            var data = await _taskManagementService.GetKnitterReturnSeriesAsync(rId, userId);
+            return Ok(data);
+        }
+
+        // GET api/v1/TaskManagement/order-styles?taskId=94
+        // Distinct (style, colour, size) rows for one line (KS). taskId is the card's
+        // MasterPlanChildId; the SP scope-guards it to the caller's factory.
+        [HttpGet("order-styles")]
+        public async Task<IActionResult> GetOrderStyles([FromQuery] int taskId)
+        {
+            var userId = GetCurrentUserId();
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            if (!await CanViewTaskOrPoAsync(userId)) return Forbid();
+
+            var data = await _taskManagementService.GetOrderStylesAsync(taskId, userId);
+            return Ok(data);
         }
 
         // Current user id from the JWT (mirrors RoleManagementController). The "sub"
