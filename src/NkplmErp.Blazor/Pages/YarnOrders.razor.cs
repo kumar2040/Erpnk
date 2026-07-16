@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using NkplmErp.Blazor.Services.Bom;
 using NkplmErp.Blazor.Services.RoleManagement;
+using NkplmErp.Blazor.Services.Toast;
 using NkplmErp.Shared.DTOs;
 
 namespace NkplmErp.Blazor.Pages;
@@ -11,6 +12,7 @@ public partial class YarnOrders
     [Inject] private BomApiClient BomApi { get; set; } = default!;
     [Inject] private PermissionService PermSvc { get; set; } = default!;
     [Inject] private IJSRuntime JS { get; set; } = default!;
+    [Inject] private ToastService Toast { get; set; } = default!;
 
     private bool AccessDenied = false;
 
@@ -118,16 +120,88 @@ public partial class YarnOrders
         }
     }
 
-    private async Task DropColorAsync(YarnVendorOrderDto v)
+    // ---- Drop-color modal (multi-select). Server persistence is deferred for now: the
+    // endpoint just returns Succeeded=true, so this only drives the UI + a status message. ----
+    private bool showDropModal;
+    private bool showDropConfirm;
+    private YarnVendorOrderDto? dropVendor;
+    private List<DropColorItem> dropItems = new();
+    private readonly HashSet<string> dropSelected = new(StringComparer.OrdinalIgnoreCase);
+    private string dropNote = "";
+    private bool dropping;
+
+    private sealed record DropColorItem(string Color, string Yarn, string? Ply, decimal Qty);
+
+    // Open the modal for a placed vendor order, listing its distinct colors — sourced from the
+    // parent order's detail lines for this vendor (the same lines already shown under the card).
+    private void OpenDropModal(YarnVendorOrderDto v)
     {
-        var color = await JS.InvokeAsync<string>("prompt", $"Color the vendor dropped on {v.VyoNo}:");
-        if (string.IsNullOrWhiteSpace(color)) return;
-        if (await BomApi.DropColorAsync(v.VyoId, color.Trim()))
+        dropVendor = v;
+        dropNote = "";
+        dropSelected.Clear();
+        dropItems = Detail
+            .Where(d => !string.IsNullOrWhiteSpace(d.Color)
+                     && string.Equals(d.Vendor?.Trim(), v.Vendor?.Trim(), StringComparison.OrdinalIgnoreCase))
+            .GroupBy(d => d.Color.Trim())
+            .Select(g => new DropColorItem(g.Key, g.First().Display, g.First().Ply, g.Sum(x => x.ImportKg)))
+            .OrderBy(i => i.Color)
+            .ToList();
+        StatusMessage = "";
+        showDropModal = true;
+    }
+
+    private void ToggleDrop(string color, bool on)
+    {
+        if (on) dropSelected.Add(color);
+        else dropSelected.Remove(color);
+    }
+
+    private void CloseDropModal() => showDropModal = false;
+
+    // "Drop selected" → open the shared confirm step (nothing is sent until the user confirms).
+    private void OpenDropConfirm()
+    {
+        if (dropSelected.Count == 0) return;
+        showDropConfirm = true;
+    }
+
+    // ConfirmModal result: true = Yes (proceed with the drop), false = Cancel (just close it).
+    private async Task OnDropConfirmResult(bool confirmed)
+    {
+        if (confirmed)
+            await ConfirmDropAsync();
+        else
+            showDropConfirm = false;
+    }
+
+    private async Task ConfirmDropAsync()
+    {
+        if (dropVendor is null || dropSelected.Count == 0) return;
+
+        dropping = true;
+        StateHasChanged();
+
+        var result = await BomApi.DropColorsAsync(dropVendor.VyoId, new DropColorRequest
         {
-            StatusMessage = $"Dropped color '{color.Trim()}' flagged on {v.VyoNo}. Yarn-issue task raised.";
-            IsError = false;
-            StateHasChanged();
+            Colors = dropSelected.ToList(),
+            Note = string.IsNullOrWhiteSpace(dropNote) ? null : dropNote.Trim()
+        });
+
+        dropping = false;
+
+        if (result is { Succeeded: true })
+        {
+            // Success feedback is a toast now (the old inline "Flagged…" banner was removed).
+            Toast.ShowSuccess($"{dropSelected.Count} color(s) dropped on {dropVendor.VyoNo}: {string.Join(", ", dropSelected)}.");
+            showDropConfirm = false;
+            showDropModal = false;
         }
+        else
+        {
+            Toast.ShowError(!string.IsNullOrWhiteSpace(result?.Message) ? result!.Message : "Could not flag the dropped colors.");
+            showDropConfirm = false;   // close the confirm, keep the picker open to retry
+        }
+        StateHasChanged();
     }
 
     private async Task ReloadVendorOrdersAsync()

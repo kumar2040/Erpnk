@@ -123,7 +123,7 @@ else
                                                        @onchange="@(e => ArrivalEdit[v.VyoId] = e.Value?.ToString() ?? "")" />
                                                 <button class="vlife-save" @onclick="@(() => SaveArrivalAsync(v))">Save</button>
 
-                                                <button class="vlife-drop" title="Vendor dropped a color" @onclick="@(() => DropColorAsync(v))">⚠ Drop color</button>
+                                                <button class="vlife-drop" title="Vendor dropped a color" @onclick="@(() => OpenDropModal(v))">⚠ Drop color</button>
                                             </div>
                                         </div>
                                     }
@@ -183,5 +183,80 @@ else
             </div>
 
         </div>
+
+        @* ---- Drop-color modal (multi-select; persistence deferred server-side) ---- *@
+        @if (showDropModal && dropVendor is not null)
+        {
+            <div class="dc-overlay" @onclick="CloseDropModal">
+                <div class="dc-card" @onclick:stopPropagation="true">
+                    <div class="dc-head">
+                        <div class="dc-head-l"><span class="dc-ic">⚠</span><span>Drop a color</span></div>
+                        <button class="dc-x" @onclick="CloseDropModal" aria-label="Close">✕</button>
+                    </div>
+                    <div class="dc-body">
+                        <div class="dc-ctx">Vendor order <b>@dropVendor.VyoNo</b>@(string.IsNullOrWhiteSpace(dropVendor.Vendor) ? "" : $" · {dropVendor.Vendor}")</div>
+                        <div class="dc-help">Select the color(s) the vendor can’t supply.</div>
+
+                        @if (dropItems.Count == 0)
+                        {
+                            <div class="dc-empty">No color lines found for this vendor order.</div>
+                        }
+                        else
+                        {
+                            <div class="dc-sec">Ordered colors <span class="dc-cnt">@dropItems.Count</span></div>
+                            <div class="dc-list">
+                                @foreach (var item in dropItems)
+                                {
+                                    var on = dropSelected.Contains(item.Color);
+                                    <label class="dc-row @(on ? "sel" : "")">
+                                        <input type="checkbox" class="dc-cb" checked="@on"
+                                               @onchange="@(e => ToggleDrop(item.Color, (bool)(e.Value ?? false)))" />
+                                        <div class="dc-cinfo">
+                                            <div class="dc-cname">@item.Color</div>
+                                            <div class="dc-cmeta">@item.Yarn@(string.IsNullOrWhiteSpace(item.Ply) ? "" : $" · {item.Ply} ply")</div>
+                                        </div>
+                                        <span class="dc-qty">@item.Qty.ToString("N2") kg</span>
+                                        @if (on)
+                                        {
+                                            <span class="dc-chip">TO DROP</span>
+                                        }
+                                    </label>
+                                }
+                            </div>
+                        }
+
+                        <label class="dc-note-l">Note <span>(optional)</span></label>
+                        <textarea class="dc-note" @bind="dropNote" placeholder="e.g. vendor confirmed this shade is out of stock"></textarea>
+                    </div>
+                    <div class="dc-foot">
+                        <span class="dc-status-txt">@(dropSelected.Count == 0 ? "No color selected" : $"{dropSelected.Count} selected")</span>
+                        <button class="dc-btn ghost" @onclick="CloseDropModal">Cancel</button>
+                        <button class="dc-btn danger" disabled="@(dropSelected.Count == 0 || dropping)" @onclick="OpenDropConfirm">
+                            @(dropping ? "Dropping…" : "⚠ Drop selected")
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* ---- Reusable confirm step before actually dropping (Shared/Components/ConfirmModal) ---- *@
+        <ConfirmModal IsVisible="showDropConfirm"
+                      Title="Drop these colors?"
+                      Icon="⚠"
+                      Danger="true"
+                      ConfirmText="@($"⚠ Yes, drop {dropSelected.Count} color(s)")"
+                      BusyText="Dropping…"
+                      Busy="dropping"
+                      OnResult="OnDropConfirmResult">
+            <div class="dcf-sub">On vendor order <b>@dropVendor?.VyoNo</b>@(string.IsNullOrWhiteSpace(dropVendor?.Vendor) ? "" : $" · {dropVendor!.Vendor}")</div>
+            <div class="dcf-lbl">@dropSelected.Count color(s) selected</div>
+            <div class="dcf-pills">
+                @foreach (var c in dropSelected)
+                {
+                    <span class="dcf-pill">@c</span>
+                }
+            </div>
+            <div class="dcf-note">This flags the color(s) as dropped by the vendor. Nothing is deleted.</div>
+        </ConfirmModal>
     </div>
 }

@@ -1,0 +1,79 @@
+@namespace NkplmErp.Blazor.Shared.Components
+
+@* Reusable confirmation dialog.
+   - Header text  = Title
+   - Body         = ChildContent (any HTML the caller passes)
+   - Confirm label = ConfirmText (dynamic); Cancel is fixed
+   Emits OnResult(bool): true when confirmed, false when cancelled / dismissed.
+   The caller controls IsVisible and reacts to the bool result. *@
+@if (IsVisible)
+{
+    <div class="cm-overlay" @onclick="OnBackdrop">
+        <div class="cm-card" @onclick:stopPropagation="true">
+            <div class="cm-head">
+                <div class="cm-head-l">
+                    @if (!string.IsNullOrEmpty(Icon))
+                    {
+                        <span class="cm-ic @(Danger ? "danger" : "")">@Icon</span>
+                    }
+                    <span class="cm-title">@Title</span>
+                </div>
+                <button type="button" class="cm-x" @onclick="CancelAsync" aria-label="Close">✕</button>
+            </div>
+
+            @if (ChildContent is not null)
+            {
+                <div class="cm-body">@ChildContent</div>
+            }
+
+            <div class="cm-foot">
+                <button type="button" class="cm-btn ghost" disabled="@Busy" @onclick="CancelAsync">@CancelText</button>
+                <button type="button" class="cm-btn @(Danger ? "danger" : "primary")" disabled="@Busy" @onclick="ConfirmAsync">
+                    @(Busy ? BusyText : ConfirmText)
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public string Title { get; set; } = "Confirm";
+
+    /// <summary>Optional leading glyph/emoji in the header (e.g. "⚠").</summary>
+    [Parameter] public string? Icon { get; set; }
+
+    /// <summary>Dynamic confirm-button label.</summary>
+    [Parameter] public string ConfirmText { get; set; } = "Yes";
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+
+    /// <summary>Confirm-button label shown while Busy is true.</summary>
+    [Parameter] public string BusyText { get; set; } = "Working…";
+
+    /// <summary>Style the confirm button as destructive (red) instead of primary (navy).</summary>
+    [Parameter] public bool Danger { get; set; }
+
+    /// <summary>Disable both buttons (e.g. while the confirmed action runs).</summary>
+    [Parameter] public bool Busy { get; set; }
+
+    [Parameter] public bool CloseOnBackdrop { get; set; } = true;
+
+    /// <summary>Body content — any HTML the caller wants inside the dialog.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Fired with true when confirmed, false when cancelled / dismissed.</summary>
+    [Parameter] public EventCallback<bool> OnResult { get; set; }
+
+    private Task ConfirmAsync() => OnResult.InvokeAsync(true);
+
+    private async Task CancelAsync()
+    {
+        if (Busy) return;
+        await OnResult.InvokeAsync(false);
+    }
+
+    private async Task OnBackdrop()
+    {
+        if (CloseOnBackdrop) await CancelAsync();
+    }
+}

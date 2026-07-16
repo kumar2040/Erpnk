@@ -91,3 +91,49 @@
 .vh-badge.done{color:#047857;background:rgba(5,150,105,.13)}
 .vh-badge.muted{color:#94a3b8;background:#eef1f6}
 .vgroup .yo-table tbody td{font-size:.75rem}
+
+/* ---- Drop-color modal (multi-select) ---- */
+.dc-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.45);padding:20px}
+.dc-card{width:100%;max-width:520px;max-height:88vh;display:flex;flex-direction:column;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 25px 55px -12px rgba(15,23,42,.45),0 0 0 1px rgba(0,0,0,.04)}
+.dc-head{display:flex;align-items:center;justify-content:space-between;background:var(--navy);color:#fff;padding:12px 16px;flex:none}
+.dc-head-l{display:flex;align-items:center;gap:9px;font-size:.95rem;font-weight:800}
+.dc-ic{width:22px;height:22px;border-radius:6px;background:rgba(220,38,38,.24);display:grid;place-items:center;font-size:.72rem}
+.dc-x{background:none;border:0;color:#fff;font-size:.95rem;cursor:pointer;padding:3px 8px;border-radius:6px;opacity:.85}
+.dc-x:hover{background:rgba(255,255,255,.16)}
+.dc-body{padding:15px 18px 6px;overflow-y:auto}
+.dc-ctx{font-size:.8rem;color:var(--navy)}
+.dc-ctx b{font-weight:800}
+.dc-help{font-size:.72rem;color:#64748b;line-height:1.5;margin:6px 0 13px}
+.dc-empty{font-size:.74rem;color:#9aa7b8;text-align:center;padding:16px;border:1px dashed var(--line);border-radius:9px}
+.dc-sec{font-size:.63rem;font-weight:800;letter-spacing:.07em;color:#94a3b8;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.dc-cnt{background:#eef1f6;color:#475569;border-radius:20px;padding:1px 8px;font-size:.6rem}
+.dc-list{display:flex;flex-direction:column;gap:7px}
+.dc-row{display:grid;grid-template-columns:18px 1fr auto;align-items:center;gap:11px;padding:9px 11px;border:1.4px solid var(--line);border-radius:10px;cursor:pointer;background:#fff;position:relative;transition:border-color .12s,background .12s,box-shadow .12s}
+.dc-row:hover{border-color:#c9d2e0;background:#fafbfd}
+.dc-cb{width:16px;height:16px;accent-color:var(--import);cursor:pointer;margin:0}
+.dc-cinfo{min-width:0}
+.dc-cname{font-size:.82rem;font-weight:800;color:#0f172a;line-height:1.15;word-break:break-word}
+.dc-cmeta{font-size:.68rem;color:#64748b;margin-top:2px}
+.dc-qty{font-size:.76rem;font-weight:800;color:#0f172a;white-space:nowrap}
+.dc-chip{position:absolute;top:-8px;right:12px;background:var(--import);color:#fff;font-size:.55rem;font-weight:800;letter-spacing:.05em;padding:2px 7px;border-radius:20px}
+.dc-row.sel{border-color:#f0a3a3;background:#fef4f4;box-shadow:0 2px 10px rgba(220,38,38,.12)}
+.dc-note-l{display:block;font-size:.68rem;font-weight:700;color:#475569;margin:14px 0 5px}
+.dc-note-l span{color:#94a3b8;font-weight:500}
+.dc-note{width:100%;box-sizing:border-box;min-height:54px;resize:vertical;border:1.4px solid #d6dbe4;border-radius:9px;padding:8px 10px;font-size:.76rem;color:var(--navy);font-family:inherit}
+.dc-note:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 2px rgba(42,179,177,.18)}
+.dc-foot{display:flex;align-items:center;justify-content:flex-end;gap:9px;padding:13px 18px;border-top:1px solid var(--line);flex:none}
+.dc-status-txt{font-size:.68rem;color:#94a3b8;margin-right:auto}
+.dc-btn{border:0;border-radius:9px;padding:8px 16px;font-size:.74rem;font-weight:800;cursor:pointer;font-family:inherit}
+.dc-btn.ghost{background:#fff;color:#475569;border:1.4px solid #d6dbe4}
+.dc-btn.ghost:hover{background:#f8fafc}
+.dc-btn.danger{background:var(--import);color:#fff}
+.dc-btn.danger:hover{filter:brightness(1.06)}
+.dc-btn.danger:disabled{opacity:.45;cursor:not-allowed;filter:none}
+
+/* drop-color confirm body (passed as ChildContent into the shared ConfirmModal) */
+.dcf-sub{font-size:.78rem;color:#64748b;margin-bottom:10px}
+.dcf-sub b{color:#1a3353;font-weight:700}
+.dcf-lbl{font-size:.62rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8;margin-bottom:8px}
+.dcf-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.dcf-pill{font-size:.72rem;font-weight:700;color:#b91c1c;background:#fef2f2;border:1px solid #f5c9c9;border-radius:20px;padding:3px 10px}
+.dcf-note{font-size:.72rem;color:#64748b;line-height:1.5;background:#f8fafc;border:1px solid #eef2f7;border-radius:9px;padding:9px 11px}
