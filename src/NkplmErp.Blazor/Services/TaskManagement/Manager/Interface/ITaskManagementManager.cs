@@ -25,5 +25,19 @@ namespace NkplmErp.Blazor.Services.TaskManagement.Manager.Interface
 
         // Pull new knitter rows from MySQL into SQL Server (incremental, no duplicates).
         Task<SyncResultModel> SyncAsync();
+
+        // ---- Order return-detail modal (opened from a PO card's linked line) ----
+
+        // Aggregated summary for one line (buyer / issued / returned / qty / machines /
+        // dates / RId), keyed by MasterPlanChildId. Null when the line isn't in scope.
+        Task<KnitterSummaryResponseModel?> GetKnitterSummaryAsync(int taskId);
+
+        // Daily return series for the line's return-pace chart, keyed by the summary's RId
+        // (null/blank returns an empty list without a call).
+        Task<List<KnitterReturnPointResponseModel>> GetKnitterReturnSeriesAsync(string? rId);
+
+        // Distinct (style, colour, size) rows for one line, keyed by MasterPlanChildId
+        // (<= 0 returns empty without a call).
+        Task<List<OrderStyleResponseModel>> GetOrderStylesAsync(int taskId);
     }
 }

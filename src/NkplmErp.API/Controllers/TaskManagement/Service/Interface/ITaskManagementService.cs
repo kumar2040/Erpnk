@@ -35,5 +35,21 @@ namespace NkplmErp.API.Controllers.TaskManagement.Service.Interface
         // Incrementally pull new knitter rows from MySQL (linked server) into SQL Server
         // via sp_SyncKnitterRecords. Watermark-based, so already-synced rows are skipped.
         Task<SyncResultModel> SyncKnitterRecordsAsync();
+
+        // ---- Order return-detail modal (opened from a PO card's linked line) ----
+
+        // Aggregated summary for one line (flag 'KH', @TaskId = MasterPlanChildId): buyer,
+        // issued/returned totals, order qty, machine count, planned dates and the r_id list
+        // for the chart. Scope-guarded to the caller's factory. Null if the id isn't a
+        // visible line in scope. taskId <= 0 -> null (no call).
+        Task<KnitterSummaryResponseModel?> GetKnitterSummaryAsync(int taskId, string userId);
+
+        // Daily returned-piece counts for one line's return-pace chart (flag 'KD'), keyed by
+        // the line's r_id list (from the summary). Scope-guarded. Blank rId -> empty (no call).
+        Task<IEnumerable<KnitterReturnPointResponseModel>> GetKnitterReturnSeriesAsync(string? rId, string userId);
+
+        // Distinct (style, colour, size) rows for one line (flag 'KS'), keyed by MasterPlanChildId.
+        // Scope-guarded. taskId <= 0 -> empty (no call).
+        Task<IEnumerable<OrderStyleResponseModel>> GetOrderStylesAsync(int taskId, string userId);
     }
 }

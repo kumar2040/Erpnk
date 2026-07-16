@@ -53,6 +53,10 @@
 .tcard:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(16,24,40,.08)}
 .col-sched .tcard{--c:var(--sched)} .col-prog .tcard{--c:var(--prog)} .col-hold .tcard{--c:var(--hold)} .col-done .tcard{--c:var(--done)} .col-due .tcard{--c:var(--due)}
 .tcard-title{font-size:.82rem;font-weight:800;color:var(--navy);margin-bottom:4px;line-height:1.25}
+/* Clickable PO name -> opens the Order Details modal. inline-block keeps the hit
+   area to the text so clicking elsewhere on the card still opens the task drawer. */
+.tcard-title-link{display:inline-block;cursor:pointer;transition:color .12s}
+.tcard-title-link:hover{color:var(--teal);text-decoration:underline}
 .tcard-meta{font-size:.68rem;color:var(--muted);font-weight:600;display:flex;flex-wrap:wrap;gap:4px;margin-bottom:9px}
 .tcard-foot{display:flex;align-items:center;justify-content:space-between}
 .rollup{font-size:.68rem;font-weight:800;color:#0f766e;background:rgba(42,179,177,.14);padding:1px 8px;border-radius:20px}
@@ -82,6 +86,53 @@
 .modal-head .muted{color:var(--muted);font-weight:500;font-size:13px}
 .modal-x{width:28px;height:28px;border:none;border-radius:7px;background:#fee2e2;color:#b91c1c;cursor:pointer;font-weight:800}
 .modal-body{padding:18px}
+
+/* ---- Order return-detail modal (PO name click): summary + chart + styles ---- */
+.ov-loading{padding:40px;text-align:center;color:var(--muted);font-size:13px}
+.ov-empty-state{padding:40px 24px;text-align:center;color:var(--muted)}
+.ov-empty-state i{font-size:26px;color:#cbd5e1;margin-bottom:10px}
+.ov-empty-title{font-size:14px;font-weight:800;color:var(--navy);margin-bottom:4px}
+.ov-empty-sub{font-size:12px;color:var(--muted);max-width:360px;margin:0 auto;line-height:1.5}
+
+.om-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:14px;align-items:stretch}
+.om-info,.om-chart{background:#fff;border:1px solid #eef2f7;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,.10)}
+.om-info{display:flex;flex-direction:column}
+.om-eyebrow{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8}
+.om-customer{font-size:14px;font-weight:800;color:#0f172a;line-height:1.2;margin-top:2px}
+.om-meta{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:#475569;margin-top:8px;flex-wrap:wrap}
+.om-meta .om-dot{color:#cbd5e1}
+.om-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.om-stat{background:#f8fafc;border:1px solid #eef2f7;padding:9px 11px;display:flex;flex-direction:column;justify-content:center}
+.om-stat-label{font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#94a3b8}
+.om-stat-value{font-size:16px;font-weight:800;color:#0f172a;margin-top:2px;line-height:1.1}
+.om-stat-sub{font-size:12px;font-weight:700;color:#94a3b8}
+.om-stat-blue{background:#eff6ff;border-color:#dbeafe}
+.om-stat-blue .om-stat-value{color:#185FA5}
+.om-stat-teal{background:#ecfdf5;border-color:#d1fae5}
+.om-stat-teal .om-stat-value{color:#0f766e}
+.om-bar{margin-top:7px;height:5px;border-radius:999px;background:#c9f0e2;overflow:hidden}
+.om-bar>span{display:block;height:100%;background:#0f766e;border-radius:999px}
+.om-chart{display:flex;flex-direction:column;min-width:0}
+.om-chart-legend{display:flex;gap:16px;justify-content:flex-end;font-size:12px;color:#64748b;margin-bottom:4px}
+.om-chart-legend .ocl-item{display:flex;align-items:center;gap:6px}
+.om-chart-legend .ocl-swatch{width:16px;height:3px;border-radius:2px;display:inline-block}
+.om-chart-legend .ocl-dash{height:0;border-top:2px dashed #5F5E5A}
+.om-chart-canvas{width:100%;height:210px}
+
+.om-items{margin-top:14px;background:#fff;border:1px solid #eef2f7;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,.10);max-height:280px;display:flex;flex-direction:column}
+.om-items-title{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8;margin-bottom:8px}
+.om-items-scroll{flex:1;min-height:0;overflow-y:auto}
+.om-items-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.om-items-table th{position:sticky;top:0;background:#fff;text-align:left;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#94a3b8;padding:8px 10px;border-bottom:1px solid #e2e8f0;box-shadow:inset 0 -1px 0 #e2e8f0}
+.om-items-table td{padding:7px 10px;border-bottom:1px solid #f1f5f9;color:#334155}
+.om-items-table tbody tr:last-child td{border-bottom:0}
+.om-items-table tbody tr:hover td{background:#f8fafc}
+.om-items-table th:first-child,.om-items-table td:first-child{width:44px;color:#94a3b8}
+.om-items-table .om-style{font-weight:700;color:#0f172a}
+.om-items-table th:last-child,.om-items-table td.om-qty{text-align:right;font-weight:700;color:#0f172a}
+.om-empty-cell{text-align:center;color:#94a3b8;padding:18px}
+
+@media (max-width:760px){.om-grid{grid-template-columns:1fr}.om-chart-canvas{height:260px}}
 
 .fld{margin-bottom:12px;display:flex;flex-direction:column}
 .fld label{font-size:.72rem;color:var(--muted);font-weight:700;margin-bottom:4px}

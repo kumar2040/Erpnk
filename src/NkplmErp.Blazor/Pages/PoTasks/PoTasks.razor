@@ -69,7 +69,20 @@ else
                     @foreach (var card in Cards(col.Flag))
                     {
                         <div class="tcard" @onclick="() => OpenDetail(card.TaskId)">
-                            <div class="tcard-title">@(string.IsNullOrWhiteSpace(card.Title) ? "(untitled)" : card.Title)</div>
+                            @if (col.Flag == "P" && !string.IsNullOrWhiteSpace(card.OrderNo))
+                            {
+                                @* In Progress column ONLY: the name links to the return-detail modal
+                                   (issued/returned/return-pace only make sense once knitting is under
+                                   way). stopPropagation so the card's own status drawer doesn't open. *@
+                                <div class="tcard-title tcard-title-link" title="View order @card.OrderNo"
+                                     @onclick="() => OpenOrderView(card)" @onclick:stopPropagation="true">
+                                    @(string.IsNullOrWhiteSpace(card.Title) ? "(untitled)" : card.Title)
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="tcard-title">@(string.IsNullOrWhiteSpace(card.Title) ? "(untitled)" : card.Title)</div>
+                            }
                             <div class="tcard-meta">
                                 <span>@card.StageName</span>
                                 @if (!string.IsNullOrWhiteSpace(card.OrderNo)) { <span>· PO @card.OrderNo</span> }
@@ -340,4 +353,121 @@ else
         </div>
     </div>
 }
+
+@* -------------------------------------------------------------- Order modal *@
+@* Opened by clicking a card's PO name (separate from the task/status drawer above).
+   The full return-detail panel for the task's linked knitter line: buyer + Issued/
+   Returned/Order Qty/Machines, the Actual-vs-Expected return-pace chart, and the
+   Styles & Colors table. Data: spTaskManagement KH (summary) + KD (chart) + KS (styles). *@
+<PanelModal IsVisible="showOrderView"
+            Title="@($"Order {orderViewNo}")"
+            Icon="fa-solid fa-clipboard-list"
+            MaxWidth="860px"
+            OnClose="CloseOrderView">
+    @if (orderViewLoading)
+    {
+        <div class="ov-loading">Loading order…</div>
+    }
+    else if (!orderHasLine || orderSummary is null)
+    {
+        <div class="ov-empty-state">
+            <i class="fa-solid fa-diagram-project"></i>
+            <div class="ov-empty-title">No production line linked</div>
+            <div class="ov-empty-sub">This task isn’t tied to a knitting line, so there’s no buyer / issue / return detail to show.</div>
+        </div>
+    }
+    else
+    {
+        <div class="om-grid">
+            @* Left: summary *@
+            <div class="om-info">
+                @if (!string.IsNullOrWhiteSpace(orderSummary.CustomerName) || !string.IsNullOrWhiteSpace(orderSummary.CustomerCode))
+                {
+                    <div class="om-eyebrow">Buyer</div>
+                    <div class="om-customer">@(!string.IsNullOrWhiteSpace(orderSummary.CustomerName) ? orderSummary.CustomerName : orderSummary.CustomerCode)</div>
+                }
+                <div class="om-meta">
+                    <span>PO @orderViewNo</span>
+                    @if (orderSummary.StartDate is not null)
+                    {
+                        <span class="om-dot">•</span>
+                        <span>@orderSummary.StartDate.Value.ToString("dd MMM")@(orderSummary.EndDate is not null ? $" – {orderSummary.EndDate.Value:dd MMM, yyyy}" : "")</span>
+                    }
+                </div>
+
+                <div class="om-stats">
+                    <div class="om-stat om-stat-blue">
+                        <div class="om-stat-label">Issued</div>
+                        <div class="om-stat-value">@(orderSummary.Issue ?? 0)</div>
+                    </div>
+                    <div class="om-stat om-stat-teal">
+                        <div class="om-stat-label">Returned</div>
+                        <div class="om-stat-value">@(orderSummary.ReturnQty ?? 0)<span class="om-stat-sub"> / @(orderSummary.Issue ?? 0)</span></div>
+                        <div class="om-bar"><span style="width:@(OrderReturnPct)%"></span></div>
+                    </div>
+                    <div class="om-stat">
+                        <div class="om-stat-label">Order Qty</div>
+                        <div class="om-stat-value">@(orderSummary.Qty?.ToString() ?? "—")</div>
+                    </div>
+                    <div class="om-stat">
+                        <div class="om-stat-label">Machines</div>
+                        <div class="om-stat-value">@(orderSummary.MachineCount?.ToString() ?? "—")</div>
+                    </div>
+                </div>
+            </div>
+
+            @* Right: return-pace chart *@
+            <div class="om-chart">
+                <div class="om-chart-legend">
+                    <span class="ocl-item"><span class="ocl-swatch" style="background:#185FA5"></span>Actual</span>
+                    <span class="ocl-item"><span class="ocl-swatch ocl-dash"></span>Expected</span>
+                </div>
+                <div class="om-chart-canvas">
+                    @* Always render the pace chart. With zero issued / no returns the
+                       component still draws its axes and a flat baseline — an empty
+                       skeleton — instead of a blank "nothing yet" panel. chartStart/
+                       chartEnd fall back to the task's planned window (then today) when
+                       the line itself carries no dates, so the X axis is always valid. *@
+                    <ReturnPaceChart Start="chartStart"
+                                     End="chartEnd"
+                                     Issue="@(orderSummary.Issue ?? 0)"
+                                     Points="returnPoints"
+                                     Width="470" Height="210"
+                                     PadLeft="44" PadRight="18" PadTop="14" PadBottom="38" />
+                </div>
+            </div>
+        </div>
+
+        <div class="om-items">
+            <div class="om-items-title">Styles &amp; Colors</div>
+            <div class="om-items-scroll">
+                <table class="om-items-table">
+                    <thead>
+                        <tr><th>SN</th><th>Styles</th><th>Colors</th><th>Size</th><th>Qty</th></tr>
+                    </thead>
+                    <tbody>
+                        @if (orderStyles.Count == 0)
+                        {
+                            <tr><td colspan="5" class="om-empty-cell">No styles for this line.</td></tr>
+                        }
+                        else
+                        {
+                            @for (var i = 0; i < orderStyles.Count; i++)
+                            {
+                                var s = orderStyles[i];
+                                <tr>
+                                    <td>@(i + 1)</td>
+                                    <td class="om-style">@s.StyleNo</td>
+                                    <td>@s.Color</td>
+                                    <td>@s.Size</td>
+                                    <td class="om-qty">@s.Qty.ToString("0.##")</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</PanelModal>
 }

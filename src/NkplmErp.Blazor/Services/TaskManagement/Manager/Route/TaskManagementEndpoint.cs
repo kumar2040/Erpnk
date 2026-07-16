@@ -11,6 +11,12 @@ namespace NkplmErp.Blazor.Services.TaskManagement.Manager.Route
         // Incremental pull of new knitter rows from MySQL into SQL Server (POST).
         public const string Sync = Base + "/sync";
 
+        // ---- Order return-detail modal (opened from a PO card's linked line) ----
+        // KH: aggregated summary; KD: chart return series; KS: (style, colour, size) rows.
+        public static string KnitterSummary(int taskId) => $"{Base}/knitter-summary?taskId={taskId}";
+        public static string KnitterReturns(string rId) => $"{Base}/knitter-returns?rId={Uri.EscapeDataString(rId)}";
+        public static string OrderStyles(int taskId) => $"{Base}/order-styles?taskId={taskId}";
+
         // Distinct gauge sub-categories for a factory within a date window (cascading options).
         public static string GetSubCategories(string? factoryType, DateTime? startDate = null, DateTime? endDate = null)
         {

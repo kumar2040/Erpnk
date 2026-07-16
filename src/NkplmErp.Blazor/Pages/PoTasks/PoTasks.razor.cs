@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
+using NkplmErp.Blazor.Components;
 using NkplmErp.Blazor.Services.PoTask;
 using NkplmErp.Blazor.Services.RoleManagement;
+using NkplmErp.Blazor.Services.TaskManagement.Manager.Interface;
+using NkplmErp.Blazor.Services.TaskManagement.Model;
 using NkplmErp.Shared.DTOs;
 
 namespace NkplmErp.Blazor.Pages.PoTasks
@@ -11,6 +14,7 @@ namespace NkplmErp.Blazor.Pages.PoTasks
         [Inject] private PoTaskApiClient Api { get; set; } = default!;
         [Inject] private RoleManagementApiClient Roles { get; set; } = default!;
         [Inject] private NkplmErp.Blazor.Services.RoleManagement.PermissionService PermSvc { get; set; } = default!;
+        [Inject] private ITaskManagementManager TaskMgr { get; set; } = default!;
 
         private const string PageKey = "PoTask";
 
@@ -281,6 +285,85 @@ namespace NkplmErp.Blazor.Pages.PoTasks
         {
             await OpenDetail(taskId);
             await LoadBoardAsync();
+        }
+
+        // ------------------------------------------- order return-detail modal ----
+        // Clicking a card's PO name opens the return-detail modal (buyer + issued/returned
+        // + return-pace chart + Styles & Colors) for the task's linked knitter line. The
+        // card carries no RefId, so we read the task detail to get its MasterPlanChildId,
+        // then pull the summary (KH), chart series (KD) and styles (KS) for that line.
+        private bool showOrderView;
+        private bool orderViewLoading;
+        private string? orderViewNo;
+        private bool orderHasLine;                 // false = task has no linked knitter line (BOM/manual)
+        private KnitterSummaryResponseModel? orderSummary;
+        private List<ReturnPacePoint> returnPoints = new();
+        private List<OrderStyleResponseModel> orderStyles = new();
+
+        // Pace-chart X window. Prefers the line's own planned dates, then the task's,
+        // then today, so the chart always has a valid axis to draw — even before any
+        // pieces are issued or returned (an empty skeleton rather than a blank panel).
+        private DateTime chartStart = DateTime.Today;
+        private DateTime chartEnd = DateTime.Today;
+
+        private async Task OpenOrderView(PoTaskCardDto card)
+        {
+            orderViewNo = card.OrderNo;
+            orderViewLoading = true;
+            showOrderView = true;
+            orderHasLine = false;
+            orderSummary = null;
+            returnPoints = new();
+            orderStyles = new();
+            chartStart = DateTime.Today;
+            chartEnd = DateTime.Today;
+            StateHasChanged();
+
+            try
+            {
+                // The card has no RefId — read the task detail to get its linked line.
+                var detail = await Api.GetDetailAsync(card.TaskId);
+                var refId = detail?.Task?.RefId ?? 0;
+                if (refId > 0)
+                {
+                    orderSummary = await TaskMgr.GetKnitterSummaryAsync(refId);
+                    if (orderSummary is not null)
+                    {
+                        orderHasLine = true;
+                        var pts = await TaskMgr.GetKnitterReturnSeriesAsync(orderSummary.RId);
+                        returnPoints = pts.Select(p => new ReturnPacePoint { Date = p.ReturnAt, Count = p.ReturnCount }).ToList();
+                        orderStyles = await TaskMgr.GetOrderStylesAsync(refId);
+                    }
+                }
+
+                // Pace-chart X window: line dates first, then the task's planned window,
+                // then today — so the chart always has a valid axis, even for a line with
+                // nothing issued or returned yet.
+                chartStart = orderSummary?.StartDate ?? detail?.Task?.StartDate ?? DateTime.Today;
+                chartEnd = orderSummary?.EndDate ?? detail?.Task?.DueDate ?? chartStart;
+            }
+            catch
+            {
+                // Leave state empty — the modal shows its "no linked line" message.
+            }
+            finally
+            {
+                orderViewLoading = false;
+                StateHasChanged();
+            }
+        }
+
+        private void CloseOrderView() => showOrderView = false;
+
+        // Returned / issued as 0..100% for the progress bar under the Returned tile.
+        private int OrderReturnPct
+        {
+            get
+            {
+                var issue = orderSummary?.Issue ?? 0;
+                var ret = orderSummary?.ReturnQty ?? 0;
+                return issue > 0 ? Math.Clamp((int)Math.Round(100.0 * ret / issue), 0, 100) : 0;
+            }
         }
 
         // ---------------------------------------------------------- helpers ----

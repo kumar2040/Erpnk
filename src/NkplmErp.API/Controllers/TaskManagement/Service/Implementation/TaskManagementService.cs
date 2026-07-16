@@ -100,5 +100,48 @@ namespace NkplmErp.API.Controllers.TaskManagement.Service.Implementation
 
             return result ?? new SyncResultModel { Message = "No response from sync procedure." };
         }
+
+        // ---- Order return-detail modal (flags KH / KD / KS) ----
+
+        public async Task<KnitterSummaryResponseModel?> GetKnitterSummaryAsync(int taskId, string userId)
+        {
+            if (taskId <= 0) return null;
+
+            // Flag 'KH' returns ONE aggregated summary row for the line, scoped to the caller's
+            // factory via @UserId.
+            return await _dapperRepository.GetQueryFirstOrDefaultResultAsync<KnitterSummaryResponseModel>(
+                "spTaskManagement",
+                new { Flag = "KH", TaskId = taskId, UserId = userId },
+                CommandType.StoredProcedure);
+        }
+
+        public async Task<IEnumerable<KnitterReturnPointResponseModel>> GetKnitterReturnSeriesAsync(string? rId, string userId)
+        {
+            var ridParam = string.IsNullOrWhiteSpace(rId) ? null : rId.Trim();
+            if (ridParam is null) return Array.Empty<KnitterReturnPointResponseModel>();
+
+            // Flag 'KD' returns one row per return date/time (count of received item_no),
+            // scoped to the caller's factory via @UserId.
+            var rows = await _dapperRepository.GetQueryResultAsync<KnitterReturnPointResponseModel>(
+                "spTaskManagement",
+                new { Flag = "KD", RId = ridParam, UserId = userId },
+                CommandType.StoredProcedure);
+
+            return rows;
+        }
+
+        public async Task<IEnumerable<OrderStyleResponseModel>> GetOrderStylesAsync(int taskId, string userId)
+        {
+            if (taskId <= 0) return Array.Empty<OrderStyleResponseModel>();
+
+            // Flag 'KS' returns the distinct (style, colour, size) rows for the line,
+            // scoped to the caller's factory via @UserId.
+            var rows = await _dapperRepository.GetQueryResultAsync<OrderStyleResponseModel>(
+                "spTaskManagement",
+                new { Flag = "KS", TaskId = taskId, UserId = userId },
+                CommandType.StoredProcedure);
+
+            return rows;
+        }
     }
 }
