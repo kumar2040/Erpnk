@@ -5,6 +5,7 @@
     <ModelCollation>1033, CI</ModelCollation>
     <TargetDatabaseSet>True</TargetDatabaseSet>
     <ProjectGuid>{8a528d2a-854d-4b73-b2db-55a4cf6ffb34}</ProjectGuid>
+    <EnableDefaultSqlItems>false</EnableDefaultSqlItems>
   </PropertyGroup>
   <ItemGroup>
     <Build Remove="*.sql" />
