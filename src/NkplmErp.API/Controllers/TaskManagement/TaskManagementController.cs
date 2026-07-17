@@ -3,7 +3,7 @@ using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NkplmErp.API.Controllers.TaskManagement.Model;
-using NkplmErp.API.Controllers.TaskManagement.Service.Interface;
+using NkplmErp.API.Services.Interface.TaskManagement;
 using NkplmErp.Application.Interfaces;
 
 namespace NkplmErp.API.Controllers.TaskManagement

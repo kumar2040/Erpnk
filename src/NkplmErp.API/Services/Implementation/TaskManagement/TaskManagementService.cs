@@ -1,9 +1,9 @@
 using System.Data;
-using NkplmErp.API.Controllers.TaskManagement.Model;
-using NkplmErp.API.Controllers.TaskManagement.Service.Interface;
+using NkplmErp.API.Model.TaskManagement;
+using NkplmErp.API.Services.Interface.TaskManagement;
 using NkplmErp.Shared.Repositories.Interface;
 
-namespace NkplmErp.API.Controllers.TaskManagement.Service.Implementation
+namespace NkplmErp.API.Services.Implementation.TaskManagement
 {
     public class TaskManagementService : ITaskManagementService
     {

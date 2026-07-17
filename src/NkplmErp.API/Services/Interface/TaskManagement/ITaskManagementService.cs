@@ -1,6 +1,6 @@
-using NkplmErp.API.Controllers.TaskManagement.Model;
+using NkplmErp.API.Model.TaskManagement;
 
-namespace NkplmErp.API.Controllers.TaskManagement.Service.Interface
+namespace NkplmErp.API.Services.Interface.TaskManagement
 {
     public interface ITaskManagementService
     {

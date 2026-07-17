@@ -1,4 +1,4 @@
-namespace NkplmErp.API.Controllers.TaskManagement.Model
+namespace NkplmErp.API.Model.TaskManagement
 {
     // Request shape for the task board. Flag selects the column:
     //   S = Scheduled, P = In Progress, C = Completed, O = Overdue.
