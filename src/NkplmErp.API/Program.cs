@@ -22,6 +22,8 @@ using Fido2NetLib;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.Swagger;
 using Swashbuckle.AspNetCore.SwaggerUI;
+using Hangfire;
+using Hangfire.SqlServer;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -157,9 +159,29 @@ builder.Services.AddScoped<IBomService, NkplmErp.Infrastructure.Services.BomServ
 builder.Services.AddScoped<NkplmErp.Shared.Repositories.Interface.IDapperRepository, NkplmErp.Shared.Repositories.Implementation.DapperRepository>();
 builder.Services.AddScoped<NkplmErp.API.Controllers.TaskManagement.Service.Interface.ITaskManagementService, NkplmErp.API.Controllers.TaskManagement.Service.Implementation.TaskManagementService>();
 builder.Services.AddScoped<IPoTaskService, NkplmErp.Infrastructure.Services.PoTaskService>();
+builder.Services.AddScoped<IEmailService, NkplmErp.Infrastructure.Services.EmailService>();
 builder.Services.AddSingleton<INotificationPublisher, NkplmErp.API.Hubs.SignalRNotificationPublisher>();
 builder.Services.AddSignalR();
 builder.Services.AddHostedService<NkplmErp.API.Services.PoTaskReminderService>();
+
+// Background job processing (Hangfire). Storage lives in the same NatureKnit DB;
+// Hangfire creates and owns its [HangFire] schema tables on first start.
+builder.Services.AddHangfire(config => config
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection"), new SqlServerStorageOptions
+    {
+        CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+        SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+        QueuePollInterval = TimeSpan.FromSeconds(15),
+        JobExpirationCheckInterval = TimeSpan.FromHours(1)
+    }));
+
+builder.Services.AddHangfireServer(options =>
+{
+    options.WorkerCount = Environment.ProcessorCount * 2;
+    options.SchedulePollingInterval = TimeSpan.FromSeconds(15);
+});
 
 builder.Services.AddMemoryCache();
 builder.Services.AddFido2(options =>
@@ -315,6 +337,13 @@ app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Hangfire dashboard — development only. Hangfire's default authorization
+// filter additionally restricts the dashboard to local requests.
+if (app.Environment.IsDevelopment())
+{
+    app.UseHangfireDashboard("/hangfire");
+}
 
 app.MapControllers();
 app.MapHub<NkplmErp.API.Hubs.NotificationHub>("/hubs/notifications");

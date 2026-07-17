@@ -191,10 +191,17 @@ public partial class YarnOrders
 
         if (result is { Succeeded: true })
         {
-            // Success feedback is a toast now (the old inline "Flagged…" banner was removed).
-            Toast.ShowSuccess($"{dropSelected.Count} color(s) dropped on {dropVendor.VyoNo}: {string.Join(", ", dropSelected)}.");
+            // Success feedback is a toast (the proc reports how many lines were flagged).
+            Toast.ShowSuccess(!string.IsNullOrWhiteSpace(result.Message)
+                ? result.Message
+                : $"{dropSelected.Count} color(s) dropped on {dropVendor.VyoNo}.");
             showDropConfirm = false;
             showDropModal = false;
+
+            // Reload the detail — sp_GetYarnOrderDetail no longer fetches dropped colors,
+            // so they disappear from the vendor group (and any future drop modal) live.
+            if (Selected is not null)
+                Detail = await BomApi.GetYarnOrderDetailAsync(Selected.YoId);
         }
         else
         {

@@ -138,13 +138,14 @@ public class BomApiClient
         catch (Exception ex) { _logger.LogError(ex, "{Label} failed", label); return false; }
     }
 
-    /// <summary>Flag one or more dropped colors on a vendor sub-order; returns the server result (Succeeded/Message) or null.</summary>
+    /// <summary>Flag one or more dropped colors on a vendor sub-order; returns the server result
+    /// (Succeeded/counts/Message) or null. The body is read on failure too, so the proc's
+    /// message (e.g. "No matching color lines") reaches the UI.</summary>
     public async Task<DropColorResult?> DropColorsAsync(int vyoId, DropColorRequest request)
     {
         try
         {
             var response = await _httpClient.PostAsJsonAsync($"{Base}/vendor-orders/{vyoId}/drop-color", request);
-            if (!response.IsSuccessStatusCode) return null;
             return await response.Content.ReadFromJsonAsync<DropColorResult>();
         }
         catch (Exception ex) { _logger.LogError(ex, "DropColorsAsync failed"); return null; }
