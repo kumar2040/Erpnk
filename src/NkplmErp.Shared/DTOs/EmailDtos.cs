@@ -21,6 +21,18 @@ public class EmailModel
     public byte[]? AttachmentContent { get; set; }
 }
 
+// One pending outbox row from dbo.tblMailLog (sp_ManageMailLog @Flag = 'PENDING';
+// the proc aliases the snake_case columns so Dapper maps by name).
+public class MailLogDto
+{
+    public int MailId { get; set; }
+    public string MailTo { get; set; } = string.Empty;
+    public string? MailCc { get; set; }
+    public string Subject { get; set; } = string.Empty;
+    public string Body { get; set; } = string.Empty;
+    public string MailType { get; set; } = string.Empty;
+}
+
 public class EmailSetupModel
 {
     public int Id { get; set; }
