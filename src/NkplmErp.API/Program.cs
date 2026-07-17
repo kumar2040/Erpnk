@@ -1,5 +1,4 @@
 using System.Text;
-using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -18,12 +17,21 @@ using NkplmErp.Security.DeviceFingerprint;
 using NkplmErp.Infrastructure.Persistence.Interceptors;
 using NkplmErp.API.Middleware;
 using Asp.Versioning;
-using Fido2NetLib;
 using Microsoft.OpenApi.Models;
-using Swashbuckle.AspNetCore.Swagger;
-using Swashbuckle.AspNetCore.SwaggerUI;
 using Hangfire;
 using Hangfire.SqlServer;
+using NkplmErp.API.Services.Implementation.TaskManagement;
+using NkplmErp.API.Services.Interface.TaskManagement;
+using NkplmErp.Application.Interfaces.Email;
+using NkplmErp.Infrastructure.Services.Email;
+using NkplmErp.Shared.DataAccess.GenericRepository;
+using NkplmErp.Shared.Repositories.Implementation;
+using Microsoft.Extensions.DependencyInjection;
+using NkplmErp.Shared.Repositories.Interface;
+using NkplmErp.API.Services;
+using NkplmErp.Infrastructure.Persistence.Repositories;
+using NkplmErp.Application.Services;
+using NkplmErp.API.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,7 +45,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // ... (Identity remains the same)
 
 // 2. Identity Configuration
-builder.Services.AddIdentity<NkplmErp.Domain.Entities.User, Role>(options =>
+builder.Services.AddIdentity<User, Role>(options =>
 {
     options.Password.RequireDigit = true;
     options.Password.RequiredLength = 8;
@@ -137,32 +145,33 @@ builder.Services.AddAuthentication(options =>
 
 // 4. Custom Services
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ICurrentUserService, NkplmErp.API.Services.CurrentUserService>();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<AuditableEntityInterceptor>();
 builder.Services.AddScoped<SoftDeleteInterceptor>();
 builder.Services.AddScoped<AuditLoggingInterceptor>();
-builder.Services.AddScoped<IUnitOfWork, NkplmErp.Infrastructure.Persistence.Repositories.UnitOfWork>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IIdentityService, IdentityService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IMfaService, MfaService>();
 builder.Services.AddScoped<IDeviceService, DeviceService>();
 builder.Services.AddScoped<IWebAuthnService, WebAuthnService>();
-builder.Services.AddScoped<NkplmErp.Application.Interfaces.IUserService, NkplmErp.Application.Services.UserService>();
-builder.Services.AddScoped<IBuyerOrderSummaryService, NkplmErp.Infrastructure.Services.BuyerOrderSummaryService>();
-builder.Services.AddScoped<ILookupService, NkplmErp.Infrastructure.Services.LookupService>();
-builder.Services.AddScoped<IProductionPlanningService, NkplmErp.Infrastructure.Services.ProductionPlanningService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IBuyerOrderSummaryService, BuyerOrderSummaryService>();
+builder.Services.AddScoped<ILookupService, LookupService>();
+builder.Services.AddScoped<IProductionPlanningService, ProductionPlanningService>();
 builder.Services.AddScoped<IRoleManagementService, RoleManagementService>();
-builder.Services.AddScoped<IKnitterManagementService, NkplmErp.Infrastructure.Services.KnitterManagementService>();
-builder.Services.AddScoped<IMachineManagementService, NkplmErp.Infrastructure.Services.MachineManagementService>();
-builder.Services.AddScoped<IBomService, NkplmErp.Infrastructure.Services.BomService>();
-builder.Services.AddScoped<NkplmErp.Shared.Repositories.Interface.IDapperRepository, NkplmErp.Shared.Repositories.Implementation.DapperRepository>();
-builder.Services.AddScoped<NkplmErp.API.Controllers.TaskManagement.Service.Interface.ITaskManagementService, NkplmErp.API.Controllers.TaskManagement.Service.Implementation.TaskManagementService>();
-builder.Services.AddScoped<IPoTaskService, NkplmErp.Infrastructure.Services.PoTaskService>();
-builder.Services.AddScoped<IEmailService, NkplmErp.Infrastructure.Services.EmailService>();
-builder.Services.AddSingleton<INotificationPublisher, NkplmErp.API.Hubs.SignalRNotificationPublisher>();
+builder.Services.AddScoped<IKnitterManagementService, KnitterManagementService>();
+builder.Services.AddScoped<IMachineManagementService, MachineManagementService>();
+builder.Services.AddScoped<IBomService, BomService>();
+builder.Services.AddScoped<IDapperRepository, DapperRepository>();
+builder.Services.AddScoped<ITaskManagementService, TaskManagementService>();
+builder.Services.AddScoped<IPoTaskService, PoTaskService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IGenericRepository, GenericRepository>();
+builder.Services.AddSingleton<INotificationPublisher, SignalRNotificationPublisher>();
 builder.Services.AddSignalR();
-builder.Services.AddHostedService<NkplmErp.API.Services.PoTaskReminderService>();
+builder.Services.AddHostedService<PoTaskReminderService>();
 
 // Background job processing (Hangfire). Storage lives in the same NatureKnit DB;
 // Hangfire creates and owns its [HangFire] schema tables on first start.
@@ -238,23 +247,23 @@ builder.Services.AddApiVersioning(options =>
 
 builder.Services.AddSwaggerGen(options =>
 {
-    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Type = SecuritySchemeType.Http,
         Scheme = "bearer",
         BearerFormat = "JWT",
-        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        In = ParameterLocation.Header,
         Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\""
     });
-    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
-            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            new OpenApiSecurityScheme
             {
-                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                Reference = new OpenApiReference
                 {
-                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Type = ReferenceType.SecurityScheme,
                     Id = "Bearer"
                 }
             },
@@ -264,7 +273,7 @@ builder.Services.AddSwaggerGen(options =>
 
     // Support for multiple versions
     // This part is usually handled by a separate class, but we can do a simple version for now
-    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "NkplmErp API v1", Version = "v1" });
+    options.SwaggerDoc("v1", new OpenApiInfo { Title = "NkplmErp API v1", Version = "v1" });
 });
 
 
@@ -284,11 +293,11 @@ if (app.Environment.IsDevelopment())
         {
             var securityContext = scope.ServiceProvider.GetRequiredService<SecurityDbContext>();
             var appContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            
+
             Console.WriteLine("Applying Migrations...");
             await securityContext.Database.MigrateAsync();
             await appContext.Database.MigrateAsync();
-            
+
             Console.WriteLine("Seeding Data...");
             var seeder = scope.ServiceProvider.GetRequiredService<NkplmErp.Infrastructure.Persistence.Seeders.DataSeeder>();
             await seeder.SeedAsync();
@@ -316,7 +325,7 @@ if (!app.Environment.IsDevelopment())
 {
     // Behind a TLS-terminating proxy / IIS, trust X-Forwarded-Proto so the app
     // sees the original HTTPS scheme (prevents HTTPS-redirect loops, fixes Secure cookies).
-    var fwd = new Microsoft.AspNetCore.Builder.ForwardedHeadersOptions
+    var fwd = new ForwardedHeadersOptions
     {
         ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
                          | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor

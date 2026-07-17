@@ -2,7 +2,7 @@ using System.Security.Claims;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using NkplmErp.API.Controllers.TaskManagement.Model;
+using NkplmErp.API.Model.TaskManagement;
 using NkplmErp.API.Services.Interface.TaskManagement;
 using NkplmErp.Application.Interfaces;
 
@@ -85,12 +85,12 @@ namespace NkplmErp.API.Controllers.TaskManagement
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
             if (!await CanViewTasksAsync(userId)) return Forbid();
 
-            var assignedGauge = await _taskManagementService.GetUserAssignedGaugeAsync(userId);
+            var assignedGauge = (await _taskManagementService.GetUserAssignedGaugeAsync(userId)).Data;
             var isRestricted = !string.IsNullOrWhiteSpace(assignedGauge);
 
             var factoryTypes = isRestricted
                 ? new List<string> { assignedGauge! }
-                : (await _taskManagementService.GetFactoryTypesAsync()).ToList();
+                : (await _taskManagementService.GetFactoryTypesAsync()).Data.ToList();
 
             return Ok(new TaskScopeResponseModel
             {

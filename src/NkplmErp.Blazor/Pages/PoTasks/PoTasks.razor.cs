@@ -326,13 +326,13 @@ namespace NkplmErp.Blazor.Pages.PoTasks
                 var refId = detail?.Task?.RefId ?? 0;
                 if (refId > 0)
                 {
-                    orderSummary = await TaskMgr.GetKnitterSummaryAsync(refId);
+                    orderSummary = (await TaskMgr.GetKnitterSummaryAsync(refId)).Data;
                     if (orderSummary is not null)
                     {
                         orderHasLine = true;
-                        var pts = await TaskMgr.GetKnitterReturnSeriesAsync(orderSummary.RId);
+                        var pts = (await TaskMgr.GetKnitterReturnSeriesAsync(orderSummary.RId)).Data ?? new();
                         returnPoints = pts.Select(p => new ReturnPacePoint { Date = p.ReturnAt, Count = p.ReturnCount }).ToList();
-                        orderStyles = await TaskMgr.GetOrderStylesAsync(refId);
+                        orderStyles = (await TaskMgr.GetOrderStylesAsync(refId)).Data ?? new();
                     }
                 }
 

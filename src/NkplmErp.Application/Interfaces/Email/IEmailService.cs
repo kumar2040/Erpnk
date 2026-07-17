@@ -1,6 +1,6 @@
-using NkplmErp.Shared.DTOs;
+using NkplmErp.Shared.DTOs.Email;
 
-namespace NkplmErp.Application.Interfaces;
+namespace NkplmErp.Application.Interfaces.Email;
 
 /// <summary>
 /// SMTP email sending. Connection settings live in dbo.tblEmailSetting and are

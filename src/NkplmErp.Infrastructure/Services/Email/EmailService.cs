@@ -2,11 +2,11 @@ using System.Data;
 using System.Net;
 using System.Net.Mail;
 using Microsoft.Extensions.Logging;
-using NkplmErp.Application.Interfaces;
-using NkplmErp.Shared.DTOs;
+using NkplmErp.Application.Interfaces.Email;
+using NkplmErp.Shared.DTOs.Email;
 using NkplmErp.Shared.Repositories.Interface;
 
-namespace NkplmErp.Infrastructure.Services;
+namespace NkplmErp.Infrastructure.Services.Email;
 
 /// <summary>
 /// SMTP sender. Settings come from dbo.tblEmailSetting via spEmailSetting
@@ -97,7 +97,7 @@ public class EmailService : IEmailService
         foreach (var mail in pending)
         {
             var claimed = await _repo.GetQueryFirstOrDefaultResultAsync<int>(MailLogSp,
-                new { Flag = "CLAIM", MailId = mail.MailId }, CommandType.StoredProcedure);
+                new { Flag = "CLAIM", mail.MailId }, CommandType.StoredProcedure);
             if (claimed != 1) continue;   // another run already took this row
 
             try
@@ -114,14 +114,14 @@ public class EmailService : IEmailService
 
                 await client.SendMailAsync(message);
                 await _repo.GetQueryFirstOrDefaultResultAsync<int>(MailLogSp,
-                    new { Flag = "SENT", MailId = mail.MailId }, CommandType.StoredProcedure);
+                    new { Flag = "SENT", mail.MailId }, CommandType.StoredProcedure);
                 sent++;
             }
             catch (Exception ex)
             {
                 // Release the claim, bump retry_count, keep the reason on the row.
                 await _repo.GetQueryFirstOrDefaultResultAsync<int>(MailLogSp,
-                    new { Flag = "FAILED", MailId = mail.MailId, ErrorMsg = ex.Message }, CommandType.StoredProcedure);
+                    new { Flag = "FAILED", mail.MailId, ErrorMsg = ex.Message }, CommandType.StoredProcedure);
                 _logger.LogError(ex, "Outbox mail {MailId} ({MailType}) failed to send.", mail.MailId, mail.MailType);
             }
 

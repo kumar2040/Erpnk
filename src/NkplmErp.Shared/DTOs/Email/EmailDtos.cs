@@ -1,4 +1,4 @@
-namespace NkplmErp.Shared.DTOs;
+namespace NkplmErp.Shared.DTOs.Email;
 
 // ============================================================================
 // Email sending DTOs. EmailSetupModel mirrors dbo.tblEmailSetting (read via
