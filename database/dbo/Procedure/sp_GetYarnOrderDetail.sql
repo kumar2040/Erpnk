@@ -1,4 +1,4 @@
-create or alter PROCEDURE [dbo].[sp_GetYarnOrderDetail]
+CREATE PROCEDURE [dbo].[sp_GetYarnOrderDetail]
     @YoId INT
 AS
 BEGIN

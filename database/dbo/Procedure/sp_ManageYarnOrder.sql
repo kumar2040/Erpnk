@@ -1,4 +1,4 @@
-﻿Create or alter PROCEDURE [dbo].[sp_ManageYarnOrder]
+﻿CREATE PROCEDURE [dbo].[sp_ManageYarnOrder]
     @Flag       CHAR(1),
     @VyoId      INT           = NULL,
     @ColorsJson NVARCHAR(MAX) = NULL,

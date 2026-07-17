@@ -1,4 +1,4 @@
-create or ALTER PROCEDURE [dbo].[spEmailSetting]
+CREATE PROCEDURE [dbo].[spEmailSetting]
     @Flag    NVARCHAR(10),          -- S = one setting row by @EmailId | G = all sender emails
     @EmailId INT = NULL
 AS
