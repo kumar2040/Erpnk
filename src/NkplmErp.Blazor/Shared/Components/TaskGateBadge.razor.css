@@ -1,0 +1,26 @@
+/* Sits in the header next to NotificationBell. */
+
+.tgb-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid #dbe6f5;
+    border-radius: 8px;
+    background: #eff5fd;
+    color: #1a3353;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s ease, border-color .15s ease;
+}
+
+.tgb-badge:hover {
+    background: #e2edfb;
+    border-color: #c4d8f2;
+}
+
+.tgb-badge i {
+    font-size: 12px;
+}

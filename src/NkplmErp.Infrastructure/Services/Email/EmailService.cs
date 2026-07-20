@@ -39,6 +39,7 @@ public class EmailService : IEmailService
             throw new ArgumentException("Recipient is required.", nameof(email));
 
         var setup = await GetSetupAsync(emailSettingId);
+        if (setup is null) return;   // not configured — skip silently (warning already logged)
 
         using var message = new MailMessage
         {
@@ -87,10 +88,12 @@ public class EmailService : IEmailService
             new { Flag = "PENDING", Top = BatchSize, MaxRetry = MaxRetryCount }, CommandType.StoredProcedure);
         if (pending is null || pending.Count == 0) return;   // empty outbox — no-op until next tick
 
-        // Settings missing/incomplete → throw BEFORE claiming anything: the job
-        // run fails (visible in the Hangfire dashboard), rows stay pending and
-        // no retry_count is burned on a config problem.
+        // Settings missing/incomplete → bail BEFORE claiming anything, so rows stay
+        // pending and no retry_count is burned on a config problem. The job itself
+        // reports success, so watch the log warning rather than the Hangfire dashboard.
         var setup = await GetSetupAsync(emailSettingId);
+        if (setup is null) return;
+
         using var client = CreateClient(setup);
 
         var sent = 0;
@@ -132,14 +135,22 @@ public class EmailService : IEmailService
             sent, pending.Count, emailSettingId);
     }
 
-    private async Task<EmailSetupModel> GetSetupAsync(int emailSettingId)
+    /// <summary>
+    /// Returns null (instead of throwing) when the setting row is missing or
+    /// incomplete, so an unconfigured dev box just skips sending rather than
+    /// breaking the calling flow. Callers must null-check and no-op.
+    /// </summary>
+    private async Task<EmailSetupModel?> GetSetupAsync(int emailSettingId)
     {
         var setup = await _repo.GetQueryFirstOrDefaultResultAsync<EmailSetupModel>(SettingSp,
             new { Flag = "S", EmailId = emailSettingId }, CommandType.StoredProcedure);
 
         if (setup is null || string.IsNullOrWhiteSpace(setup.MailServer) || string.IsNullOrWhiteSpace(setup.SenderEmail))
-            throw new InvalidOperationException(
-                $"Email setting {emailSettingId} is missing or incomplete (dbo.tblEmailSetting).");
+        {
+            _logger.LogWarning("Email setting {SettingId} is missing or incomplete (dbo.tblEmailSetting) — skipping send.",
+                emailSettingId);
+            return null;
+        }
 
         return setup;
     }

@@ -1,0 +1,78 @@
+@* Login task gate. Blocking by design: no close button, no Esc handler and no
+   backdrop click handler. The only ways out are Start and Skip. *@
+
+@if (State.IsOpen && State.Current is not null)
+{
+    var task = State.Current;
+
+    <div class="tg-overlay">
+        <div class="tg-card" role="dialog" aria-modal="true" aria-labelledby="tg-title">
+
+            <div class="tg-progress">
+                <div class="tg-progress-fill" style="width:@ProgressPercent%"></div>
+            </div>
+
+            <div class="tg-body">
+
+                <div class="tg-head">
+                    <span class="tg-counter">Task @State.Position of @State.Total</span>
+                    @if (State.Total <= MaxDots)
+                    {
+                        <span class="tg-dots">
+                            @for (var i = 0; i < State.Total; i++)
+                            {
+                                <span class="tg-dot @DotClass(i)"></span>
+                            }
+                        </span>
+                    }
+                </div>
+
+                <div class="tg-chips">
+                    <span class="tg-chip @StageClass(task.Stage)">@task.StageName</span>
+                    @if (task.IsOverdue == true)
+                    {
+                        <span class="tg-chip tg-chip-overdue">Overdue</span>
+                    }
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(task.OrderNo))
+                {
+                    <p class="tg-order">@task.OrderNo</p>
+                }
+
+                <p class="tg-title" id="tg-title">@task.Title</p>
+
+                @if (!string.IsNullOrWhiteSpace(task.Detail))
+                {
+                    <p class="tg-detail">@task.Detail</p>
+                }
+
+                <div class="tg-meta">
+                    <div>
+                        <p class="tg-meta-label">Priority</p>
+                        <p class="tg-meta-value">@(task.PriorityName ?? "—")</p>
+                    </div>
+                    <div>
+                        <p class="tg-meta-label">Due</p>
+                        <p class="tg-meta-value">@(task.DueDate?.ToString("dd MMM yyyy") ?? "—")</p>
+                    </div>
+                </div>
+
+                <div class="tg-actions">
+                    <button type="button" class="tg-btn tg-btn-ghost"
+                            disabled="@State.IsBusy" @onclick="SkipAsync">
+                        Skip for now
+                    </button>
+                    <button type="button" class="tg-btn tg-btn-primary"
+                            disabled="@State.IsBusy" @onclick="StartAsync">
+                        @(State.IsBusy ? "Starting…" : "Start this task")
+                    </button>
+                </div>
+
+                @* Load-bearing: without this, users read Skip as "discard" and freeze. *@
+                <p class="tg-hint">Skipped tasks stay assigned and return at your next login</p>
+
+            </div>
+        </div>
+    </div>
+}
