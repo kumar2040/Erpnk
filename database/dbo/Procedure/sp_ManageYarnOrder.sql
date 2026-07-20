@@ -1,9 +1,12 @@
 ﻿CREATE PROCEDURE [dbo].[sp_ManageYarnOrder]
-    @Flag       CHAR(1),
-    @VyoId      INT           = NULL,
-    @ColorsJson NVARCHAR(MAX) = NULL,
-    @DropBy     VARCHAR(50)   = NULL,
-    @DropNote   VARCHAR(200)  = NULL
+    @Flag          CHAR(1),
+    @VyoId         INT           = NULL,
+    @ColorsJson    NVARCHAR(MAX) = NULL,
+    @DropBy        VARCHAR(50)   = NULL,
+    @DropNote      VARCHAR(200)  = NULL,
+    @YarnId        VARCHAR(20)   = NULL,
+    @DepartureDate VARCHAR(30)   = NULL,
+    @ArrivalDate   VARCHAR(30)   = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -136,6 +139,40 @@ BEGIN
             SELECT 0 AS dropped_count, 0 AS mail_count, 0 AS notify_count,
                    ERROR_MESSAGE() AS [message];
         END CATCH
+        RETURN;
+    END
+
+    /* ================= Flag 'T' — shipment TIMELINE ==================
+       Sets departure and/or arrival on a vendor sub-order. Both dates arrive
+       as strings and the DB converts them: TRY_CONVERT yields NULL for a
+       null/blank/unparseable value, and COALESCE then keeps the column's
+       existing value — so sending only one date leaves the other untouched.
+
+       Result columns are aliased in exact PascalCase because Dapper's
+       MatchNamesWithUnderscores is not enabled anywhere in this solution;
+       a snake_case alias would bind silently to zero. Exactly one row is
+       returned on every path, so "not found" is distinguishable from a
+       no-rowset default. */
+    IF @Flag = 'T'
+    BEGIN
+        DECLARE @Updated INT;
+
+        BEGIN TRANSACTION;
+
+            UPDATE dbo.tbl_yarn_vendor_order
+               SET departure_date = COALESCE(TRY_CONVERT(DATE, @DepartureDate), departure_date),
+                   arrival_date   = COALESCE(TRY_CONVERT(DATE, @ArrivalDate),   arrival_date)
+             WHERE vyo_id = TRY_CONVERT(INT, @YarnId);
+
+            SET @Updated = @@ROWCOUNT;
+
+        COMMIT TRANSACTION;
+
+        SELECT @Updated AS UpdatedCount,
+               CASE WHEN @Updated > 0
+                    THEN 'Date saved.'
+                    ELSE 'Vendor order not found.'
+               END AS [Message];
         RETURN;
     END
 

@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using NkplmErp.Blazor.Model.Yarn_Orders;
 using NkplmErp.Blazor.Services.Bom;
 using NkplmErp.Blazor.Services.RoleManagement;
 using NkplmErp.Blazor.Services.Toast;
+using NkplmErp.Blazor.Services.Yarn_Orders.Manager.Interface;
 using NkplmErp.Shared.DTOs;
 
 namespace NkplmErp.Blazor.Pages;
@@ -13,6 +15,7 @@ public partial class YarnOrders
     [Inject] private PermissionService PermSvc { get; set; } = default!;
     [Inject] private IJSRuntime JS { get; set; } = default!;
     [Inject] private ToastService Toast { get; set; } = default!;
+    [Inject] private IYarnOrderManager YarnApi { get; set; } = default!;
 
     private bool AccessDenied = false;
 
@@ -99,24 +102,33 @@ public partial class YarnOrders
     }
 
     private async Task SaveDepartureAsync(YarnVendorOrderDto v)
-    {
-        if (!DateTime.TryParse(DepartureEdit.GetValueOrDefault(v.VyoId), out var d)) return;
-        if (await BomApi.SetDepartureAsync(v.VyoId, d))
-        {
-            StatusMessage = $"Departure {d:dd MMM yyyy} saved for {v.VyoNo}. Task created.";
-            IsError = false;
-            await ReloadVendorOrdersAsync();
-        }
-    }
+        => await SaveTimelineAsync(v, DepartureEdit.GetValueOrDefault(v.VyoId), null);
 
     private async Task SaveArrivalAsync(YarnVendorOrderDto v)
+        => await SaveTimelineAsync(v, null, ArrivalEdit.GetValueOrDefault(v.VyoId));
+
+    // Dates go over as raw strings; sp_ManageYarnOrder flag 'T' converts them and
+    // decides the outcome, so the toast text is the procedure's own message. Passing
+    // null for the other date leaves that column untouched.
+    private async Task SaveTimelineAsync(YarnVendorOrderDto v, string? departureDate, string? arrivalDate)
     {
-        if (!DateTime.TryParse(ArrivalEdit.GetValueOrDefault(v.VyoId), out var d)) return;
-        if (await BomApi.SetArrivalAsync(v.VyoId, d))
+        var request = new YarnOrdersRequestModel
         {
-            StatusMessage = $"Arrival {d:dd MMM yyyy} saved for {v.VyoNo}. Task created.";
-            IsError = false;
+            YarnId        = v.VyoId.ToString(),
+            DepartureDate = departureDate,
+            ArrivalDate   = arrivalDate
+        };
+
+        var result = await YarnApi.UpdateYarnOrderAsync(request);
+
+        if (result.Succeeded)
+        {
+            Toast.ShowSuccess(result.Data?.Message ?? "Date saved.");
             await ReloadVendorOrdersAsync();
+        }
+        else
+        {
+            Toast.ShowError(result.Messages ?? "Could not save the date.");
         }
     }
 
