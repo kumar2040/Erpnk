@@ -48,6 +48,8 @@
                     <p class="text-xs font-bold text-gray-800">@firstName</p>
                     <p class="text-[10px] text-gray-400">@(context.User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value ?? "Staff")</p>
                 </a>
+                            <!-- Pending task gate: reopens the blocking queue -->
+                            <NkplmErp.Blazor.Shared.Components.TaskGateBadge />
                             <!-- Notifications -->
                             <NkplmErp.Blazor.Shared.Components.NotificationBell />
                 <div class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white ring-2 ring-emerald-50 ring-offset-2 overflow-hidden">
@@ -129,3 +131,4 @@
 }
 
 <NkplmErp.Blazor.Shared.Components.ToastContainer />
+<NkplmErp.Blazor.Shared.Components.TaskGateModal />

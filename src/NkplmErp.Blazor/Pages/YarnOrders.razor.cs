@@ -102,10 +102,30 @@ public partial class YarnOrders
     }
 
     private async Task SaveDepartureAsync(YarnVendorOrderDto v)
-        => await SaveTimelineAsync(v, DepartureEdit.GetValueOrDefault(v.VyoId), null);
+    {
+        var departure = DepartureEdit.GetValueOrDefault(v.VyoId);
+
+        if (string.IsNullOrWhiteSpace(departure))
+        {
+            Toast.ShowWarning("Departure date can't be empty.");
+            return;
+        }
+
+        await SaveTimelineAsync(v, departure, null);
+    }
 
     private async Task SaveArrivalAsync(YarnVendorOrderDto v)
-        => await SaveTimelineAsync(v, null, ArrivalEdit.GetValueOrDefault(v.VyoId));
+    {
+        var arrival = ArrivalEdit.GetValueOrDefault(v.VyoId);
+
+        if (string.IsNullOrWhiteSpace(arrival))
+        {
+            Toast.ShowWarning("Arrival date can't be empty.");
+            return;
+        }
+
+        await SaveTimelineAsync(v, null, arrival);
+    }
 
     // Dates go over as raw strings; sp_ManageYarnOrder flag 'T' converts them and
     // decides the outcome, so the toast text is the procedure's own message. Passing
