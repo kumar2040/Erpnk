@@ -3,9 +3,9 @@
 
 @if (State.PendingCount > 0 && !State.IsOpen)
 {
-    @* <button type="button" class="tgb-badge" @onclick="ReplayAsync"
+    <button type="button" class="tgb-badge" @onclick="ReplayAsync"
             title="Review your pending tasks">
         <i class="fa-solid fa-list-check" aria-hidden="true"></i>
         <span>@State.PendingCount</span>
-    </button> *@
+    </button>
 }
