@@ -1,4 +1,5 @@
 using NkplmErp.Blazor.Services.TaskManagement.Model;
+using NkplmErp.Shared.Wrapper;
 
 namespace NkplmErp.Blazor.Services.TaskManagement.Manager.Interface
 {
@@ -13,31 +14,31 @@ namespace NkplmErp.Blazor.Services.TaskManagement.Manager.Interface
         // factoryType: factory scope (null/empty = all). Server forces this to a
         //   restricted user's gauge regardless of what is sent.
         // subCategories: pipe-delimited gauge sub-methods (null/empty = all).
-        Task<List<TaskManagementResponseModel>> GetTasksAsync(
+        Task<IResponse<List<TaskManagementResponseModel>>> GetTasksAsync(
             string flag, DateTime? startDate = null, DateTime? endDate = null, string? orderNo = null, string? factoryType = null, string? subCategories = null);
 
         // Returns the current user's factory scope (admin vs gauge-restricted + the dropdown list).
-        Task<TaskScopeResponseModel> GetScopeAsync();
+        Task<IResponse<TaskScopeResponseModel>> GetScopeAsync();
 
         // Distinct gauge sub-categories for the given factory within the date window
         // (cascading sub-filter options; tailor codes resolve to names).
-        Task<List<string>> GetSubCategoriesAsync(string? factoryType, DateTime? startDate = null, DateTime? endDate = null);
+        Task<IResponse<List<string>>> GetSubCategoriesAsync(string? factoryType, DateTime? startDate = null, DateTime? endDate = null);
 
         // Pull new knitter rows from MySQL into SQL Server (incremental, no duplicates).
-        Task<SyncResultModel> SyncAsync();
+        Task<IResponse<SyncResultModel>> SyncAsync();
 
         // ---- Order return-detail modal (opened from a PO card's linked line) ----
 
         // Aggregated summary for one line (buyer / issued / returned / qty / machines /
         // dates / RId), keyed by MasterPlanChildId. Null when the line isn't in scope.
-        Task<KnitterSummaryResponseModel?> GetKnitterSummaryAsync(int taskId);
+        Task<IResponse<KnitterSummaryResponseModel?>> GetKnitterSummaryAsync(int taskId);
 
         // Daily return series for the line's return-pace chart, keyed by the summary's RId
         // (null/blank returns an empty list without a call).
-        Task<List<KnitterReturnPointResponseModel>> GetKnitterReturnSeriesAsync(string? rId);
+        Task<IResponse<List<KnitterReturnPointResponseModel>>> GetKnitterReturnSeriesAsync(string? rId);
 
         // Distinct (style, colour, size) rows for one line, keyed by MasterPlanChildId
         // (<= 0 returns empty without a call).
-        Task<List<OrderStyleResponseModel>> GetOrderStylesAsync(int taskId);
+        Task<IResponse<List<OrderStyleResponseModel>>> GetOrderStylesAsync(int taskId);
     }
 }

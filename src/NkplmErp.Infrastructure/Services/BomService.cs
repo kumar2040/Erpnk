@@ -287,6 +287,38 @@ public class BomService : IBomService
         return export;
     }
 
+    public async Task<DropColorResult> DropYarnColorsAsync(int vyoId, List<string> colors, string? note, string? droppedBy)
+    {
+        if (colors == null || colors.Count == 0)
+            return new DropColorResult { Succeeded = false, Message = "No colors supplied." };
+
+        var json = JsonSerializer.Serialize(colors);
+
+        using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        using var cmd = new SqlCommand("sp_ManageYarnOrder", connection) { CommandType = CommandType.StoredProcedure };
+        cmd.Parameters.AddWithValue("@Flag", "D");
+        cmd.Parameters.AddWithValue("@VyoId", vyoId);
+        cmd.Parameters.AddWithValue("@ColorsJson", json);
+        cmd.Parameters.AddWithValue("@DropBy", (object?)droppedBy ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@DropNote", (object?)note ?? DBNull.Value);
+
+        using var reader = await cmd.ExecuteReaderAsync();
+        if (await reader.ReadAsync())
+        {
+            var dropped = reader["dropped_count"] != DBNull.Value ? Convert.ToInt32(reader["dropped_count"]) : 0;
+            return new DropColorResult
+            {
+                Succeeded = dropped > 0,
+                DroppedCount = dropped,
+                MailCount = reader["mail_count"] != DBNull.Value ? Convert.ToInt32(reader["mail_count"]) : 0,
+                NotifyCount = reader["notify_count"] != DBNull.Value ? Convert.ToInt32(reader["notify_count"]) : 0,
+                Message = reader["message"]?.ToString() ?? string.Empty
+            };
+        }
+        return new DropColorResult { Succeeded = false, Message = "No response from procedure." };
+    }
+
     public async Task<bool> SetYarnVendorOrderDateAsync(int vyoId, string kind, DateTime date)
     {
         using var connection = new SqlConnection(_connectionString);

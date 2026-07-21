@@ -12,7 +12,8 @@
 # --- Build artifacts (should never be committed; they also copy secrets) ---
 **/bin/
 **/obj/
-*.sql
-/database
-*.sql
-*.sql
+/database/*
+!/database/dbo/
+!/database/identity/
+!/database/NkplmErp.Migrations/
+!/database/NkplmErp.Database.sqlproj

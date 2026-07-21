@@ -42,4 +42,11 @@ public interface IBomService
 
     /// <summary>Set a vendor sub-order's departure or arrival date. Kind = "departure" | "arrival".</summary>
     Task<bool> SetYarnVendorOrderDateAsync(int vyoId, string kind, DateTime date);
+
+    /// <summary>
+    /// Flag colors as dropped by the vendor on a vendor sub-order (sp_ManageYarnOrder flag 'D').
+    /// Sets is_dropped/drop_date/drop_by/drop_note on the parent detail lines, queues outbox
+    /// mails in tblMailLog and writes in-app PoTaskNotification rows — all in one transaction.
+    /// </summary>
+    Task<DropColorResult> DropYarnColorsAsync(int vyoId, List<string> colors, string? note, string? droppedBy);
 }

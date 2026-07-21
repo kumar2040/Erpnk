@@ -200,11 +200,10 @@ public class BomController(
     }
 
     /// <summary>
-    /// Flag one or more dropped colors on a vendor sub-order.
-    /// NOTE: persistence is intentionally DEFERRED for now — this validates the request and
-    /// returns success WITHOUT writing to the database or raising a yarn-issue task. When the
-    /// drop-color data model is ready, wire the write back in here (via _bomService /
-    /// _poTaskService.RaiseExceptionAsync, Stage 10) using the selected colors + note.
+    /// Flag one or more dropped colors on a vendor sub-order (sp_ManageYarnOrder flag 'D').
+    /// One transaction: sets is_dropped/drop_date/drop_by/drop_note on the parent detail
+    /// lines, queues outbox mails in tblMailLog (Admin/Manager recipients) and writes
+    /// in-app PoTaskNotification rows (Kind 'D') for the bell.
     /// </summary>
     [HttpPost("vendor-orders/{vyoId:int}/drop-color")]
     public async Task<IActionResult> DropColor(int vyoId, [FromBody] DropColorRequest request)
@@ -220,12 +219,8 @@ public class BomController(
         if (colors.Count == 0)
             return BadRequest(new DropColorResult { Succeeded = false, Message = "Select at least one color to drop." });
 
-        // Deferred: no DB write / no task creation yet — just acknowledge success.
-        return Ok(new DropColorResult
-        {
-            Succeeded = true,
-            Message = $"{colors.Count} color(s) flagged as dropped: {string.Join(", ", colors)}."
-        });
+        var result = await _bomService.DropYarnColorsAsync(vyoId, colors, request!.Note, GetCurrentUserId());
+        return result.Succeeded ? Ok(result) : BadRequest(result);
     }
 
     // Resolve task assignees: the configured yarn role's members PLUS the acting user.

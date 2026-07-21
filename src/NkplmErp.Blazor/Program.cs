@@ -1,11 +1,26 @@
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Web;
 using Blazored.LocalStorage;
 using NkplmErp.Blazor.Data;
 using NkplmErp.Blazor.Services.Auth;
-using NkplmErp.Blazor.Services.Lookup;
 using NkplmErp.Blazor.Services.RoleManagement;
+using NkplmErp.Application.Interfaces;
+using NkplmErp.Blazor.Services.BuyerOrderSummary;
+using NkplmErp.Blazor.Services.Lookup;
+using NkplmErp.Blazor.Services.Users;
+using NkplmErp.Blazor.Services.ProductionPlanning;
+using NkplmErp.Blazor.Services.KnitterManagement;
+using NkplmErp.Blazor.Services.MachineManagement;
+using NkplmErp.Blazor.Services.Bom;
+using NkplmErp.Blazor.Services.PoTask;
+using NkplmErp.Blazor.Services.TaskManagement.Manager.Interface;
+using NkplmErp.Blazor.Services.TaskManagement.Manager.Implementation;
+using NkplmErp.Blazor.Services.Yarn_Orders.Manager.Interface;
+using NkplmErp.Blazor.Services.Yarn_Orders.Manager.Implementation;
+using NkplmErp.Blazor.Services.Task_Gate;
+using NkplmErp.Blazor.Services.Task_Gate.Manager.Interface;
+using NkplmErp.Blazor.Services.Task_Gate.Manager.Implementation;
+using NkplmErp.Blazor.Services.Toast;
+using NkplmErp.Blazor.Shared.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,7 +37,11 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<TokenProvider>();
 builder.Services.AddScoped<CustomAuthStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<CustomAuthStateProvider>());
-builder.Services.AddScoped<NkplmErp.Blazor.Services.Toast.ToastService>();
+builder.Services.AddScoped<ToastService>();
+
+// Login task gate state: scoped so it lives per circuit, shared by the gate
+// modal and the header badge.
+builder.Services.AddScoped<TaskGateState>();
 
 Console.WriteLine("===[ NkplmErp Blazor APP STARTING ]===");
 
@@ -37,7 +56,7 @@ builder.Services.AddHttpClient<IAuthService, AuthService>(client =>
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
-builder.Services.AddHttpClient<NkplmErp.Application.Interfaces.IBuyerOrderSummaryService, NkplmErp.Blazor.Services.BuyerOrderSummary.BuyerOrderSummaryService>(client => 
+builder.Services.AddHttpClient<IBuyerOrderSummaryService, BuyerOrderSummaryService>(client => 
 {
     client.BaseAddress = new Uri(apiBaseUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
@@ -45,21 +64,21 @@ builder.Services.AddHttpClient<NkplmErp.Application.Interfaces.IBuyerOrderSummar
 .AddHttpMessageHandler<AuthenticationDelegatingHandler>();
 
 
-builder.Services.AddHttpClient<NkplmErp.Blazor.Services.Lookup.ILookupClient, NkplmErp.Blazor.Services.Lookup.LookupClient>(client => 
+builder.Services.AddHttpClient<ILookupClient, LookupClient>(client => 
 {
     client.BaseAddress = new Uri(apiBaseUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
 })
 .AddHttpMessageHandler<AuthenticationDelegatingHandler>();
 
-builder.Services.AddHttpClient<NkplmErp.Blazor.Services.Users.UsersApiClient>(client => 
+builder.Services.AddHttpClient<UsersApiClient>(client => 
 {
     client.BaseAddress = new Uri(apiBaseUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
 })
 .AddHttpMessageHandler<AuthenticationDelegatingHandler>();
 
-builder.Services.AddHttpClient<NkplmErp.Application.Interfaces.IProductionPlanningService, NkplmErp.Blazor.Services.ProductionPlanning.ProductionPlanningService>(client => 
+builder.Services.AddHttpClient<IProductionPlanningService, ProductionPlanningService>(client => 
 {
     client.BaseAddress = new Uri(apiBaseUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
@@ -75,7 +94,7 @@ builder.Services.AddHttpClient<RoleManagementApiClient>(client =>
 .AddHttpMessageHandler<AuthenticationDelegatingHandler>();
 
 // Knitter Management
-builder.Services.AddHttpClient<NkplmErp.Blazor.Services.KnitterManagement.KnitterManagementApiClient>(client =>
+builder.Services.AddHttpClient<KnitterManagementApiClient>(client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
@@ -83,7 +102,7 @@ builder.Services.AddHttpClient<NkplmErp.Blazor.Services.KnitterManagement.Knitte
 .AddHttpMessageHandler<AuthenticationDelegatingHandler>();
 
 // Machine Management
-builder.Services.AddHttpClient<NkplmErp.Blazor.Services.MachineManagement.MachineManagementApiClient>(client =>
+builder.Services.AddHttpClient<MachineManagementApiClient>(client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
@@ -91,7 +110,7 @@ builder.Services.AddHttpClient<NkplmErp.Blazor.Services.MachineManagement.Machin
 .AddHttpMessageHandler<AuthenticationDelegatingHandler>();
 
 // Bill of Materials (yarn requirement)
-builder.Services.AddHttpClient<NkplmErp.Blazor.Services.Bom.BomApiClient>(client =>
+builder.Services.AddHttpClient<BomApiClient>(client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
@@ -99,15 +118,34 @@ builder.Services.AddHttpClient<NkplmErp.Blazor.Services.Bom.BomApiClient>(client
 .AddHttpMessageHandler<AuthenticationDelegatingHandler>();
 
 // Task Management board
-builder.Services.AddHttpClient<NkplmErp.Blazor.Services.TaskManagement.Manager.Interface.ITaskManagementManager, NkplmErp.Blazor.Services.TaskManagement.Manager.Implementation.TaskManagementManager>(client =>
+builder.Services.AddHttpClient<ITaskManagementManager, TaskManagementManager>(client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
 })
 .AddHttpMessageHandler<AuthenticationDelegatingHandler>();
 
+// Named client behind the shared HttpServices wrapper. New managers take
+// IHttpServices instead of their own HttpClient.
+builder.Services.AddHttpClient("ApiGateway", client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddHttpMessageHandler<AuthenticationDelegatingHandler>();
+
+// SCOPED, never singleton — one instance per Blazor circuit, so a bearer token
+// can never leak from one signed-in user to another.
+builder.Services.AddScoped<IHttpServices, HttpServices>();
+
+// Yarn order timeline (departure / arrival)
+builder.Services.AddScoped<IYarnOrderManager, YarnOrderManager>();
+
+// Login task gate (blocking one-task-at-a-time popup)
+builder.Services.AddScoped<ITaskGateManager, TaskGateManager>();
+
 // PO lifecycle task board (new /tasks page)
-builder.Services.AddHttpClient<NkplmErp.Blazor.Services.PoTask.PoTaskApiClient>(client =>
+builder.Services.AddHttpClient<PoTaskApiClient>(client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
     client.Timeout = TimeSpan.FromSeconds(30);

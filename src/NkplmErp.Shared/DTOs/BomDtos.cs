@@ -192,11 +192,14 @@ public class DropColorRequest
 }
 
 /// <summary>
-/// Result of flagging dropped colors. NOTE: persistence is intentionally deferred for now —
-/// the endpoint acknowledges success without writing to the DB (see BomController.DropColor).
+/// Result of flagging dropped colors (sp_ManageYarnOrder flag 'D'): detail lines flagged,
+/// outbox mails queued in tblMailLog, and in-app PoTaskNotification rows written.
 /// </summary>
 public class DropColorResult
 {
     public bool Succeeded { get; set; }
+    public int DroppedCount { get; set; }   // detail lines flagged is_dropped = 1
+    public int MailCount { get; set; }      // tblMailLog rows queued
+    public int NotifyCount { get; set; }    // PoTaskNotification rows written
     public string Message { get; set; } = string.Empty;
 }

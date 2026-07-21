@@ -111,8 +111,8 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
 
             // Resolve the user's factory scope. A gauge-restricted user is pinned to their
             // own factory_type; an admin starts on "all factories" (null) and may change it.
-            scope = await TaskManager.GetScopeAsync();
-            if (scope.IsRestricted)
+            scope = (await TaskManager.GetScopeAsync()).Data;
+            if (scope?.IsRestricted == true)
                 selectedFactoryType = scope.AssignedGauge;
 
             await LoadBoardAsync();   // also (re)loads the cascading sub-category options
@@ -127,10 +127,13 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
             syncMsg = null;
             try
             {
-                var r = await TaskManager.SyncAsync();
-                syncMsg = r.Ran
-                    ? $"Synced from MySQL — {r.Total} new row(s)."
-                    : (string.IsNullOrWhiteSpace(r.Message) ? "Sync skipped." : r.Message);
+                var resp = await TaskManager.SyncAsync();
+                var r = resp.Data;
+                syncMsg = r is null
+                    ? (string.IsNullOrWhiteSpace(resp.Messages) ? "Sync failed." : resp.Messages)
+                    : r.Ran
+                        ? $"Synced from MySQL — {r.Total} new row(s)."
+                        : (string.IsNullOrWhiteSpace(r.Message) ? "Sync skipped." : r.Message);
                 await LoadBoardAsync();   // show any newly pulled rows
             }
             finally
@@ -157,7 +160,7 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
             // beforehand; here we just prune anything no longer available in the new window so
             // the checkboxes stay consistent. ActiveFactory == null (admin "All Factories")
             // aggregates sub-categories across every factory.
-            var subs = await TaskManager.GetSubCategoriesAsync(ActiveFactory, start, end);
+            var subs = (await TaskManager.GetSubCategoriesAsync(ActiveFactory, start, end)).Data ?? new();
             if (token != _loadSeq) return;
             availableSubCategories = subs;
             selectedSubCategories.RemoveWhere(s => !subs.Contains(s, StringComparer.OrdinalIgnoreCase));
@@ -167,11 +170,11 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
             // Empty selection = "All" = no sub-filter; otherwise pipe-join the checked options.
             var subCats = selectedSubCategories.Count == 0 ? null : string.Join("|", selectedSubCategories);
 
-            var scheduled = await TaskManager.GetTasksAsync("S", start, end, orderNo, factoryType, subCats);
-            var progress = await TaskManager.GetTasksAsync("P", start, end, orderNo, factoryType, subCats);
-            var completed = await TaskManager.GetTasksAsync("C", start, end, orderNo, factoryType, subCats);
-            var overdue = await TaskManager.GetTasksAsync("O", start, end, orderNo, factoryType, subCats);
-            var onhold = await TaskManager.GetTasksAsync("H", start, end, orderNo, factoryType, subCats);  // plan_status = 1
+            var scheduled = (await TaskManager.GetTasksAsync("S", start, end, orderNo, factoryType, subCats)).Data ?? new();
+            var progress = (await TaskManager.GetTasksAsync("P", start, end, orderNo, factoryType, subCats)).Data ?? new();
+            var completed = (await TaskManager.GetTasksAsync("C", start, end, orderNo, factoryType, subCats)).Data ?? new();
+            var overdue = (await TaskManager.GetTasksAsync("O", start, end, orderNo, factoryType, subCats)).Data ?? new();
+            var onhold = (await TaskManager.GetTasksAsync("H", start, end, orderNo, factoryType, subCats)).Data ?? new();  // plan_status = 1
 
             // A newer filter change started while we awaited -> drop these stale results so the
             // board never shows data that doesn't match the current filters.

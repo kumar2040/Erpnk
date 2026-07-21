@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using NkplmErp.Blazor.Model.Yarn_Orders;
 using NkplmErp.Blazor.Services.Bom;
 using NkplmErp.Blazor.Services.RoleManagement;
 using NkplmErp.Blazor.Services.Toast;
+using NkplmErp.Blazor.Services.Yarn_Orders.Manager.Interface;
 using NkplmErp.Shared.DTOs;
 
 namespace NkplmErp.Blazor.Pages;
@@ -13,6 +15,7 @@ public partial class YarnOrders
     [Inject] private PermissionService PermSvc { get; set; } = default!;
     [Inject] private IJSRuntime JS { get; set; } = default!;
     [Inject] private ToastService Toast { get; set; } = default!;
+    [Inject] private IYarnOrderManager YarnApi { get; set; } = default!;
 
     private bool AccessDenied = false;
 
@@ -100,23 +103,52 @@ public partial class YarnOrders
 
     private async Task SaveDepartureAsync(YarnVendorOrderDto v)
     {
-        if (!DateTime.TryParse(DepartureEdit.GetValueOrDefault(v.VyoId), out var d)) return;
-        if (await BomApi.SetDepartureAsync(v.VyoId, d))
+        var departure = DepartureEdit.GetValueOrDefault(v.VyoId);
+
+        if (string.IsNullOrWhiteSpace(departure))
         {
-            StatusMessage = $"Departure {d:dd MMM yyyy} saved for {v.VyoNo}. Task created.";
-            IsError = false;
-            await ReloadVendorOrdersAsync();
+            Toast.ShowWarning("Departure date can't be empty.");
+            return;
         }
+
+        await SaveTimelineAsync(v, departure, null);
     }
 
     private async Task SaveArrivalAsync(YarnVendorOrderDto v)
     {
-        if (!DateTime.TryParse(ArrivalEdit.GetValueOrDefault(v.VyoId), out var d)) return;
-        if (await BomApi.SetArrivalAsync(v.VyoId, d))
+        var arrival = ArrivalEdit.GetValueOrDefault(v.VyoId);
+
+        if (string.IsNullOrWhiteSpace(arrival))
         {
-            StatusMessage = $"Arrival {d:dd MMM yyyy} saved for {v.VyoNo}. Task created.";
-            IsError = false;
+            Toast.ShowWarning("Arrival date can't be empty.");
+            return;
+        }
+
+        await SaveTimelineAsync(v, null, arrival);
+    }
+
+    // Dates go over as raw strings; sp_ManageYarnOrder flag 'T' converts them and
+    // decides the outcome, so the toast text is the procedure's own message. Passing
+    // null for the other date leaves that column untouched.
+    private async Task SaveTimelineAsync(YarnVendorOrderDto v, string? departureDate, string? arrivalDate)
+    {
+        var request = new YarnOrdersRequestModel
+        {
+            YarnId        = v.VyoId.ToString(),
+            DepartureDate = departureDate,
+            ArrivalDate   = arrivalDate
+        };
+
+        var result = await YarnApi.UpdateYarnOrderAsync(request);
+
+        if (result.Succeeded)
+        {
+            Toast.ShowSuccess(result.Data?.Message ?? "Date saved.");
             await ReloadVendorOrdersAsync();
+        }
+        else
+        {
+            Toast.ShowError(result.Messages ?? "Could not save the date.");
         }
     }
 
@@ -191,10 +223,17 @@ public partial class YarnOrders
 
         if (result is { Succeeded: true })
         {
-            // Success feedback is a toast now (the old inline "Flagged…" banner was removed).
-            Toast.ShowSuccess($"{dropSelected.Count} color(s) dropped on {dropVendor.VyoNo}: {string.Join(", ", dropSelected)}.");
+            // Success feedback is a toast (the proc reports how many lines were flagged).
+            Toast.ShowSuccess(!string.IsNullOrWhiteSpace(result.Message)
+                ? result.Message
+                : $"{dropSelected.Count} color(s) dropped on {dropVendor.VyoNo}.");
             showDropConfirm = false;
             showDropModal = false;
+
+            // Reload the detail — sp_GetYarnOrderDetail no longer fetches dropped colors,
+            // so they disappear from the vendor group (and any future drop modal) live.
+            if (Selected is not null)
+                Detail = await BomApi.GetYarnOrderDetailAsync(Selected.YoId);
         }
         else
         {
