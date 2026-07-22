@@ -17,6 +17,9 @@ public partial class YarnOrders
     [Inject] private ToastService Toast { get; set; } = default!;
     [Inject] private IYarnOrderManager YarnApi { get; set; } = default!;
 
+    /// <summary>Route id from /yarn-orders/{YoId} — set when a BOM task card links here.</summary>
+    [Parameter] public int? YoId { get; set; }
+
     private bool AccessDenied = false;
 
     private List<YarnOrderHeaderDto> Orders = new();
@@ -67,6 +70,16 @@ public partial class YarnOrders
         }
 
         await LoadOrdersAsync();
+
+        // Arrived from a BOM task card (/yarn-orders/{yo_id}) — open that order right away,
+        // using the same selection path a click on the list would take. An unknown id (order
+        // deleted, or the task predates it) just leaves the page on "nothing selected".
+        if (YoId is > 0)
+        {
+            var target = Orders.FirstOrDefault(o => o.YoId == YoId.Value);
+            if (target is not null)
+                await SelectOrderAsync(target);
+        }
     }
 
     private async Task LoadOrdersAsync()

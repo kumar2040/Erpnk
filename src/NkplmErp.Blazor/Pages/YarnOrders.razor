@@ -1,4 +1,6 @@
 @page "/yarn-orders"
+@* /yarn-orders/{id} opens that order straight away — used by the BOM task cards on /tasks. *@
+@page "/yarn-orders/{YoId:int?}"
 @using NkplmErp.Shared.DTOs
 
 <PageTitle>Saved Yarn Orders</PageTitle>
@@ -48,6 +50,7 @@ else
                                     <span class="kg">@o.TotalKg.ToString("N2") kg</span>
                                 </div>
                                 <div>
+                                    <span class="ordno">@o.order_no</span>
                                 </div>
                                 <div class="row2">
                                     <span class="date">@o.CreatedDate.ToString("dd MMM yyyy, HH:mm")</span>

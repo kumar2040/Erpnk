@@ -2,6 +2,7 @@
 @attribute [Authorize]
 @using NkplmErp.Shared.DTOs
 @using NkplmErp.Blazor.Shared
+@using NkplmErp.Blazor.Model.Po_Tasks
 @using Microsoft.AspNetCore.Components.Forms
 
 @if (AccessDenied)
@@ -68,8 +69,19 @@ else
                 {
                     @foreach (var card in Cards(col.Flag))
                     {
+                        var link = PoTaskLinkModel.For(card);
                         <div class="tcard" @onclick="() => OpenDetail(card.TaskId)">
-                            @if (col.Flag == "P" && !string.IsNullOrWhiteSpace(card.OrderNo))
+                            @if (link.CanNavigate)
+                            {
+                                @* The stage has a page of its own (BOM → its yarn order), and the
+                                   task carries that record's real id, so the name routes straight
+                                   there. stopPropagation so the card's status drawer stays shut. *@
+                                <div class="tcard-title tcard-title-link" title="@link.Tooltip"
+                                     @onclick="() => GoToLinkedPage(link)" @onclick:stopPropagation="true">
+                                    @(string.IsNullOrWhiteSpace(card.Title) ? "(untitled)" : card.Title)
+                                </div>
+                            }
+                            else if (col.Flag == "P" && !string.IsNullOrWhiteSpace(card.OrderNo))
                             {
                                 @* In Progress column ONLY: the name links to the return-detail modal
                                    (issued/returned/return-pace only make sense once knitting is under

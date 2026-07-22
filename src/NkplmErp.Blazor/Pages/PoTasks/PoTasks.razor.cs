@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using NkplmErp.Blazor.Components;
+using NkplmErp.Blazor.Model.Po_Tasks;
 using NkplmErp.Blazor.Services.PoTask;
 using NkplmErp.Blazor.Services.RoleManagement;
 using NkplmErp.Blazor.Services.TaskManagement.Manager.Interface;
@@ -15,6 +16,7 @@ namespace NkplmErp.Blazor.Pages.PoTasks
         [Inject] private RoleManagementApiClient Roles { get; set; } = default!;
         [Inject] private NkplmErp.Blazor.Services.RoleManagement.PermissionService PermSvc { get; set; } = default!;
         [Inject] private ITaskManagementManager TaskMgr { get; set; } = default!;
+        [Inject] private NavigationManager Nav { get; set; } = default!;
 
         private const string PageKey = "PoTask";
 
@@ -245,6 +247,11 @@ namespace NkplmErp.Blazor.Pages.PoTasks
         }
 
         private void CloseDetail() => showDetail = false;
+
+        // Leave the board for the record this task was raised from — PoTaskLinkModel decides
+        // the page and the id (BOM -> /yarn-orders/{yo_id}). Only called for cards whose link
+        // CanNavigate, so Route is set.
+        private void GoToLinkedPage(PoTaskLinkModel link) => Nav.NavigateTo(link.Route!);
 
         private async Task ToggleChecklist(int checklistId)
         {
