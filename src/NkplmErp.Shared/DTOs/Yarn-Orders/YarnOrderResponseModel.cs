@@ -1,4 +1,4 @@
-namespace NkplmErp.API.Model.Yarn_Orders
+namespace NkplmErp.Shared.DTOs.Yarn_Orders
 {
     public class YarnOrderResponseModel
     {

@@ -1,4 +1,4 @@
-namespace NkplmErp.API.Model.TaskManagement
+namespace NkplmErp.Shared.DTOs.TaskManagement
 {
     // Describes the factory_type scope the current user is allowed to see on the board.
     //   IsRestricted = false -> admin / unrestricted: FactoryTypes lists every factory_type

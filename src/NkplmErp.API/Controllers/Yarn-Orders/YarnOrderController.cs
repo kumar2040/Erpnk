@@ -2,8 +2,8 @@ using System.Security.Claims;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using NkplmErp.API.Model.Yarn_Orders;
-using NkplmErp.API.Services.Interface.Yarn_Orders;
+using NkplmErp.Shared.DTOs.Yarn_Orders;
+using NkplmErp.Application.Interfaces.Yarn_Orders;
 using NkplmErp.Application.Interfaces;
 
 namespace NkplmErp.API.Controllers.Yarn_Orders

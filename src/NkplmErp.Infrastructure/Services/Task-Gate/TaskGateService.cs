@@ -1,10 +1,10 @@
 using System.Data;
-using NkplmErp.API.Model.Task_Gate;
-using NkplmErp.API.Services.Interface.Task_Gate;
+using NkplmErp.Shared.DTOs.Task_Gate;
+using NkplmErp.Application.Interfaces.Task_Gate;
 using NkplmErp.Shared.DataAccess.GenericRepository;
 using NkplmErp.Shared.Wrapper;
 
-namespace NkplmErp.API.Services.Implementation.Task_Gate
+namespace NkplmErp.Infrastructure.Services.Task_Gate
 {
     public class TaskGateService : ITaskGateService
     {

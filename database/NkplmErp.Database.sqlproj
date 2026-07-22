@@ -10,6 +10,7 @@
   <ItemGroup>
     <Build Remove="*.sql" />
     <Build Remove="NkplmErp.Migrations/**/*.sql" />
+    <Build Include="dbo\Procedure\sp_GetYarnOrders.sql" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="dbo/*" />

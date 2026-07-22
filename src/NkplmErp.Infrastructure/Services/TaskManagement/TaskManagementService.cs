@@ -1,10 +1,10 @@
 using System.Data;
-using NkplmErp.API.Model.TaskManagement;
-using NkplmErp.API.Services.Interface.TaskManagement;
+using NkplmErp.Shared.DTOs.TaskManagement;
+using NkplmErp.Application.Interfaces.TaskManagement;
 using NkplmErp.Shared.DataAccess.GenericRepository;
 using NkplmErp.Shared.Wrapper;
 
-namespace NkplmErp.API.Services.Implementation.TaskManagement
+namespace NkplmErp.Infrastructure.Services.TaskManagement
 {
     public class TaskManagementService : ITaskManagementService
     {

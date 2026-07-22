@@ -1,7 +1,7 @@
-using NkplmErp.API.Model.Task_Gate;
+using NkplmErp.Shared.DTOs.Task_Gate;
 using NkplmErp.Shared.Wrapper;
 
-namespace NkplmErp.API.Services.Interface.Task_Gate
+namespace NkplmErp.Application.Interfaces.Task_Gate
 {
     public interface ITaskGateService
     {

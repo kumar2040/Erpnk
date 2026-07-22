@@ -2,8 +2,8 @@ using System.Security.Claims;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using NkplmErp.API.Model.TaskManagement;
-using NkplmErp.API.Services.Interface.TaskManagement;
+using NkplmErp.Shared.DTOs.TaskManagement;
+using NkplmErp.Application.Interfaces.TaskManagement;
 using NkplmErp.Application.Interfaces;
 
 namespace NkplmErp.API.Controllers.TaskManagement

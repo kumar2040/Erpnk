@@ -1,10 +1,10 @@
 using System.Data;
-using NkplmErp.API.Model.Yarn_Orders;
-using NkplmErp.API.Services.Interface.Yarn_Orders;
+using NkplmErp.Shared.DTOs.Yarn_Orders;
+using NkplmErp.Application.Interfaces.Yarn_Orders;
 using NkplmErp.Shared.DataAccess.GenericRepository;
 using NkplmErp.Shared.Wrapper;
 
-namespace NkplmErp.API.Services.Implementation.Yarn_Orders
+namespace NkplmErp.Infrastructure.Services.Yarn_Orders
 {
     public class YarnOrderService : IYarnOrderService
     {

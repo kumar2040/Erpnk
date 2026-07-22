@@ -1,4 +1,4 @@
-namespace NkplmErp.API.Model.TaskManagement
+namespace NkplmErp.Shared.DTOs.TaskManagement
 {
     // One aggregated summary row for a single production line (MasterPlanChildId),
     // returned by spTaskManagement flag 'KH'. Feeds the order return-detail modal's

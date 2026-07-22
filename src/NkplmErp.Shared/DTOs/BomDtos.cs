@@ -101,6 +101,7 @@ public class YarnOrderHeaderDto
 {
     public int YoId { get; set; }
     public string YoNo { get; set; } = string.Empty;
+    public string order_no { get; set; } = string.Empty;
     public DateTime CreatedDate { get; set; }
     public string? CreatedBy { get; set; }
     public decimal TotalKg { get; set; }

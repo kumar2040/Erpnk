@@ -1,4 +1,4 @@
-namespace NkplmErp.API.Model.TaskManagement
+namespace NkplmErp.Shared.DTOs.TaskManagement
 {
     // Request shape for the task board. Flag selects the column:
     //   S = Scheduled, P = In Progress, C = Completed, O = Overdue.

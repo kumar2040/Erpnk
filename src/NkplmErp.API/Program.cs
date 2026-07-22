@@ -20,8 +20,8 @@ using Asp.Versioning;
 using Microsoft.OpenApi.Models;
 using Hangfire;
 using Hangfire.SqlServer;
-using NkplmErp.API.Services.Implementation.TaskManagement;
-using NkplmErp.API.Services.Interface.TaskManagement;
+using NkplmErp.Infrastructure.Services.TaskManagement;
+using NkplmErp.Application.Interfaces.TaskManagement;
 using NkplmErp.Application.Interfaces.Email;
 using NkplmErp.Infrastructure.Services.Email;
 using NkplmErp.Shared.DataAccess.GenericRepository;
@@ -166,10 +166,10 @@ builder.Services.AddScoped<IMachineManagementService, MachineManagementService>(
 builder.Services.AddScoped<IBomService, BomService>();
 builder.Services.AddScoped<IDapperRepository, DapperRepository>();
 builder.Services.AddScoped<ITaskManagementService, TaskManagementService>();
-builder.Services.AddScoped<NkplmErp.API.Services.Interface.Task_Gate.ITaskGateService,
-                           NkplmErp.API.Services.Implementation.Task_Gate.TaskGateService>();
-builder.Services.AddScoped<NkplmErp.API.Services.Interface.Yarn_Orders.IYarnOrderService,
-                           NkplmErp.API.Services.Implementation.Yarn_Orders.YarnOrderService>();
+builder.Services.AddScoped<NkplmErp.Application.Interfaces.Task_Gate.ITaskGateService,
+                           NkplmErp.Infrastructure.Services.Task_Gate.TaskGateService>();
+builder.Services.AddScoped<NkplmErp.Application.Interfaces.Yarn_Orders.IYarnOrderService,
+                           NkplmErp.Infrastructure.Services.Yarn_Orders.YarnOrderService>();
 builder.Services.AddScoped<IPoTaskService, PoTaskService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IGenericRepository, GenericRepository>();

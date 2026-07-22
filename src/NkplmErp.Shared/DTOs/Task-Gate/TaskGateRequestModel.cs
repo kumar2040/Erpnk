@@ -1,4 +1,4 @@
-namespace NkplmErp.API.Model.Task_Gate
+namespace NkplmErp.Shared.DTOs.Task_Gate
 {
     // Body for POST api/v1/TaskGate/start.
     // TaskId travels as a string; sp_ManageTaskGate converts it with TRY_CONVERT.

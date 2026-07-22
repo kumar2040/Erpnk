@@ -1,4 +1,4 @@
-namespace NkplmErp.API.Model.Task_Gate
+namespace NkplmErp.Shared.DTOs.Task_Gate
 {
     // One model for both branches of sp_ManageTaskGate.
     //

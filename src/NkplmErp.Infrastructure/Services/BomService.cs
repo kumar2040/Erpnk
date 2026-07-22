@@ -120,7 +120,8 @@ public class BomService : IBomService
                 TotalKg = reader["total_kg"] != DBNull.Value ? Convert.ToDecimal(reader["total_kg"]) : 0m,
                 OrderCount = reader["order_count"] != DBNull.Value ? Convert.ToInt32(reader["order_count"]) : 0,
                 LineCount = reader["line_count"] != DBNull.Value ? Convert.ToInt32(reader["line_count"]) : 0,
-                Status = reader["status"]?.ToString() ?? string.Empty
+                Status = reader["status"]?.ToString() ?? string.Empty,
+                order_no = reader["order_no"]?.ToString() ?? string.Empty
             });
         }
         return result;

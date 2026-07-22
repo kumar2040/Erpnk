@@ -1,4 +1,4 @@
-namespace NkplmErp.API.Model.TaskManagement
+namespace NkplmErp.Shared.DTOs.TaskManagement
 {
     // One size row (style, colour, size, qty) for an In Progress card's line. Returned by
     // spTaskManagement @Flag='KS' for the return-detail modal's items table.

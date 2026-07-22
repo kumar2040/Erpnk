@@ -1,4 +1,4 @@
-namespace NkplmErp.API.Model.TaskManagement
+namespace NkplmErp.Shared.DTOs.TaskManagement
 {
     // One production plan line (a "task") returned by spTaskManagement.
     // Property names match the SP's aliased columns so Dapper maps by name.

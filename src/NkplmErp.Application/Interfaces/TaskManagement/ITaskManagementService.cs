@@ -1,7 +1,7 @@
-using NkplmErp.API.Model.TaskManagement;
+using NkplmErp.Shared.DTOs.TaskManagement;
 using NkplmErp.Shared.Wrapper;
 
-namespace NkplmErp.API.Services.Interface.TaskManagement
+namespace NkplmErp.Application.Interfaces.TaskManagement
 {
     public interface ITaskManagementService
     {

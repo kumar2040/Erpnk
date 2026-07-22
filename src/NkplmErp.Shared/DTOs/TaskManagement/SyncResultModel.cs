@@ -1,4 +1,4 @@
-namespace NkplmErp.API.Model.TaskManagement
+namespace NkplmErp.Shared.DTOs.TaskManagement
 {
     // Result of sp_SyncKnitterRecords: how many new rows were pulled from MySQL.
     public class SyncResultModel

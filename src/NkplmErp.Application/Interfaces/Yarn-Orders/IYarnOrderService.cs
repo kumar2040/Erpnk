@@ -1,7 +1,7 @@
-using NkplmErp.API.Model.Yarn_Orders;
+using NkplmErp.Shared.DTOs.Yarn_Orders;
 using NkplmErp.Shared.Wrapper;
 
-namespace NkplmErp.API.Services.Interface.Yarn_Orders
+namespace NkplmErp.Application.Interfaces.Yarn_Orders
 {
     public interface IYarnOrderService
     {
