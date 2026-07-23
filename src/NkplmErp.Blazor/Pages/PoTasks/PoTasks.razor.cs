@@ -49,6 +49,16 @@ namespace NkplmErp.Blazor.Pages.PoTasks
         // All Factories as its only choice rather than disappearing.
         private List<string> FactoryOptions => scope?.FactoryTypes ?? new();
 
+        // AutoCompleteSelect (the app's standard dropdown) takes DropDownListModel rows
+        // rather than plain strings; a factory type has no separate code, so it is its
+        // own Id and Value.
+        private List<DropDownListModel> FactoryDropDownModels =>
+            FactoryOptions.Select(ft => new DropDownListModel { Id = ft, Value = ft }).ToList();
+
+        // What the control shows as selected. All=1 makes its leading row carry
+        // DropdownValues.All ("-1"), which is what selectedFactoryType==null maps to.
+        private string FactoryValueForControl => selectedFactoryType ?? DropdownValues.All;
+
         // Monotonic token so a slow in-flight board load can't overwrite a newer one.
         // Every LoadBoardAsync bumps it; results are applied only if still the latest.
         private int _loadSeq;
@@ -227,11 +237,11 @@ namespace NkplmErp.Blazor.Pages.PoTasks
         // through @bind), so just reload.
         private async Task OnFilterChanged() => await LoadBoardAsync();
 
-        // Facility dropdown. Only reachable by an unrestricted user; "" = All Factories.
-        private async Task OnFactoryTypeChanged(ChangeEventArgs e)
+        // Facility dropdown. DropdownValues.IsPlaceholder catches the leading "-1"
+        // (All Factories) row as well as an empty/unset value.
+        private async Task OnFactoryTypeSelectedAsync(string id)
         {
-            var picked = e.Value?.ToString();
-            selectedFactoryType = string.IsNullOrWhiteSpace(picked) ? null : picked;
+            selectedFactoryType = DropdownValues.IsPlaceholder(id) ? null : id;
             await LoadBoardAsync();
         }
 

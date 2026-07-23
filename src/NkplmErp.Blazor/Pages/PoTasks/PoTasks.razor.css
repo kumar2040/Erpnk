@@ -48,21 +48,21 @@
 .board-row.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .board-row.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
 .board-row.cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}
-.board-col{background:#fff;border:1px solid var(--line);border-radius:12px;padding:0;min-height:140px;overflow:hidden;box-shadow:0 1px 3px rgba(16,24,40,.05)}
+.board-col{background:#fff;border:1px solid var(--line);border-radius:12px;padding:0;height:calc(100vh - 300px);min-height:360px;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;box-shadow:0 1px 3px rgba(16,24,40,.05)}
 /* Single-status view: no header (the lit stat card names it), cards flow 3-up like /task. */
-.board-col.flow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:9px;align-items:start}
+.board-col.flow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:9px;align-items:stretch;align-content:start}
 .board-col.flow > .tcard{margin:0}
-.col-head{display:flex;align-items:center;gap:8px;font-size:.82rem;font-weight:800;color:var(--navy);padding:10px 13px;border-bottom:1px solid var(--line);background:#fafbfd;margin:0}
+.col-head{display:flex;align-items:center;gap:8px;font-size:.82rem;font-weight:800;color:var(--navy);padding:10px 13px;border-bottom:1px solid var(--line);background:#fafbfd;margin:0;flex:none;position:sticky;top:0;z-index:2}
 .col-head .dot{width:9px;height:9px;border-radius:50%;background:var(--c,#94a3b8)}
 /* Class names derive from the status flag (col-<flag>): S P H C O. */
 .col-s{--c:var(--sched)} .col-p{--c:var(--prog)} .col-h{--c:var(--hold)} .col-c{--c:var(--done)} .col-o{--c:var(--due)}
 .col-head .cnt{margin-left:auto;background:#eef1f6;color:#334155;border-radius:20px;font-size:.7rem;font-weight:800;padding:1px 9px}
-.col-empty{color:#b6bcc6;font-size:.74rem;padding:14px 12px;text-align:center}
+.col-empty{color:#b6bcc6;font-size:.74rem;padding:14px 12px;text-align:center;flex:1;display:flex;align-items:center;justify-content:center}
 .board-col > .tcard{margin:9px}
 .board-col > .tcard ~ .tcard{margin-top:0}
 
 /* task card */
-.tcard{background:#fff;border:1px solid var(--line);border-left:4px solid var(--c,#94a3b8);border-radius:9px;padding:10px 11px;margin:9px;cursor:pointer;box-shadow:0 1px 2px rgba(16,24,40,.04);transition:transform .1s,box-shadow .1s}
+.tcard{background:#fff;border:1px solid var(--line);border-left:4px solid var(--c,#94a3b8);border-radius:9px;padding:10px 11px;margin:9px;cursor:pointer;box-shadow:0 1px 2px rgba(16,24,40,.04);transition:transform .1s,box-shadow .1s;display:flex;flex-direction:column}
 .tcard:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(16,24,40,.08)}
 .col-s .tcard{--c:var(--sched)} .col-p .tcard{--c:var(--prog)} .col-h .tcard{--c:var(--hold)} .col-c .tcard{--c:var(--done)} .col-o .tcard{--c:var(--due)}
 .tcard-title{font-size:.82rem;font-weight:800;color:var(--navy);margin-bottom:4px;line-height:1.25}
@@ -71,7 +71,7 @@
 .tcard-title-link{display:inline-block;cursor:pointer;transition:color .12s}
 .tcard-title-link:hover{color:var(--teal);text-decoration:underline}
 .tcard-meta{font-size:.68rem;color:var(--muted);font-weight:600;display:flex;flex-wrap:wrap;gap:4px;margin-bottom:9px}
-.tcard-foot{display:flex;align-items:center;justify-content:space-between}
+.tcard-foot{display:flex;align-items:center;justify-content:space-between;margin-top:auto}
 .rollup{font-size:.68rem;font-weight:800;color:#0f766e;background:rgba(42,179,177,.14);padding:1px 8px;border-radius:20px}
 .prio{font-size:.66rem;padding:2px 8px;border-radius:20px;font-weight:800}
 .prio.p-1{background:#f1f5f9;color:#475569}
@@ -225,6 +225,7 @@
 
 @media (max-width: 900px){
   .stats-grid,.board-row{grid-template-columns:repeat(2,1fr)}
+  .board-col{height:calc(100vh - 360px)}
 }
 
 /* Popup (modal) body text in #222 — keeps colored buttons/badges/pills intact. */

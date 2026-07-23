@@ -48,14 +48,9 @@ else
                    pins them to it regardless of what's sent, so a single control is safe
                    for everyone. *@
                 <div class="filter-item">
-                    <select class="compact-select" value="@(selectedFactoryType ?? "")"
-                            @onchange="OnFactoryTypeChanged" style="height:34px" title="Filter by facility">
-                        <option value="">All Factories</option>
-                        @foreach (var ft in FactoryOptions)
-                        {
-                            <option value="@ft">@ft</option>
-                        }
-                    </select>
+                    <AutoCompleteSelect DropDownModels="FactoryDropDownModels" All="1"
+                                        Placeholder="All Factories"
+                                        Value="@FactoryValueForControl" ValueChanged="OnFactoryTypeSelectedAsync" />
                 </div>
 
                 @if (CanEdit)
