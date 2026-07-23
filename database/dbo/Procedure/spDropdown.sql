@@ -10,8 +10,16 @@
     @Filter2   optional second cascade key
 
   Types
-    'YarnOrderStatus'   Order state filter on /yarn-orders. 'Pending' and any
-                        later state slot in as another row in the VALUES list.
+    'YarnOrderStatus'      Order state filter on /yarn-orders. 'Pending' and any
+                           later state slot in as another row in the VALUES list.
+    'TaskPriority'         Add-Task priority. Ids match PoTask.PriorityId.
+    'TaskUpdateFrequency'  Add-Task progress cadence. Ids match PoTask.UpdateFrequency.
+    'TaskCompletionRule'   Add-Task roll-up rule. Ids match PoTask.CompletionRule.
+    'TaskAssigneeStatus'   Per-card step buttons. Ids are the S/P/C codes the board
+                           sends to the API unchanged.
+    'PoTaskBoardColumn'    The /tasks board columns, left to right. Ids are the
+                           status flags sp_GetPoTask matches on (S/P/C/O/H).
+    'TaskStatus'           Task / assignee status labels (S/P/C/H/X).
 
   Contract — every type MUST return exactly these two columns, these names, so
   they bind to DropDownListModel. Dapper has MatchNamesWithUnderscores off in
@@ -46,6 +54,101 @@ BEGIN
         FROM (VALUES
             ('O', 'Ordered',     1),
             ('N', 'Not ordered', 2)
+        ) AS v([Id], [Value], [SortOrder])
+        ORDER BY [SortOrder];
+        RETURN;
+    END
+
+    /* -------------------------------------------------- TaskPriority
+       Ids match PoTask.PriorityId and the PriorityName CASE in sp_GetPoTask. */
+    IF (@Flag = 'TASKPRIORITY')
+    BEGIN
+        SELECT [Id], [Value]
+        FROM (VALUES
+            ('1', 'Low',    1),
+            ('2', 'Medium', 2),
+            ('3', 'High',   3),
+            ('4', 'Urgent', 4)
+        ) AS v([Id], [Value], [SortOrder])
+        ORDER BY [SortOrder];
+        RETURN;
+    END
+
+    /* -------------------------------------------------- TaskUpdateFrequency
+       Ids match PoTask.UpdateFrequency (0=None is not offered as a pick). */
+    IF (@Flag = 'TASKUPDATEFREQUENCY')
+    BEGIN
+        SELECT [Id], [Value]
+        FROM (VALUES
+            ('1', 'Daily',    1),
+            ('2', 'Weekly',   2),
+            ('3', 'Biweekly', 3),
+            ('4', 'Monthly',  4)
+        ) AS v([Id], [Value], [SortOrder])
+        ORDER BY [SortOrder];
+        RETURN;
+    END
+
+    /* -------------------------------------------------- TaskCompletionRule
+       Ids match PoTask.CompletionRule and the RuleName helper. */
+    IF (@Flag = 'TASKCOMPLETIONRULE')
+    BEGIN
+        SELECT [Id], [Value]
+        FROM (VALUES
+            ('1', 'All must complete', 1),
+            ('2', 'Any one completes', 2),
+            ('3', 'Quorum',            3)
+        ) AS v([Id], [Value], [SortOrder])
+        ORDER BY [SortOrder];
+        RETURN;
+    END
+
+    /* -------------------------------------------------- TaskAssigneeStatus
+       The caller's own step buttons on a card. Ids are the S/P/C codes MyUpdate
+       sends to the API unchanged -- letters are valid Ids (see YarnOrderStatus). */
+    IF (@Flag = 'TASKASSIGNEESTATUS')
+    BEGIN
+        SELECT [Id], [Value]
+        FROM (VALUES
+            ('S', 'Scheduled',   1),
+            ('P', 'In progress', 2),
+            ('C', 'Complete',    3)
+        ) AS v([Id], [Value], [SortOrder])
+        ORDER BY [SortOrder];
+        RETURN;
+    END
+
+    /* -------------------------------------------------- PoTaskBoardColumn
+       The /tasks board columns, in display order. Id is the status flag the board
+       sends to sp_GetPoTask (@StatusFlag IN 'S','P','C','O','H') and the value it
+       compares card.DisplayFlag against -- it MUST stay the letter, not a numeric
+       code, or the board fetch matches nothing and every column shows Scheduled. */
+    IF (@Flag = 'POTASKBOARDCOLUMN')
+    BEGIN
+        SELECT [Id], [Value]
+        FROM (VALUES
+            ('S', 'Scheduled',   1),
+            ('P', 'In Progress', 2),
+            ('H', 'On Hold',     3),
+            ('C', 'Completed',   4),
+            ('O', 'Over Due',    5)
+        ) AS v([Id], [Value], [SortOrder])
+        ORDER BY [SortOrder];
+        RETURN;
+    END
+
+    /* -------------------------------------------------- TaskStatus
+       Task / assignee status label. Ids are the stored status letters, the same
+       ones card.Status / PoTaskAssignee.Status hold. */
+    IF (@Flag = 'TASKSTATUS')
+    BEGIN
+        SELECT [Id], [Value]
+        FROM (VALUES
+            ('S', 'Scheduled',   1),
+            ('P', 'In progress', 2),
+            ('C', 'Completed',   3),
+            ('H', 'On hold',     4),
+            ('X', 'Cancelled',   5)
         ) AS v([Id], [Value], [SortOrder])
         ORDER BY [SortOrder];
         RETURN;

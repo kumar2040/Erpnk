@@ -46,6 +46,17 @@
     width: 180px;
 }
 
+/* Full-width variant for form rows, where the field should fill its column
+   instead of the fixed filter-bar width. CssClass lands on .ac-wrap, so the
+   wrapper AND its button (which is otherwise a fixed 180px) both go 100%. */
+.ac-wrap.ac-fullwidth {
+    width: 100%;
+}
+
+.ac-wrap.ac-fullwidth .ac-field {
+    width: 100%;
+}
+
 /* It's a <button>, so the browser's centred/bold defaults have to be undone. */
 .ac-field-select {
     display: flex;

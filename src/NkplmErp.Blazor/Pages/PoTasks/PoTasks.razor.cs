@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using NkplmErp.Blazor.Components;
+using NkplmErp.Blazor.Services.Dropdown.Manager.Interface;
 using NkplmErp.Blazor.Services.PoTask;
 using NkplmErp.Blazor.Services.RoleManagement;
 using NkplmErp.Blazor.Services.TaskManagement.Manager.Interface;
 using NkplmErp.Blazor.Services.TaskManagement.Model;
 using NkplmErp.Shared.DTOs;
+using NkplmErp.Shared.DTOs.Dropdown;
 
 namespace NkplmErp.Blazor.Pages.PoTasks
 {
@@ -15,6 +17,7 @@ namespace NkplmErp.Blazor.Pages.PoTasks
         [Inject] private RoleManagementApiClient Roles { get; set; } = default!;
         [Inject] private NkplmErp.Blazor.Services.RoleManagement.PermissionService PermSvc { get; set; } = default!;
         [Inject] private ITaskManagementManager TaskMgr { get; set; } = default!;
+        [Inject] private IDropdownManager Dropdowns { get; set; } = default!;
         [Inject] private NavigationManager Nav { get; set; } = default!;
 
         private const string PageKey = "PoTask";
@@ -50,22 +53,35 @@ namespace NkplmErp.Blazor.Pages.PoTasks
         // Every LoadBoardAsync bumps it; results are applied only if still the latest.
         private int _loadSeq;
 
-        // Board buckets, keyed by display flag S/P/C/O/H.
-        private readonly Dictionary<string, List<PoTaskCardDto>> _buckets = new()
-        {
-            ["S"] = new(), ["P"] = new(), ["C"] = new(), ["O"] = new(), ["H"] = new()
-        };
+        // Board buckets, keyed by the status flags loaded from spDropdown (PoTaskBoardColumn).
+        // Built in OnInitializedAsync once the columns are known. The keys are the exact
+        // letters sp_GetPoTask matches on (S/P/C/O/H), so the board fetch keys on them directly.
+        private Dictionary<string, List<PoTaskCardDto>> _buckets = new();
 
-        // Column definitions rendered left-to-right.
-        private record Col(string Title, string Flag, string Css);
-        private readonly List<Col> Columns = new()
-        {
-            new("Scheduled",   "S", "col-sched"),
-            new("In Progress", "P", "col-prog"),
-            new("On Hold",     "H", "col-hold"),
-            new("Completed",   "C", "col-done"),
-            new("Over Due",    "O", "col-due"),
-        };
+        // The board columns, left to right, from spDropdown -- Id is the status flag,
+        // Value is the column title. The per-column CSS is derived from the flag in the
+        // markup (class "col-<flag>"), so no title or class is hardcoded in the UI.
+        private List<DropDownListModel> BoardColumns = new();
+
+        // ---- Stat-card view (mirrors /task's ShowBubble) ----
+        // "WORKLOAD" = the multi-column group view (default); any other value is a single
+        // status flag showing just that column, full width with its cards flowing in a grid.
+        private const string WorkloadView = "WORKLOAD";
+        private string activeView = WorkloadView;
+        private void ShowView(string view) => activeView = view;
+
+        // Work Load = the active-workflow statuses, matching /task (On Hold is excluded and
+        // only appears when its own card is picked).
+        private static readonly string[] WorkloadFlags = { "S", "P", "C", "O" };
+        private int Workload => WorkloadFlags.Sum(Count);
+        private bool SingleView => activeView != WorkloadView;
+
+        // Which columns render for the current selection: the workflow group, or the one
+        // picked status.
+        private IEnumerable<DropDownListModel> VisibleColumns =>
+            activeView == WorkloadView
+                ? BoardColumns.Where(c => WorkloadFlags.Contains(c.Id))
+                : BoardColumns.Where(c => c.Id == activeView);
 
         // Add Task modal
         private bool showAdd;
@@ -86,6 +102,36 @@ namespace NkplmErp.Blazor.Pages.PoTasks
         private bool showDetail;
         private PoTaskDetailResult? detail;
 
+        // Per-card step buttons (Scheduled / In progress / Complete), from spDropdown.
+        // Id is the S/P/C code MyUpdate sends to the API. Loaded once on init.
+        private List<DropDownListModel> AssigneeStatuses = new();
+
+        // Status-letter -> label and rule-id -> label, both from spDropdown, so the
+        // status/rule text in the detail drawer isn't hardcoded here either.
+        private Dictionary<string, string> _statusLabels = new();   // S/P/C/H/X -> label
+        private Dictionary<string, string> _ruleLabels = new();     // 1/2/3     -> label
+
+        // AutoCompleteSelect binds a string; these request fields are byte?. The component's
+        // Select ("0") / All ("-1") leading rows and any unparseable value mean "not chosen".
+        private string PriorityIdStr
+        {
+            get => newTask.PriorityId?.ToString() ?? "";
+            set => newTask.PriorityId =
+                DropdownValues.IsPlaceholder(value) || !byte.TryParse(value, out var b) ? (byte?)null : b;
+        }
+        private string UpdateFrequencyStr
+        {
+            get => newTask.UpdateFrequency?.ToString() ?? "";
+            set => newTask.UpdateFrequency =
+                DropdownValues.IsPlaceholder(value) || !byte.TryParse(value, out var b) ? (byte?)null : b;
+        }
+        private string CompletionRuleStr
+        {
+            get => newTask.CompletionRule?.ToString() ?? "";
+            set => newTask.CompletionRule =
+                DropdownValues.IsPlaceholder(value) || !byte.TryParse(value, out var b) ? (byte?)null : b;
+        }
+
         protected override async Task OnInitializedAsync()
         {
             if (!PermSvc.IsLoaded)
@@ -96,6 +142,17 @@ namespace NkplmErp.Blazor.Pages.PoTasks
                 return;
             }
             CanEdit = PermSvc.CanEdit(PageKey);
+
+            // All the board's status text comes from spDropdown -- columns, step buttons,
+            // and the detail-drawer status/rule labels. The column flags double as the
+            // board's bucket keys, so they're loaded before the first board fetch.
+            BoardColumns = await Dropdowns.GetDropDownListAsync("PoTaskBoardColumn");
+            _buckets = BoardColumns.ToDictionary(c => c.Id, _ => new List<PoTaskCardDto>());
+            AssigneeStatuses = await Dropdowns.GetDropDownListAsync("TaskAssigneeStatus");
+            _statusLabels = (await Dropdowns.GetDropDownListAsync("TaskStatus"))
+                .ToDictionary(x => x.Id, x => x.Value);
+            _ruleLabels = (await Dropdowns.GetDropDownListAsync("TaskCompletionRule"))
+                .ToDictionary(x => x.Id, x => x.Value);
 
             // Staff + groups for the Add Task form (deduped staff by user id).
             if (CanEdit)
@@ -430,21 +487,13 @@ namespace NkplmErp.Blazor.Pages.PoTasks
 
         // ---------------------------------------------------------- helpers ----
 
-        private static string StatusName(string? s) => s switch
-        {
-            "S" => "Scheduled",
-            "P" => "In progress",
-            "C" => "Completed",
-            "H" => "On hold",
-            "X" => "Cancelled",
-            _ => s ?? ""
-        };
+        // Status letter -> label, from spDropdown (TaskStatus). Unknown -> the raw letter.
+        private string StatusName(string? s) =>
+            s is not null && _statusLabels.TryGetValue(s, out var v) ? v : (s ?? "");
 
-        private static string RuleName(byte rule) => rule switch
-        {
-            2 => "any one completes",
-            3 => "quorum",
-            _ => "all must complete"
-        };
+        // Completion-rule id -> label, from spDropdown (TaskCompletionRule), lower-cased so
+        // it reads inline ("rolls up: all must complete"). Unknown -> "".
+        private string RuleName(byte rule) =>
+            _ruleLabels.TryGetValue(rule.ToString(), out var v) ? v.ToLowerInvariant() : "";
     }
 }

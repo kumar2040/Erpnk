@@ -69,32 +69,50 @@ else
             </div>
         </div>
 
-        <!-- Stat cards -->
+        @* Stat cards double as the board filter (like /task's ShowBubble): click one to
+           show only that status, click Work Load for the grouped view. Status cards come
+           from BoardColumns; Work Load is a view control, injected after On Hold. *@
         <div class="stats-grid">
-            <div class="stat-card stat-scheduled"><div class="stat-content"><div class="stat-label">Scheduled</div><div class="stat-value">@Count("S")</div></div></div>
-            <div class="stat-card stat-progress"><div class="stat-content"><div class="stat-label">In Progress</div><div class="stat-value">@Count("P")</div></div></div>
-            <div class="stat-card stat-hold"><div class="stat-content"><div class="stat-label">On Hold</div><div class="stat-value">@Count("H")</div></div></div>
-            <div class="stat-card stat-completed"><div class="stat-content"><div class="stat-label">Completed</div><div class="stat-value">@Count("C")</div></div></div>
-            <div class="stat-card stat-overdue"><div class="stat-content"><div class="stat-label">Over Due</div><div class="stat-value">@Count("O")</div></div></div>
+            @foreach (var col in BoardColumns)
+            {
+                <div class="stat-card stat-@col.Id.ToLowerInvariant() @(activeView == col.Id ? "active" : "")"
+                     @onclick="() => ShowView(col.Id)">
+                    <div class="stat-content"><div class="stat-label">@col.Value</div><div class="stat-value">@Count(col.Id)</div></div>
+                </div>
+                @if (col.Id == "H")
+                {
+                    <div class="stat-card stat-workload @(activeView == WorkloadView ? "active" : "")"
+                         @onclick="() => ShowView(WorkloadView)">
+                        <div class="stat-content"><div class="stat-label">Work Load</div><div class="stat-value">@Workload</div></div>
+                    </div>
+                }
+            }
         </div>
     </div>
 
-    <div class="board-row">
-        @foreach (var col in Columns)
+    @* Columns come from spDropdown (PoTaskBoardColumn): Id is the status flag, Value the
+       title, CSS class derived from the flag (col-s / col-p / …). VisibleColumns is the
+       workflow group or the one selected status; a single selection flows its cards into
+       a grid and drops the column header (the lit stat card already names it). *@
+    <div class="board-row cols-@VisibleColumns.Count()">
+        @foreach (var col in VisibleColumns)
         {
-            <div class="board-col @col.Css">
-                <div class="col-head"><span class="dot"></span> @col.Title <span class="cnt">@Count(col.Flag)</span></div>
+            <div class="board-col col-@col.Id.ToLowerInvariant() @(SingleView ? "flow" : "")">
+                @if (!SingleView)
+                {
+                    <div class="col-head"><span class="dot"></span> @col.Value <span class="cnt">@Count(col.Id)</span></div>
+                }
                 @if (loading)
                 {
                     <div class="col-empty">Loading…</div>
                 }
-                else if (Cards(col.Flag).Count == 0)
+                else if (Cards(col.Id).Count == 0)
                 {
                     <div class="col-empty">—</div>
                 }
                 else
                 {
-                    @foreach (var card in Cards(col.Flag))
+                    @foreach (var card in Cards(col.Id))
                     {
                         <div class="tcard" @onclick="() => OpenDetail(card.TaskId)">
                             @if (!string.IsNullOrWhiteSpace(card.LinkUrl))
@@ -107,7 +125,7 @@ else
                                     @(string.IsNullOrWhiteSpace(card.Title) ? "(untitled)" : card.Title)
                                 </div>
                             }
-                            else if (col.Flag == "P" && !string.IsNullOrWhiteSpace(card.OrderNo))
+                            else if (col.Id == "P" && !string.IsNullOrWhiteSpace(card.OrderNo))
                             {
                                 @* In Progress column ONLY: the name links to the return-detail modal
                                    (issued/returned/return-pace only make sense once knitting is under
@@ -142,9 +160,13 @@ else
                             @if (MineOnly && card.MyStatus is not null)
                             {
                                 <div class="my-step" @onclick:stopPropagation="true">
-                                    <button class="step @(card.MyStatus == "S" ? "on" : "")" @onclick='() => MyUpdate(card.TaskId, "S")'>Scheduled</button>
-                                    <button class="step @(card.MyStatus == "P" ? "on" : "")" @onclick='() => MyUpdate(card.TaskId, "P")'>In progress</button>
-                                    <button class="step @(card.MyStatus == "C" ? "on" : "")" @onclick='() => MyUpdate(card.TaskId, "C")'>Complete</button>
+                                    @* Steps come from spDropdown 'TaskAssigneeStatus'; the Id is the
+                                       S/P/C code MyUpdate sends to the API, unchanged. *@
+                                    @foreach (var s in AssigneeStatuses)
+                                    {
+                                        <button class="step @(card.MyStatus == s.Id ? "on" : "")"
+                                                @onclick="() => MyUpdate(card.TaskId, s.Id)">@s.Value</button>
+                                    }
                                 </div>
                             }
                         </div>
@@ -181,13 +203,8 @@ else
 
                 <div class="frow">
                     <label class="flbl">Priority</label>
-                    <select @bind="newTask.PriorityId">
-                        <option value="">Select</option>
-                        <option value="1">Low</option>
-                        <option value="2">Medium</option>
-                        <option value="3">High</option>
-                        <option value="4">Urgent</option>
-                    </select>
+                    <AutoCompleteSelect Type="TaskPriority" All="0" Placeholder="Select"
+                                        CssClass="ac-fullwidth" @bind-Value="PriorityIdStr" />
                 </div>
 
                 <div class="frow">
@@ -218,13 +235,8 @@ else
 
                 <div class="frow">
                     <label class="flbl">Progress Update</label>
-                    <select @bind="newTask.UpdateFrequency">
-                        <option value="">Select Update Frequency</option>
-                        <option value="1">Daily</option>
-                        <option value="2">Weekly</option>
-                        <option value="3">Biweekly</option>
-                        <option value="4">Monthly</option>
-                    </select>
+                    <AutoCompleteSelect Type="TaskUpdateFrequency" All="0" Placeholder="Select Update Frequency"
+                                        CssClass="ac-fullwidth" @bind-Value="UpdateFrequencyStr" />
                 </div>
 
                 <div class="fsection">Task Assigned To</div>
@@ -276,11 +288,8 @@ else
                     {
                         <div class="frow">
                             <label class="flbl">Completion rule</label>
-                            <select @bind="newTask.CompletionRule">
-                                <option value="1">All must complete</option>
-                                <option value="2">Any one completes</option>
-                                <option value="3">Quorum</option>
-                            </select>
+                            <AutoCompleteSelect Type="TaskCompletionRule" All="0"
+                                                CssClass="ac-fullwidth" @bind-Value="CompletionRuleStr" />
                         </div>
                     }
                 }
