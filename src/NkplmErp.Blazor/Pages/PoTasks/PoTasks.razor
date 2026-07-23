@@ -2,7 +2,6 @@
 @attribute [Authorize]
 @using NkplmErp.Shared.DTOs
 @using NkplmErp.Blazor.Shared
-@using NkplmErp.Blazor.Model.Po_Tasks
 @using Microsoft.AspNetCore.Components.Forms
 
 @if (AccessDenied)
@@ -19,6 +18,17 @@ else
             </div>
 
             <div class="compact-filters">
+                @* Reusable date-range picker. The page owns the window (selectedStartDate/
+                   selectedEndDate via @bind) and reloads the board on OnChanged. Starts on
+                   "All Dates" so the board opens unfiltered, as it always has. *@
+                <div class="filter-item">
+                    <CompactDateRangeFilter @bind-StartDate="selectedStartDate"
+                                            @bind-EndDate="selectedEndDate"
+                                            InitialPreset="all"
+                                            ShowLabel="false"
+                                            OnChanged="OnFilterChanged" />
+                </div>
+
                 <div class="filter-item">
                     <div class="seg">
                         <button class="seg-btn @(MineOnly ? "" : "on")" @onclick="() => SetScope(false)">All</button>
@@ -29,6 +39,23 @@ else
                 <div class="filter-item">
                     <input type="text" class="compact-search" placeholder="Search Order No"
                            value="@orderNo" @onchange="OnOrderNoChanged" />
+                </div>
+
+                @* Facility filter — one dropdown, always shown, in both All and My tasks.
+                   It always offers "All Factories"; when the scope call returns nothing that
+                   is the only option, so the control still renders rather than vanishing.
+                   A gauge-restricted user's list holds only their own factory, and the SP
+                   pins them to it regardless of what's sent, so a single control is safe
+                   for everyone. *@
+                <div class="filter-item">
+                    <select class="compact-select" value="@(selectedFactoryType ?? "")"
+                            @onchange="OnFactoryTypeChanged" style="height:34px" title="Filter by facility">
+                        <option value="">All Factories</option>
+                        @foreach (var ft in FactoryOptions)
+                        {
+                            <option value="@ft">@ft</option>
+                        }
+                    </select>
                 </div>
 
                 @if (CanEdit)
@@ -69,15 +96,14 @@ else
                 {
                     @foreach (var card in Cards(col.Flag))
                     {
-                        var link = PoTaskLinkModel.For(card);
                         <div class="tcard" @onclick="() => OpenDetail(card.TaskId)">
-                            @if (link.CanNavigate)
+                            @if (!string.IsNullOrWhiteSpace(card.LinkUrl))
                             {
-                                @* The stage has a page of its own (BOM → its yarn order), and the
-                                   task carries that record's real id, so the name routes straight
-                                   there. stopPropagation so the card's status drawer stays shut. *@
-                                <div class="tcard-title tcard-title-link" title="@link.Tooltip"
-                                     @onclick="() => GoToLinkedPage(link)" @onclick:stopPropagation="true">
+                                @* The procedure built a URL for this stage, so the name routes
+                                   straight there. The board knows no routes — every one lives in
+                                   sp_GetPoTask. stopPropagation so the card's status drawer stays shut. *@
+                                <div class="tcard-title tcard-title-link" title="Open @card.StageName"
+                                     @onclick="() => GoToUrl(card.LinkUrl!)" @onclick:stopPropagation="true">
                                     @(string.IsNullOrWhiteSpace(card.Title) ? "(untitled)" : card.Title)
                                 </div>
                             }

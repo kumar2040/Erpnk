@@ -19,8 +19,8 @@ namespace NkplmErp.API.Controllers.Yarn_Orders
         private readonly IYarnOrderService _yarnOrderService = yarnOrderService;
         private readonly IRoleManagementService _roleService = roleService;
 
-        // Yarn orders live under the Bom module's permissions.
-        private const string PageKey = "Bom";
+        // Yarn orders live under the BOM module's permissions (page key "yarn-orders").
+        private const string PageKey = "yarn-orders";
 
         // Nullable + explicit 401. BomController's helper throws instead, and
         // GlobalExceptionHandler maps every exception to 500 — so that shape answers

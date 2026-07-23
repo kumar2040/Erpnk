@@ -60,13 +60,14 @@ public class PoTaskController(
         [FromQuery] byte? stage = null,
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null,
-        [FromQuery] string? orderNo = null)
+        [FromQuery] string? orderNo = null,
+        [FromQuery] string? factoryType = null)
     {
         var userId = GetCurrentUserId();
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
         if (!await CanViewAsync(userId)) return Forbid();
 
-        return Ok(await _poTaskService.GetMyTasksAsync(statusFlag, stage, startDate, endDate, orderNo, userId));
+        return Ok(await _poTaskService.GetMyTasksAsync(statusFlag, stage, startDate, endDate, orderNo, factoryType, userId));
     }
 
     // GET api/v1/PoTask/{id}

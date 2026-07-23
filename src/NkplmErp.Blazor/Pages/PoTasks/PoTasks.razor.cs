@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using NkplmErp.Blazor.Components;
-using NkplmErp.Blazor.Model.Po_Tasks;
 using NkplmErp.Blazor.Services.PoTask;
 using NkplmErp.Blazor.Services.RoleManagement;
 using NkplmErp.Blazor.Services.TaskManagement.Manager.Interface;
@@ -27,6 +26,29 @@ namespace NkplmErp.Blazor.Pages.PoTasks
         // Filters
         private bool MineOnly;
         private string orderNo = "";
+
+        // Selected date window (the CompactDateRangeFilter binds these). Left blank on
+        // load so the board opens unfiltered — the user opts into a window.
+        private DateTime? selectedStartDate;
+        private DateTime? selectedEndDate;
+
+        // ---- Facility / gauge scope ----
+        // scope tells us whether the user is unrestricted (editable facility dropdown) or
+        // gauge-restricted (locked to one factory_type). selectedFactoryType is the current
+        // dropdown value (null/"" = all facilities; only unrestricted users can change it).
+        // The SP pins a restricted user to their own gauge regardless of what we send, so
+        // the locked UI is a courtesy, not the security boundary.
+        private TaskScopeResponseModel? scope;
+        private string? selectedFactoryType;
+
+        // Options listed under the always-present "All Factories". Empty until the scope
+        // call returns (or if it returns nothing) — the dropdown still renders, it just has
+        // All Factories as its only choice rather than disappearing.
+        private List<string> FactoryOptions => scope?.FactoryTypes ?? new();
+
+        // Monotonic token so a slow in-flight board load can't overwrite a newer one.
+        // Every LoadBoardAsync bumps it; results are applied only if still the latest.
+        private int _loadSeq;
 
         // Board buckets, keyed by display flag S/P/C/O/H.
         private readonly Dictionary<string, List<PoTaskCardDto>> _buckets = new()
@@ -83,23 +105,44 @@ namespace NkplmErp.Blazor.Pages.PoTasks
                     .GroupBy(u => u.UserId).Select(g => g.First()).ToList();
             }
 
+            // Resolve the user's facility scope. A gauge-restricted user is pinned to their
+            // own factory_type; everyone else starts on "All Factories" (null) and may change it.
+            scope = (await TaskMgr.GetScopeAsync()).Data;
+            if (scope?.IsRestricted == true)
+                selectedFactoryType = scope.AssignedGauge;
+
             await LoadBoardAsync();
         }
 
         // -------------------------------------------------------------- board ----
 
+        // Load every status column for the current filters. All five go out together, so a
+        // filter change costs one round-trip's latency instead of five back-to-back.
         private async Task LoadBoardAsync()
         {
+            var token = ++_loadSeq;   // newest load wins; a stale in-flight load is discarded below
+
             loading = true;
             StateHasChanged();
 
             var search = string.IsNullOrWhiteSpace(orderNo) ? null : orderNo.Trim();
-            foreach (var flag in _buckets.Keys.ToList())
-            {
-                _buckets[flag] = MineOnly
-                    ? await Api.GetMyTasksAsync(flag, orderNo: search)
-                    : await Api.GetBoardAsync(flag, orderNo: search);
-            }
+            var factory = string.IsNullOrWhiteSpace(selectedFactoryType) ? null : selectedFactoryType;
+            var start = selectedStartDate;
+            var end = selectedEndDate;
+
+            // Every filter applies to both scopes, so the facility dropdown behaves the same
+            // on All and on My tasks.
+            var flags = _buckets.Keys.ToList();
+            var results = await Task.WhenAll(flags.Select(flag => MineOnly
+                ? Api.GetMyTasksAsync(flag, startDate: start, endDate: end, orderNo: search, factoryType: factory)
+                : Api.GetBoardAsync(flag, startDate: start, endDate: end, orderNo: search, factoryType: factory)));
+
+            // A newer filter change started while we awaited -> drop these stale results so the
+            // board never shows data that doesn't match the filters currently on screen.
+            if (token != _loadSeq) return;
+
+            for (var i = 0; i < flags.Count; i++)
+                _buckets[flags[i]] = results[i];
 
             loading = false;
             StateHasChanged();
@@ -120,6 +163,18 @@ namespace NkplmErp.Blazor.Pages.PoTasks
         private async Task OnOrderNoChanged(ChangeEventArgs e)
         {
             orderNo = e.Value?.ToString() ?? "";
+            await LoadBoardAsync();
+        }
+
+        // The date picker applied a preset / custom range (it already pushed the new window
+        // through @bind), so just reload.
+        private async Task OnFilterChanged() => await LoadBoardAsync();
+
+        // Facility dropdown. Only reachable by an unrestricted user; "" = All Factories.
+        private async Task OnFactoryTypeChanged(ChangeEventArgs e)
+        {
+            var picked = e.Value?.ToString();
+            selectedFactoryType = string.IsNullOrWhiteSpace(picked) ? null : picked;
             await LoadBoardAsync();
         }
 
@@ -248,10 +303,10 @@ namespace NkplmErp.Blazor.Pages.PoTasks
 
         private void CloseDetail() => showDetail = false;
 
-        // Leave the board for the record this task was raised from — PoTaskLinkModel decides
-        // the page and the id (BOM -> /yarn-orders/{yo_id}). Only called for cards whose link
-        // CanNavigate, so Route is set.
-        private void GoToLinkedPage(PoTaskLinkModel link) => Nav.NavigateTo(link.Route!);
+        // Navigate to the URL the procedure built for this card. The board knows no
+        // routes — a stage's link is added in sp_GetPoTask, never here. Only called for
+        // cards whose LinkUrl is non-empty.
+        private void GoToUrl(string url) => Nav.NavigateTo(url);
 
         private async Task ToggleChecklist(int checklistId)
         {

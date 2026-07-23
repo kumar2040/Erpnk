@@ -8,7 +8,7 @@
 .yo-wrap *{font-family:inherit}
 .yo-denied{padding:40px;text-align:center;color:#7a8fa6}
 
-.yo-header{margin-bottom:8px}
+.yo-header{margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:16px}
 .yo-title{margin:0;font-size:1.05rem;font-weight:800;color:var(--navy)}
 .yo-title small{display:block;font-size:.68rem;font-weight:600;color:var(--muted);letter-spacing:.3px;margin-top:2px}
 

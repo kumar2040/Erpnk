@@ -21,6 +21,8 @@ using NkplmErp.Blazor.Services.Task_Gate.Manager.Interface;
 using NkplmErp.Blazor.Services.Task_Gate.Manager.Implementation;
 using NkplmErp.Blazor.Services.Toast;
 using NkplmErp.Blazor.Shared.Http;
+using NkplmErp.Blazor.Services.Dropdown.Manager.Interface;
+using NkplmErp.Blazor.Services.Dropdown.Manager.Implementation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -140,6 +142,7 @@ builder.Services.AddScoped<IHttpServices, HttpServices>();
 
 // Yarn order timeline (departure / arrival)
 builder.Services.AddScoped<IYarnOrderManager, YarnOrderManager>();
+builder.Services.AddScoped<IDropdownManager, DropdownManager>();
 
 // Login task gate (blocking one-task-at-a-time popup)
 builder.Services.AddScoped<ITaskGateManager, TaskGateManager>();

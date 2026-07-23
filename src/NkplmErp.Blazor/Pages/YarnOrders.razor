@@ -18,6 +18,14 @@ else
 
         <div class="yo-header">
             <h1 class="yo-title">Saved Yarn Orders <small>PLACED PURCHASE ORDERS</small></h1>
+
+            @* Order-state filter. Options come from spDropdown 'YarnOrderStatus'
+               (All="1" makes the proc supply the leading "All" row), so adding
+               "Pending" later is a database change, not a redeploy. *@
+            <AutoCompleteSelect Type="YarnOrderStatus"
+                                All="0"
+                                Value="@StatusFilter"
+                                ValueChanged="OnStatusFilterChangedAsync" />
         </div>
 
         <div class="yo-split">

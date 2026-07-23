@@ -101,12 +101,16 @@ public class BomService : IBomService
         return new PlaceYarnOrderResult { YoId = -1, Message = "No response from procedure." };
     }
 
-    public async Task<List<YarnOrderHeaderDto>> GetYarnOrdersAsync()
+    public async Task<List<YarnOrderHeaderDto>> GetYarnOrdersAsync(string? status = null)
     {
         var result = new List<YarnOrderHeaderDto>();
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
         using var cmd = new SqlCommand("sp_GetYarnOrders", connection) { CommandType = CommandType.StoredProcedure };
+        // The proc decides what "ordered" means; a blank filter goes down as NULL
+        // so it falls into the "every header" branch.
+        cmd.Parameters.AddWithValue("@Status",
+            string.IsNullOrWhiteSpace(status) ? DBNull.Value : status.Trim());
 
         using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())

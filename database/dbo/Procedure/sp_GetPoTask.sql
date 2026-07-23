@@ -1,4 +1,36 @@
-CREATE PROCEDURE [dbo].[sp_GetPoTask]
+/*==============================================================================
+  sp_GetPoTask  —  reads for the PO task board (/tasks)
+
+  Flags
+    'BOARD'      Org-wide cards for one status bucket (@StatusFlag).
+    'MYTASKS'    Same cards, narrowed to the caller's own active assignments;
+                 the bucket is applied to the caller's OWN assignee row and the
+                 caller's status comes back as [MyStatus].
+    'DETAIL'     One task + its assignees, checklist and attachments (4 sets).
+    'GROUPS'     Assignable groups, for the Add Task form.
+    'ASSIGNEES'  The assignee rows of one task.
+
+  Board filters (BOARD + MYTASKS) — every one is optional; NULL = no filter,
+  so the board is unfiltered until the page sends something.
+
+    @StartDate / @EndDate   Date window, matched by OVERLAP against the task's
+                            [StartDate, DueDate] span rather than containment,
+                            so a task running THROUGH the window still shows up.
+                            A task with a NULL end of the span skips that half
+                            of the test instead of dropping out. Overdue gets a
+                            one-day grace at the window start so a task that
+                            ended just before the window (e.g. yesterday, on a
+                            today-only view) is still surfaced.
+    @OrderNo                Contains-match on the production order number.
+    @FactoryType            Facility. ZERO TRUST: a user with an AssignedGauge
+                            is pinned to it and @FactoryType is ignored — see
+                            @EffFactory below. Only an unrestricted user (no
+                            AssignedGauge) may choose, and NULL = all facilities.
+    @Stage                  Optional lifecycle stage.
+
+  Cancelled ('X') and inactive rows are never returned.
+==============================================================================*/
+CREATE OR ALTER PROCEDURE [dbo].[sp_GetPoTask]
     @Flag        NVARCHAR(20),               -- BOARD | MYTASKS | DETAIL | GROUPS | ASSIGNEES
     @StatusFlag  CHAR(1)       = NULL,        -- BOARD/MYTASKS: S/P/C/O/H
     @Stage       TINYINT       = NULL,        -- optional stage filter
@@ -15,13 +47,21 @@ BEGIN
     DECLARE @today DATE = CAST(GETDATE() AS DATE);
 
     -- Resolve factory scope from the caller (NULL = super admin = all factories),
-    -- mirroring spTaskManagement's zero-trust rule.
+    -- mirroring spTaskManagement's zero-trust rule. The caller's own AssignedGauge
+    -- WINS over whatever @FactoryType the page sent, so a restricted user cannot
+    -- widen their own scope by forging the request.
     DECLARE @UserGauge NVARCHAR(100) = NULL;
     IF (@UserId IS NOT NULL AND @UserId <> '')
         SELECT @UserGauge = NULLIF(LTRIM(RTRIM(u.[AssignedGauge])), '')
         FROM [identity].[Users] u WITH (NOLOCK)
         WHERE u.[Id] = @UserId;
     DECLARE @EffFactory NVARCHAR(100) = COALESCE(@UserGauge, NULLIF(LTRIM(RTRIM(@FactoryType)), ''));
+
+    -- Normalise the remaining board filters once, so the WHERE clause below stays
+    -- a plain NULL check and an empty string behaves the same as "not supplied".
+    DECLARE @SearchOrderNo NVARCHAR(50) = NULLIF(LTRIM(RTRIM(@OrderNo)), '');
+    DECLARE @WindowStart DATE = CAST(@StartDate AS DATE);
+    DECLARE @WindowEnd   DATE = CAST(@EndDate   AS DATE);
 
     -- Shared display-name helpers reused by BOARD / MYTASKS / DETAIL.
     -- (Stage / Status / Priority -> friendly text.)
@@ -57,7 +97,7 @@ BEGIN
     BEGIN
         SELECT t.[PoTaskId], t.[OrderNo], t.[Stage],
                CASE t.[Stage] WHEN 1 THEN 'PO entry' WHEN 2 THEN 'BOM task' WHEN 3 THEN 'Planning'
-                              WHEN 10 THEN 'Yarn issue' WHEN 11 THEN 'Product return'
+                              WHEN 10 THEN 'Yarn issue' WHEN 11 THEN 'Product return' WHEN 12 THEN 'Yarn order'
                               WHEN 20 THEN 'Manual' ELSE 'Task' END AS [StageName],
                t.[Status],
                CASE t.[Status] WHEN 'S' THEN 'Scheduled' WHEN 'P' THEN 'In progress'
@@ -103,24 +143,38 @@ BEGIN
         t.[PoTaskId]                                   AS [TaskId],
         t.[OrderNo],
         t.[Stage],
-        -- The record this card opens when its title is clicked. Derived per read rather
-        -- than stored, so it covers tasks raised before this existed and follows the data
-        -- if it ever moves. NULL = the stage has no page of its own, or nothing matched,
-        -- and the card keeps its plain title.
+        -- The URL this card's title opens, built per stage. Derived per read, so it covers
+        -- tasks raised before this existed and follows the data if it moves. NULL = not
+        -- clickable (no page for this stage, or the row is missing the key its page needs).
+        -- This CASE is the ONE place a linkable stage is added -- the API and the board
+        -- navigate whatever string lands here and never learn a route themselves.
         CASE t.[Stage]
-            -- BOM: the yarn order holding this task's production order. A production order
-            -- belongs to exactly one yarn order; TOP 1 DESC keeps it deterministic if a PO
-            -- is ever re-ordered, by preferring the newest.
-            WHEN 2 THEN (SELECT TOP (1) od.[yo_id]
-                         FROM   [dbo].[tbl_yarn_order_detail] od WITH (NOLOCK)
-                         WHERE  od.[order_no] = t.[OrderNo]
-                         ORDER BY od.[yo_id] DESC)
-            -- Planning: the plan line (MasterPlanChildId) is already stored on the task.
-            WHEN 3 THEN t.[RefId]
+            -- BOM (2) -> the bill of materials for its production order, keyed by order no.
+            WHEN 2  THEN CASE WHEN NULLIF(LTRIM(RTRIM(t.[OrderNo])), '') IS NOT NULL
+                              THEN N'/bom?orderNo=' + t.[OrderNo] END
+
+            -- Planning (3) -> opens by order (+ gauge when present). RefId (the plan line,
+            -- MasterPlanChildId) must exist, matching the old "no plan line, no link" gate.
+            WHEN 3  THEN CASE WHEN t.[RefId] > 0 AND NULLIF(LTRIM(RTRIM(t.[OrderNo])), '') IS NOT NULL
+                              THEN N'/order-planning?orderNo=' + t.[OrderNo]
+                                   + CASE WHEN NULLIF(LTRIM(RTRIM(t.[Guage])), '') IS NOT NULL
+                                          THEN N'&gauge=' + t.[Guage] ELSE N'' END END
+
+            -- Yarn order lifecycle (12: placed / departure / arrival) -> the placed order on
+            -- /yarn-orders, keyed by yo_id. A production order belongs to exactly one yarn
+            -- order; TOP 1 DESC stays deterministic if a PO is re-ordered. No match -> NULL.
+            WHEN 12 THEN (SELECT TOP (1) N'/yarn-orders/' + CAST(od.[yo_id] AS nvarchar(20))
+                          FROM   [dbo].[tbl_yarn_order_detail] od WITH (NOLOCK)
+                          WHERE  od.[order_no] = t.[OrderNo]
+                          ORDER BY od.[yo_id] DESC)
+
+            -- Manual (20) -> the yarn-orders list (not tied to one placed order).
+            WHEN 20 THEN N'/yarn-orders'
+
             ELSE NULL
-        END                                            AS [LinkId],
+        END                                            AS [LinkUrl],
         CASE t.[Stage] WHEN 1 THEN 'PO entry' WHEN 2 THEN 'BOM task' WHEN 3 THEN 'Planning'
-                       WHEN 10 THEN 'Yarn issue' WHEN 11 THEN 'Product return'
+                       WHEN 10 THEN 'Yarn issue' WHEN 11 THEN 'Product return' WHEN 12 THEN 'Yarn order'
                        WHEN 20 THEN 'Manual' ELSE 'Task' END AS [StageName],
         t.[Title],
         t.[FactoryType],
@@ -156,11 +210,13 @@ BEGIN
     WHERE t.[IsActive] = 1
       AND t.[Status] <> 'X'
       AND (@Stage IS NULL OR t.[Stage] = @Stage)
-      AND (@OrderNo IS NULL OR @OrderNo = '' OR t.[OrderNo] LIKE '%' + @OrderNo + '%')
+      -- order-no search (contains)
+      AND (@SearchOrderNo IS NULL OR t.[OrderNo] LIKE '%' + @SearchOrderNo + '%')
+      -- facility: NULL = all facilities; a restricted user is already pinned above
       AND (@EffFactory IS NULL OR LOWER(t.[FactoryType]) = LOWER(@EffFactory))
-      -- window overlap on [StartDate, DueDate]; NULL dates skip the filter
-      AND (@EndDate   IS NULL OR t.[StartDate] IS NULL OR t.[StartDate] < DATEADD(DAY, 1, CAST(@EndDate AS DATE)))
-      AND (@StartDate IS NULL OR t.[DueDate]   IS NULL OR t.[DueDate]   >= DATEADD(DAY, -1, CAST(@StartDate AS DATE)))
+      -- date window: overlap on [StartDate, DueDate]; NULL dates skip the filter
+      AND (@WindowEnd   IS NULL OR t.[StartDate] IS NULL OR t.[StartDate] < DATEADD(DAY, 1, @WindowEnd))
+      AND (@WindowStart IS NULL OR t.[DueDate]   IS NULL OR t.[DueDate]   >= DATEADD(DAY, -1, @WindowStart))
       -- MYTASKS: only tasks the caller is actively assigned to
       AND (@isMine = 0 OR EXISTS (SELECT 1 FROM [dbo].[PoTaskAssignee] a
                                   WHERE a.[PoTaskId] = t.[PoTaskId] AND a.[UserId] = @UserId AND a.[IsActive] = 1));
@@ -171,4 +227,3 @@ BEGIN
 
     DROP TABLE #cards;
 END
-
