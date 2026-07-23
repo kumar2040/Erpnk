@@ -30,10 +30,11 @@ namespace NkplmErp.Blazor.Pages.PoTasks
         private bool MineOnly;
         private string orderNo = "";
 
-        // Selected date window (the CompactDateRangeFilter binds these). Left blank on
-        // load so the board opens unfiltered — the user opts into a window.
-        private DateTime? selectedStartDate;
-        private DateTime? selectedEndDate;
+        // Selected date window (the CompactDateRangeFilter binds these). Seeded to today so
+        // the board opens on the "Today" preset (matching the picker's InitialPreset="today"),
+        // instead of the unfiltered "All Dates" firehose. The user can widen it from the picker.
+        private DateTime? selectedStartDate = DateTime.Today;
+        private DateTime? selectedEndDate = DateTime.Today;
 
         // ---- Facility / gauge scope ----
         // scope tells us whether the user is unrestricted (editable facility dropdown) or
