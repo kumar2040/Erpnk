@@ -1,0 +1,148 @@
+/* Shared dropdown shell.
+
+   These .ac-field rules are duplicated verbatim in AutoCompleteComponent.razor.css.
+   Blazor's CSS isolation rewrites selectors per component and does NOT scope an
+   @import, so the two controls cannot share one scoped file without the rules
+   leaking global. Change both files together, or the pair drifts apart. */
+.ac-field {
+    --ac-primary: #016F98;
+    --ac-primary-dark: #01567A;
+    --ac-ring: rgba(1, 111, 152, .15);
+    --ac-tint: #E8F2F7;
+    --ac-border: #cfd8e3;
+
+    height: 34px;
+    width: 180px;
+    padding: 0 12px;
+    border: 1px solid var(--ac-border);
+    border-radius: 8px;
+    font-size: 13px;
+    color: #1a3353;
+    background: #fff;
+    box-sizing: border-box;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.ac-field:hover:not(:disabled) {
+    border-color: var(--ac-primary);
+}
+
+.ac-field:focus {
+    outline: none;
+    border-color: var(--ac-primary);
+    box-shadow: 0 0 0 3px var(--ac-ring);
+}
+
+.ac-field:disabled {
+    background: #f4f6f9;
+    color: #9aa5b1;
+    cursor: not-allowed;
+}
+
+/* ---- closed control ---- */
+
+.ac-wrap {
+    position: relative;
+    width: 180px;
+}
+
+/* It's a <button>, so the browser's centred/bold defaults have to be undone. */
+.ac-field-select {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    text-align: left;
+    font-family: inherit;
+    font-weight: 400;
+    cursor: pointer;
+}
+
+.ac-field-select.open {
+    border-color: var(--ac-primary);
+}
+
+.ac-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ac-text.ph {
+    color: #9aa5b1;
+}
+
+.ac-caret {
+    width: 0;
+    height: 0;
+    flex: 0 0 auto;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid var(--ac-primary);
+    transition: transform .15s ease;
+}
+
+.ac-field-select.open .ac-caret {
+    transform: rotate(180deg);
+}
+
+.ac-field-select:disabled .ac-caret {
+    border-top-color: #9aa5b1;
+}
+
+/* ---- option list ---- */
+
+.ac-list {
+    list-style: none;
+    margin: 4px 0 0;
+    padding: 4px 0;
+    position: absolute;
+    z-index: 999;
+    left: 0;
+    right: 0;
+    max-height: 18rem;
+    overflow-y: auto;
+    background: #fff;
+    /* Open list carries the focus border so the control and list read as one. */
+    border: 1px solid #016F98;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(1, 111, 152, .12);
+}
+
+/* Row padding lands a row just under the 34px control height. This list is ours
+   to draw, which is the whole reason the native <select> was dropped. */
+.ac-opt {
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #1a3353;
+    cursor: pointer;
+}
+
+.ac-opt:hover {
+    background: #E8F2F7;
+}
+
+/* Keyboard highlight. The inset bar keeps it distinct from a mouse hover, which
+   matters when the pointer is resting on a different row. */
+.ac-opt.on {
+    background: #E8F2F7;
+    box-shadow: inset 3px 0 0 #016F98;
+}
+
+/* The current selection -- this is the row that used to be OS grey. */
+.ac-opt.sel {
+    background: #016F98;
+    color: #fff;
+}
+
+.ac-opt.sel:hover,
+.ac-opt.sel.on {
+    background: #01567A;
+    color: #fff;
+    box-shadow: none;
+}
+
+.ac-list::-webkit-scrollbar { width: 10px; }
+.ac-list::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 0 8px 8px 0; }
+.ac-list::-webkit-scrollbar-thumb { background: #b9c4d1; border-radius: 5px; }
+.ac-list::-webkit-scrollbar-thumb:hover { background: #016F98; }
