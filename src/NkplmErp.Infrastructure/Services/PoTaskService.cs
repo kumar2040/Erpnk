@@ -45,7 +45,7 @@ public class PoTaskService : IPoTaskService
 
     public Task<List<PoTaskCardDto>> GetMyTasksAsync(
         string statusFlag, byte? stage, DateTime? startDate, DateTime? endDate,
-        string? orderNo, string userId) =>
+        string? orderNo, string? factoryType, string userId) =>
         _repo.GetQueryResultAsync<PoTaskCardDto>(ReadSp, new
         {
             Flag = "MYTASKS",
@@ -54,6 +54,7 @@ public class PoTaskService : IPoTaskService
             StartDate = startDate,
             EndDate = endDate,
             OrderNo = Trim(orderNo),
+            FactoryType = Trim(factoryType),
             UserId = userId
         }, CommandType.StoredProcedure);
 

@@ -41,11 +41,17 @@ public class BomApiClient
     }
 
     /// <summary>All saved yarn orders (headers), newest first.</summary>
-    public async Task<List<YarnOrderHeaderDto>> GetYarnOrdersAsync()
+    /// <param name="status">Order-state filter from spDropdown 'YarnOrderStatus':
+    /// 'O' ordered, 'N' not ordered, null/blank for every header.</param>
+    public async Task<List<YarnOrderHeaderDto>> GetYarnOrdersAsync(string? status = null)
     {
         try
         {
-            var response = await _httpClient.GetAsync($"{Base}/yarn-orders");
+            var url = $"{Base}/yarn-orders";
+            if (!string.IsNullOrWhiteSpace(status))
+                url += $"?status={Uri.EscapeDataString(status)}";
+
+            var response = await _httpClient.GetAsync(url);
             if (response.IsSuccessStatusCode)
                 return await response.Content.ReadFromJsonAsync<List<YarnOrderHeaderDto>>() ?? new();
             return new();

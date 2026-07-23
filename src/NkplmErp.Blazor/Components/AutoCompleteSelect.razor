@@ -1,0 +1,44 @@
+@using NkplmErp.Shared.DTOs.Dropdown
+
+@* The option list is our own markup, not a native <select>. Chrome on Windows
+   draws that popup itself and ignores option:hover / option:checked, so a native
+   control can never carry the brand colour on its highlighted row -- and its row
+   height can't be matched to the box either. Rendering the list here buys both.
+   Arrow keys / Enter / Escape are re-implemented below since leaving the native
+   element gives them up. *@
+<div class="ac-wrap @CssClass" @onfocusout="CloseList">
+    <button type="button"
+            id="@Id"
+            class="ac-field ac-field-select @(IsOpen ? "open" : "")"
+            @onclick="ToggleList"
+            @onkeydown="OnKeyDown"
+            disabled="@Disabled"
+            tabindex="@TabIndex"
+            title="@Placeholder">
+        <span class="ac-text @(HasSelection ? "" : "ph")">@DisplayText</span>
+        <span class="ac-caret"></span>
+    </button>
+
+    @if (IsOpen)
+    {
+        <ul class="ac-list">
+            @* Options, not DropDownModels: this list is the fetched rows with the
+               leading "All" (-1) or "Select" (0) row in front. *@
+            @for (var i = 0; i < Options.Count; i++)
+            {
+                @* Captured per iteration -- the loop variable would otherwise be
+                   shared by every handler. *@
+                var item = Options[i];
+                var index = i;
+
+                @* mousedown, not click: focusout fires first on click and would
+                   close the list before the selection landed. *@
+                <li class="ac-opt @(item.Id == BindingValue ? "sel" : "") @(index == Highlight ? "on" : "")"
+                    @onmousedown:preventDefault="true"
+                    @onmousedown="() => SelectItemAsync(item)">
+                    @item.Value
+                </li>
+            }
+        </ul>
+    }
+</div>

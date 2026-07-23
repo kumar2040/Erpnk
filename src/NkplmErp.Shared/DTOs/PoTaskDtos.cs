@@ -13,6 +13,7 @@ public class PoTaskCardDto
     public int TaskId { get; set; }
     public string? OrderNo { get; set; }
     public byte Stage { get; set; }
+    public string? LinkUrl { get; set; }          // ready-to-navigate relative URL, built by sp_GetPoTask; null = not clickable
     public string? StageName { get; set; }
     public string? Title { get; set; }
     public string? FactoryType { get; set; }

@@ -20,18 +20,23 @@ using Asp.Versioning;
 using Microsoft.OpenApi.Models;
 using Hangfire;
 using Hangfire.SqlServer;
-using NkplmErp.API.Services.Implementation.TaskManagement;
-using NkplmErp.API.Services.Interface.TaskManagement;
+using NkplmErp.Infrastructure.Services.TaskManagement;
+using NkplmErp.Application.Interfaces.TaskManagement;
 using NkplmErp.Application.Interfaces.Email;
 using NkplmErp.Infrastructure.Services.Email;
 using NkplmErp.Shared.DataAccess.GenericRepository;
 using NkplmErp.Shared.Repositories.Implementation;
-using Microsoft.Extensions.DependencyInjection;
 using NkplmErp.Shared.Repositories.Interface;
 using NkplmErp.API.Services;
 using NkplmErp.Infrastructure.Persistence.Repositories;
 using NkplmErp.Application.Services;
 using NkplmErp.API.Hubs;
+using NkplmErp.Application.Interfaces.Task_Gate;
+using NkplmErp.Infrastructure.Services.Task_Gate;
+using NkplmErp.Infrastructure.Services.Yarn_Orders;
+using NkplmErp.Application.Interfaces.Yarn_Orders;
+using NkplmErp.Application.Interfaces.Dropdown;
+using NkplmErp.Infrastructure.Services.Dropdown;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -166,12 +171,11 @@ builder.Services.AddScoped<IMachineManagementService, MachineManagementService>(
 builder.Services.AddScoped<IBomService, BomService>();
 builder.Services.AddScoped<IDapperRepository, DapperRepository>();
 builder.Services.AddScoped<ITaskManagementService, TaskManagementService>();
-builder.Services.AddScoped<NkplmErp.API.Services.Interface.Task_Gate.ITaskGateService,
-                           NkplmErp.API.Services.Implementation.Task_Gate.TaskGateService>();
-builder.Services.AddScoped<NkplmErp.API.Services.Interface.Yarn_Orders.IYarnOrderService,
-                           NkplmErp.API.Services.Implementation.Yarn_Orders.YarnOrderService>();
+builder.Services.AddScoped<ITaskGateService, TaskGateService>();
+builder.Services.AddScoped<IYarnOrderService, YarnOrderService>();
 builder.Services.AddScoped<IPoTaskService, PoTaskService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IDropdownService, DropdownService>();
 builder.Services.AddScoped<IGenericRepository, GenericRepository>();
 builder.Services.AddSingleton<INotificationPublisher, SignalRNotificationPublisher>();
 builder.Services.AddSignalR();

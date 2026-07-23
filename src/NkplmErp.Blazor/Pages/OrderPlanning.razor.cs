@@ -32,6 +32,11 @@ public partial class OrderPlanning
     [Inject]
     private NkplmErp.Blazor.Services.RoleManagement.PermissionService Permissions { get; set; } = default!;
 
+    // ---- Deep link from a Planning task card on /tasks ----
+    // /order-planning?orderNo=PO-1933&gauge=7 opens that order's planning straight away.
+    [Parameter, SupplyParameterFromQuery(Name = "orderNo")] public string? FromOrderNo { get; set; }
+    [Parameter, SupplyParameterFromQuery(Name = "gauge")] public string? FromGauge { get; set; }
+
     private List<MonthlyOrderSummaryDto> Months { get; set; } = new();
     private List<MonthlyOrderDetailDto> AllOrders { get; set; } = new();
     private List<MonthlyOrderDetailDto> SelectedOrders { get; set; } = new();
@@ -2981,6 +2986,34 @@ public partial class OrderPlanning
         await LoadOrders();
         await LoadGaugeUtilization();
         IsLoading = false;
+
+        await OpenFromTaskLinkAsync();
+    }
+
+    // Arrived from a Planning task card. Selects the task's order and opens its planning
+    // modal on the task's gauge, following the same order -> production status -> gauge
+    // sequence the bulk planner uses, so the modal gets the context it expects.
+    //
+    // AllOrders only holds the SELECTED MONTH's orders, so an order planned in another
+    // month genuinely isn't here. That is reported rather than silently ignored, otherwise
+    // the click just looks broken.
+    private async Task OpenFromTaskLinkAsync()
+    {
+        if (string.IsNullOrWhiteSpace(FromOrderNo)) return;
+
+        var order = AllOrders.FirstOrDefault(o =>
+            string.Equals(o.OrderNo, FromOrderNo, StringComparison.OrdinalIgnoreCase));
+
+        if (order is null)
+        {
+            ToastService.ShowInfo($"Order {FromOrderNo} isn't in the selected month — pick its month to plan it.");
+            return;
+        }
+
+        SelectedOrders = new List<MonthlyOrderDetailDto> { order };
+        SelectedKnitType = "Knit";
+        await LoadOrderProductionStatus(order.OrderNo);
+        await OpenPlanningForGauge(FromGauge ?? string.Empty);
     }
 
     private async Task LoadGaugeUtilization()

@@ -23,7 +23,7 @@ public interface IBomService
     Task<PlaceYarnOrderResult> PlaceYarnOrderAsync(PlaceYarnOrderRequest request, string? createdBy);
 
     /// <summary>All saved yarn orders (headers), newest first.</summary>
-    Task<List<YarnOrderHeaderDto>> GetYarnOrdersAsync();
+    Task<List<YarnOrderHeaderDto>> GetYarnOrdersAsync(string? status = null);
 
     /// <summary>Detail lines of a saved yarn order.</summary>
     Task<List<YarnOrderDetailLineDto>> GetYarnOrderDetailAsync(int yoId);

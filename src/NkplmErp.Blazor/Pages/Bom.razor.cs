@@ -13,6 +13,10 @@ public partial class Bom
     [Inject] private PermissionService PermSvc { get; set; } = default!;
 
     // ===== State =====
+    // Deep link from a BOM task card on /tasks: /bom?orderNo=GT-26011A opens that order's
+    // yarn requirement straight away.
+    [Parameter, SupplyParameterFromQuery(Name = "orderNo")] public string? FromOrderNo { get; set; }
+
     private bool AccessDenied = false;
 
     private DateTime SelectedMonth = DateTime.Today;
@@ -83,7 +87,7 @@ public partial class Bom
         if (!PermSvc.IsLoaded)
             await PermSvc.LoadPermissionsAsync();
 
-        if (!PermSvc.CanView("Bom"))
+        if (!PermSvc.CanView("yarn-orders"))
         {
             AccessDenied = true;
             return;
@@ -91,6 +95,12 @@ public partial class Bom
 
         await LoadPlacedOrdersAsync();
         await LoadOrdersAsync();
+
+        // Arrived from a BOM task card — show that order's yarn requirement right away.
+        // SelectOrderAsync calls the requirement API directly, so it works even though a
+        // placed order is normally filtered out of the left-hand list.
+        if (!string.IsNullOrWhiteSpace(FromOrderNo))
+            await SelectOrderAsync(FromOrderNo.Trim());
     }
 
     private async Task LoadOrdersAsync()

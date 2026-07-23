@@ -6,6 +6,7 @@ using NkplmErp.Blazor.Services.RoleManagement;
 using NkplmErp.Blazor.Services.Toast;
 using NkplmErp.Blazor.Services.Yarn_Orders.Manager.Interface;
 using NkplmErp.Shared.DTOs;
+using NkplmErp.Shared.DTOs.Dropdown;
 
 namespace NkplmErp.Blazor.Pages;
 
@@ -17,11 +18,20 @@ public partial class YarnOrders
     [Inject] private ToastService Toast { get; set; } = default!;
     [Inject] private IYarnOrderManager YarnApi { get; set; } = default!;
 
+    /// <summary>Route id from /yarn-orders/{YoId} — set when a BOM task card links here.</summary>
+    [Parameter] public int? YoId { get; set; }
+
     private bool AccessDenied = false;
 
     private List<YarnOrderHeaderDto> Orders = new();
     private string Search = "";
     private bool IsLoadingList = false;
+
+    // Order-state filter: 'O' = ordered, 'N' = not ordered from spDropdown
+    // 'YarnOrderStatus', or DropdownValues.All ("-1") for no filter. Applied by
+    // sp_GetYarnOrders rather than here, so the "ordered" rule lives in one place
+    // next to the data.
+    private string StatusFilter = DropdownValues.All;
 
     private YarnOrderHeaderDto? Selected;
     private List<YarnOrderDetailLineDto> Detail = new();
@@ -60,22 +70,54 @@ public partial class YarnOrders
         if (!PermSvc.IsLoaded)
             await PermSvc.LoadPermissionsAsync();
 
-        if (!PermSvc.CanView("Bom"))
+        if (!PermSvc.CanView("yarn-orders"))
         {
             AccessDenied = true;
             return;
         }
 
         await LoadOrdersAsync();
+
+        // Arrived from a BOM task card (/yarn-orders/{yo_id}) — open that order right away,
+        // using the same selection path a click on the list would take. An unknown id (order
+        // deleted, or the task predates it) just leaves the page on "nothing selected".
+        if (YoId is > 0)
+        {
+            var target = Orders.FirstOrDefault(o => o.YoId == YoId.Value);
+            if (target is not null)
+                await SelectOrderAsync(target);
+        }
     }
 
     private async Task LoadOrdersAsync()
     {
         IsLoadingList = true;
         StateHasChanged();
-        Orders = await BomApi.GetYarnOrdersAsync();
+        // "-1" is the All row, not a status. Sending it would reach @Status CHAR(1)
+        // as "-" and match nothing, so a leading row goes down as null instead.
+        Orders = await BomApi.GetYarnOrdersAsync(
+            DropdownValues.IsPlaceholder(StatusFilter) ? null : StatusFilter);
         IsLoadingList = false;
         StateHasChanged();
+    }
+
+    private async Task OnStatusFilterChangedAsync(string status)
+    {
+        var next = status ?? "";
+
+        // The dropdown also raises this when it settles its own default on load.
+        // Without this guard that would re-fetch the list we just fetched.
+        if (next == StatusFilter) return;
+
+        StatusFilter = next;
+
+        // The selected order can drop out of the filtered list, which would leave
+        // the detail pane showing a card no longer on screen.
+        Selected = null;
+        Detail = new();
+        VendorOrders = new();
+
+        await LoadOrdersAsync();
     }
 
     private async Task SelectOrderAsync(YarnOrderHeaderDto o)

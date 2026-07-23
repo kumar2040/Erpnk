@@ -1,0 +1,48 @@
+@using NkplmErp.Shared.DTOs.Dropdown
+
+@* Type-to-filter picker, for lists too long to scan in a plain <select>
+   (vendors, products, orders). For a handful of fixed options use
+   AutoCompleteSelect instead -- a search box over three items costs a
+   keystroke to do what one click does. *@
+<div class="acc-wrap">
+    <input type="text"
+           class="ac-field @CssClass"
+           value="@SearchText"
+           @oninput="OnSearchInput"
+           @onfocus="ShowList"
+           @onblur="HideList"
+           @onkeydown="OnKeyDown"
+           placeholder="@Placeholder"
+           disabled="@Disabled"
+           tabindex="@TabIndex"
+           autocomplete="off" />
+
+    @if (ShowItemList)
+    {
+        <ul class="acc-list">
+            @if (FilteredItems.Count == 0)
+            {
+                <li class="acc-empty">No match</li>
+            }
+            else
+            {
+                @for (var i = 0; i < FilteredItems.Count; i++)
+                {
+                    @* Captured per iteration -- the loop variable would otherwise be
+                       shared by every handler. *@
+                    var item = FilteredItems[i];
+                    var index = i;
+
+                    @* mousedown, not click: blur fires first on click and would close
+                       the list before the selection landed. This is why the original
+                       needed a 200ms delay in HideList. *@
+                    <li class="acc-item @(index == Highlight ? "on" : "")"
+                        @onmousedown:preventDefault="true"
+                        @onmousedown="() => SelectItem(item)">
+                        @item.Value
+                    </li>
+                }
+            }
+        </ul>
+    }
+</div>

@@ -21,7 +21,7 @@ public interface IPoTaskService
     /// <summary>One column of the caller's OWN assignments (their own status drives the bucket).</summary>
     Task<List<PoTaskCardDto>> GetMyTasksAsync(
         string statusFlag, byte? stage, DateTime? startDate, DateTime? endDate,
-        string? orderNo, string userId);
+        string? orderNo, string? factoryType, string userId);
 
     /// <summary>Full task header + assignees + checklist + attachments for the drawer.</summary>
     Task<PoTaskDetailResult> GetDetailAsync(int poTaskId);
@@ -83,6 +83,8 @@ public interface IPoTaskService
     /// Auto-create the BOM-stage task for an order when a BOM / yarn order is created,
     /// assigned to the given users (e.g. a yarn role's members), with the first reminder
     /// scheduled <paramref name="notifyAfterDays"/> days out. Idempotent per order.
+    /// No RefId: the board derives the task's yarn order from its OrderNo (see sp_GetPoTask's
+    /// LinkUrl), so nothing has to be stored here — and dedupe stays per (OrderNo, Stage).
     /// </summary>
     Task<int> EnsureBomTaskAsync(string orderNo, string? factoryType, IEnumerable<string> assigneeUserIds, int notifyAfterDays, string userId);
 

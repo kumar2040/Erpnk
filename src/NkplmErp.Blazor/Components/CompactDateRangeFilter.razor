@@ -4,8 +4,13 @@
    The parent seeds the initial StartDate/EndDate (this component is a controlled component). *@
 
 <!-- Date Range Selector -->
-<div class="flex items-center gap-2 min-w-[280px]">
-    <label class="form-label whitespace-nowrap" style="margin-bottom: 0; padding-bottom: 0; border-bottom: none; flex-shrink: 0;">Date Range</label>
+@* The 280px floor reserves room for the label; without a label it would just be dead
+   space after the button, so it only applies when the label is shown. *@
+<div class="flex items-center gap-2 @(ShowLabel ? "min-w-[280px]" : "")">
+    @if (ShowLabel)
+    {
+        <label class="form-label whitespace-nowrap" style="margin-bottom: 0; padding-bottom: 0; border-bottom: none; flex-shrink: 0;">Date Range</label>
+    }
     <div class="relative">
     <button type="button" @onclick="ToggleDateDropdown"
             class="form-input flex items-center justify-between gap-2 h-8 text-left bg-white hover:bg-slate-50 border border-slate-300 rounded px-2.5 py-1 text-[12px] font-semibold text-navy shadow-sm transition-colors cursor-pointer select-none">
@@ -32,6 +37,13 @@
                 <div class="flex">
                     <!-- Left Preset Sidebar (Compact width) -->
                     <div class="w-[140px] @(ActiveViewMode == "custom" ? "border-r border-slate-100" : "") flex flex-col py-1 bg-slate-50 flex-shrink-0">
+                        @* Clears the window back to unfiltered. Without this a parent that
+                           starts blank can never return to it once a preset is picked. *@
+                        <button type="button" @onclick='() => ApplyPreset("all")'
+                                class="w-full text-left px-3 py-1.5 text-[11px] font-semibold border-b border-slate-100 transition-colors block cursor-pointer @(ActiveViewMode == "all" ? "bg-[#0284c7] text-white" : "text-navy hover:bg-slate-100")">
+                            All Dates
+                        </button>
+
                         <button type="button" @onclick='() => ApplyPreset("today")'
                                 class="w-full text-left px-3 py-1.5 text-[11px] font-semibold transition-colors block cursor-pointer @(ActiveViewMode == "today" ? "bg-[#0284c7] text-white" : "text-navy hover:bg-slate-100")">
                             Today
@@ -190,9 +202,20 @@
     // Fired after a preset/custom range is applied so the parent can reload its data.
     [Parameter] public EventCallback OnChanged { get; set; }
 
-    // Which preset the dropdown highlights / the custom-calendar mode. Owned internally.
-    // Defaults to "today" to line up with a parent that seeds a today/today window.
+    // Which preset the dropdown highlights on first render, so the sidebar matches the
+    // window the parent seeded. Default "today" suits a parent seeding today/today; a
+    // parent that starts blank passes "all".
+    [Parameter] public string InitialPreset { get; set; } = "today";
+
+    // Whether to show the "Date Range" caption. Off where the bar is a row of bare
+    // controls and the button already reads as a date picker.
+    [Parameter] public bool ShowLabel { get; set; } = true;
+
+    // Which preset the dropdown highlights / the custom-calendar mode. Owned internally
+    // after the first render.
     private string ActiveViewMode { get; set; } = "today";
+
+    protected override void OnInitialized() => ActiveViewMode = InitialPreset;
 
     private bool IsDateDropdownOpen { get; set; } = false;
 
@@ -222,6 +245,11 @@
 
     private string GetDateRangeLabel()
     {
+        // A blank window is a real state ("All Dates"), not a prompt — it's what the
+        // All Dates preset applies and what an unfiltered board starts on.
+        if (StartDate == null && EndDate == null)
+            return "All Dates";
+
         if (StartDate == null || EndDate == null)
             return "Select Date Range";
 
@@ -322,7 +350,12 @@
     private void UpdateTempDatesForPreset()
     {
         var today = DateTime.Today;
-        if (ActiveViewMode == "today")
+        if (ActiveViewMode == "all")
+        {
+            TempStartDate = null;
+            TempEndDate = null;
+        }
+        else if (ActiveViewMode == "today")
         {
             TempStartDate = today;
             TempEndDate = today;
@@ -376,7 +409,13 @@
     private void UpdateDatesForViewMode()
     {
         var today = DateTime.Today;
-        if (ActiveViewMode == "today")
+        if (ActiveViewMode == "all")
+        {
+            // No window at all -> the parent sends NULL dates and the SP skips the filter.
+            StartDate = null;
+            EndDate = null;
+        }
+        else if (ActiveViewMode == "today")
         {
             StartDate = today;
             EndDate = today;

@@ -25,8 +25,8 @@ public class PoTaskApiClient
 
     public async Task<List<PoTaskCardDto>> GetMyTasksAsync(
         string statusFlag, byte? stage = null, DateTime? startDate = null, DateTime? endDate = null,
-        string? orderNo = null)
-        => await GetCardsAsync(BuildCardUrl($"{Base}/my", statusFlag, stage, startDate, endDate, orderNo, null), statusFlag);
+        string? orderNo = null, string? factoryType = null)
+        => await GetCardsAsync(BuildCardUrl($"{Base}/my", statusFlag, stage, startDate, endDate, orderNo, factoryType), statusFlag);
 
     public async Task<PoTaskDetailResult?> GetDetailAsync(int poTaskId)
     {

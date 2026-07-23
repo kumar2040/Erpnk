@@ -26,7 +26,7 @@ public class BomController(
     IConfiguration configuration,
     ILogger<BomController> logger) : ControllerBase
 {
-    private const string PageKey = "Bom";
+    private const string PageKey = "yarn-orders";
     private const int BomNotifyAfterDays = 2;   // first reminder = creation + 2 days
     private readonly IBomService _bomService = bomService;
     private readonly IRoleManagementService _roleService = roleService;
@@ -111,11 +111,13 @@ public class BomController(
     }
 
     /// <summary>All saved yarn orders (headers), newest first.</summary>
+    /// <param name="status">Order-state filter from spDropdown 'YarnOrderStatus':
+    /// 'O' ordered, 'N' not ordered, omitted for every header.</param>
     [HttpGet("yarn-orders")]
-    public async Task<IActionResult> GetYarnOrders()
+    public async Task<IActionResult> GetYarnOrders([FromQuery] string? status = null)
     {
         if (!await CanViewAsync()) return Forbid();
-        return Ok(await _bomService.GetYarnOrdersAsync());
+        return Ok(await _bomService.GetYarnOrdersAsync(status));
     }
 
     /// <summary>Detail lines of a saved yarn order.</summary>
@@ -246,6 +248,8 @@ public class BomController(
             await _poTaskService.CreateAsync(new CreatePoTaskRequest
             {
                 OrderNo = orderNo,
+                Stage = 12,                    // Yarn order — so the board can label + link it
+                                               // to /yarn-orders (otherwise it defaults to Manual)
                 Title = title,
                 Detail = detail,
                 PriorityId = priorityId,

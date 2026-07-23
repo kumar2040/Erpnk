@@ -10,15 +10,23 @@
   <ItemGroup>
     <Build Remove="*.sql" />
     <Build Remove="NkplmErp.Migrations/**/*.sql" />
+    <Build Include="dbo\Procedure\sp_GetYarnOrders.sql" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="dbo/*" />
     <Folder Include="identity/*" />
     <Folder Include="dbo\Procedure\" />
     <Folder Include="dbo\Table\" />
+    <Folder Include="dbo\Script\" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="dbo/**/*.sql" />
     <Build Include="identity/**/*.sql" />
+    <!-- One-time data scripts (DML) ship in the repo but are not schema objects, so keep
+         them out of the build - SSDT only accepts object definitions as Build items. -->
+    <Build Remove="dbo\Script\**\*.sql" />
+    <Build Remove="identity\Script\**\*.sql" />
+    <None Include="dbo\Script\**\*.sql" />
+    <None Include="identity\Script\**\*.sql" />
   </ItemGroup>
 </Project>

@@ -2,8 +2,8 @@ using System.Security.Claims;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using NkplmErp.API.Model.Task_Gate;
-using NkplmErp.API.Services.Interface.Task_Gate;
+using NkplmErp.Shared.DTOs.Task_Gate;
+using NkplmErp.Application.Interfaces.Task_Gate;
 using NkplmErp.Application.Interfaces;
 
 namespace NkplmErp.API.Controllers.Task_Gate

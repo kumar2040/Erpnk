@@ -24,25 +24,38 @@
 .add-btn:hover{filter:brightness(1.05)}
 
 /* stat cards — full pastel-filled chips, label left / value right */
-.stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px}
+.stats-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:14px}
 .stat-card{border:1px solid var(--c,#cbd5e1);border-bottom:3px solid var(--c,#94a3b8);border-radius:10px;padding:10px 14px 9px;background:var(--bg,#f1f5f9);transition:transform .12s,box-shadow .12s,filter .12s;cursor:pointer}
 .stat-card:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(16,24,40,.1);filter:brightness(.98)}
 .stat-card:active{transform:translateY(0)}
+/* Selected filter card: a ring in its own colour so the active status reads at a glance. */
+.stat-card.active{box-shadow:0 0 0 2px var(--c);filter:none}
 .stat-content{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .stat-label{font-size:.8rem;color:var(--c,#475569);font-weight:800;letter-spacing:.2px}
 .stat-value{font-size:1.5rem;font-weight:800;color:var(--navy);line-height:1}
-.stat-scheduled{--c:#2563eb; --bg:rgba(37,99,235,.10)}
-.stat-progress {--c:#b45309; --bg:rgba(217,119,6,.13)}
-.stat-hold     {--c:#64748b; --bg:rgba(100,116,139,.13)}
-.stat-completed{--c:#15803d; --bg:rgba(5,150,105,.13)}
-.stat-overdue  {--c:#dc2626; --bg:rgba(220,38,38,.10)}
+/* Class names derive from the status flag (stat-<flag>); Work Load is a view control. */
+.stat-s{--c:#2563eb; --bg:rgba(37,99,235,.10)}
+.stat-p{--c:#b45309; --bg:rgba(217,119,6,.13)}
+.stat-h{--c:#64748b; --bg:rgba(100,116,139,.13)}
+.stat-c{--c:#15803d; --bg:rgba(5,150,105,.13)}
+.stat-o{--c:#dc2626; --bg:rgba(220,38,38,.10)}
+.stat-workload{--c:#3b82f6; --bg:rgba(59,130,246,.15)}
 
-/* board */
-.board-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;align-items:start;margin-top:16px}
+/* board — column count driven by the stat-card selection (cols-N). */
+.board-row{display:grid;gap:12px;align-items:start;margin-top:16px}
+.board-row.cols-1{grid-template-columns:minmax(0,1fr)}
+.board-row.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.board-row.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.board-row.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.board-row.cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}
 .board-col{background:#fff;border:1px solid var(--line);border-radius:12px;padding:0;min-height:140px;overflow:hidden;box-shadow:0 1px 3px rgba(16,24,40,.05)}
+/* Single-status view: no header (the lit stat card names it), cards flow 3-up like /task. */
+.board-col.flow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:9px;align-items:start}
+.board-col.flow > .tcard{margin:0}
 .col-head{display:flex;align-items:center;gap:8px;font-size:.82rem;font-weight:800;color:var(--navy);padding:10px 13px;border-bottom:1px solid var(--line);background:#fafbfd;margin:0}
 .col-head .dot{width:9px;height:9px;border-radius:50%;background:var(--c,#94a3b8)}
-.col-sched{--c:var(--sched)} .col-prog{--c:var(--prog)} .col-hold{--c:var(--hold)} .col-done{--c:var(--done)} .col-due{--c:var(--due)}
+/* Class names derive from the status flag (col-<flag>): S P H C O. */
+.col-s{--c:var(--sched)} .col-p{--c:var(--prog)} .col-h{--c:var(--hold)} .col-c{--c:var(--done)} .col-o{--c:var(--due)}
 .col-head .cnt{margin-left:auto;background:#eef1f6;color:#334155;border-radius:20px;font-size:.7rem;font-weight:800;padding:1px 9px}
 .col-empty{color:#b6bcc6;font-size:.74rem;padding:14px 12px;text-align:center}
 .board-col > .tcard{margin:9px}
@@ -51,7 +64,7 @@
 /* task card */
 .tcard{background:#fff;border:1px solid var(--line);border-left:4px solid var(--c,#94a3b8);border-radius:9px;padding:10px 11px;margin:9px;cursor:pointer;box-shadow:0 1px 2px rgba(16,24,40,.04);transition:transform .1s,box-shadow .1s}
 .tcard:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(16,24,40,.08)}
-.col-sched .tcard{--c:var(--sched)} .col-prog .tcard{--c:var(--prog)} .col-hold .tcard{--c:var(--hold)} .col-done .tcard{--c:var(--done)} .col-due .tcard{--c:var(--due)}
+.col-s .tcard{--c:var(--sched)} .col-p .tcard{--c:var(--prog)} .col-h .tcard{--c:var(--hold)} .col-c .tcard{--c:var(--done)} .col-o .tcard{--c:var(--due)}
 .tcard-title{font-size:.82rem;font-weight:800;color:var(--navy);margin-bottom:4px;line-height:1.25}
 /* Clickable PO name -> opens the Order Details modal. inline-block keeps the hit
    area to the text so clicking elsewhere on the card still opens the task drawer. */
