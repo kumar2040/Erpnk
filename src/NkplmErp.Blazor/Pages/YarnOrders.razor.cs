@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
-using NkplmErp.Blazor.Model.Yarn_Orders;
 using NkplmErp.Blazor.Services.Bom;
 using NkplmErp.Blazor.Services.RoleManagement;
 using NkplmErp.Blazor.Services.Toast;
+using NkplmErp.Shared.DTOs.Yarn_Orders;
 using NkplmErp.Blazor.Services.Yarn_Orders.Manager.Interface;
 using NkplmErp.Shared.DTOs;
 using NkplmErp.Shared.DTOs.Dropdown;
@@ -174,7 +174,7 @@ public partial class YarnOrders
     // null for the other date leaves that column untouched.
     private async Task SaveTimelineAsync(YarnVendorOrderDto v, string? departureDate, string? arrivalDate)
     {
-        var request = new YarnOrdersRequestModel
+        var request = new YarnOrderRequestModel
         {
             YarnId        = v.VyoId.ToString(),
             DepartureDate = departureDate,

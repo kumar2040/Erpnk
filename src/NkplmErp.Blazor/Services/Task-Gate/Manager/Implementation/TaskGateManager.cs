@@ -1,4 +1,4 @@
-using NkplmErp.Blazor.Model.Task_Gate;
+using NkplmErp.Shared.DTOs.Task_Gate;
 using NkplmErp.Blazor.Services.Task_Gate.Manager.Interface;
 using NkplmErp.Blazor.Services.Task_Gate.Manager.Route;
 using NkplmErp.Blazor.Shared.Http;
