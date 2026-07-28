@@ -149,27 +149,38 @@ BEGIN
         -- This CASE is the ONE place a linkable stage is added -- the API and the board
         -- navigate whatever string lands here and never learn a route themselves.
         CASE t.[Stage]
+            -- PO entry (1) -> the production plan for this order. No RefId gate here (unlike
+            -- stage 3): the plan line does not exist yet -- creating it IS the task -- so the
+            -- page opens on the order and the planner builds the plan from there.
+            WHEN 1  THEN CASE WHEN q.[OrderNo] IS NOT NULL
+                              THEN N'/order-planning?orderNo=' + q.[OrderNo]
+                                   + ISNULL(N'&gauge=' + q.[Guage], N'')
+                                   + ISNULL(om.[MonthParam], N'') END
+
             -- BOM (2) -> the bill of materials for its production order, keyed by order no.
-            WHEN 2  THEN CASE WHEN NULLIF(LTRIM(RTRIM(t.[OrderNo])), '') IS NOT NULL
-                              THEN N'/bom?orderNo=' + t.[OrderNo] END
+            WHEN 2  THEN CASE WHEN q.[OrderNo] IS NOT NULL
+                              THEN N'/bom?orderNo=' + q.[OrderNo]
+                                   + ISNULL(om.[MonthParam], N'') END
 
             -- Planning (3) -> opens by order (+ gauge when present). RefId (the plan line,
             -- MasterPlanChildId) must exist, matching the old "no plan line, no link" gate.
-            WHEN 3  THEN CASE WHEN t.[RefId] > 0 AND NULLIF(LTRIM(RTRIM(t.[OrderNo])), '') IS NOT NULL
-                              THEN N'/order-planning?orderNo=' + t.[OrderNo]
-                                   + CASE WHEN NULLIF(LTRIM(RTRIM(t.[Guage])), '') IS NOT NULL
-                                          THEN N'&gauge=' + t.[Guage] ELSE N'' END END
+            WHEN 3  THEN CASE WHEN t.[RefId] > 0 AND q.[OrderNo] IS NOT NULL
+                              THEN N'/order-planning?orderNo=' + q.[OrderNo]
+                                   + ISNULL(N'&gauge=' + q.[Guage], N'')
+                                   + ISNULL(om.[MonthParam], N'') END
 
             -- Yarn order lifecycle (12: placed / departure / arrival) -> the placed order on
-            -- /yarn-orders, keyed by yo_id. A production order belongs to exactly one yarn
-            -- order; TOP 1 DESC stays deterministic if a PO is re-ordered. No match -> NULL.
-            WHEN 12 THEN (SELECT TOP (1) N'/yarn-orders/' + CAST(od.[yo_id] AS nvarchar(20))
-                          FROM   [dbo].[tbl_yarn_order_detail] od WITH (NOLOCK)
-                          WHERE  od.[order_no] = t.[OrderNo]
-                          ORDER BY od.[yo_id] DESC)
+            -- /yarn-orders, keyed by yo_id. No match -> NULL (not clickable).
+            WHEN 12 THEN CASE WHEN yo.[yo_id] IS NOT NULL
+                              THEN N'/yarn-orders/' + CAST(yo.[yo_id] AS nvarchar(20)) END
 
-            -- Manual (20) -> the yarn-orders list (not tied to one placed order).
-            WHEN 20 THEN N'/yarn-orders'
+            -- Manual (20) -> the yarn-orders list, EXCEPT when the order behind it has a yarn
+            -- order: then open that one. The lifecycle hook only started stamping Stage 12
+            -- later on, so every "Yarn order <n> placed" task raised before that is still
+            -- sitting on 20 -- its title names one specific yarn order, and dropping the user
+            -- on an unselected list is the bug this fixes. A hand-made task whose order has no
+            -- yarn order behind it still gets the plain list, as before.
+            WHEN 20 THEN COALESCE(N'/yarn-orders/' + CAST(yo.[yo_id] AS nvarchar(20)), N'/yarn-orders')
 
             ELSE NULL
         END                                            AS [LinkUrl],
@@ -207,6 +218,33 @@ BEGIN
         END                                            AS [DisplayFlag]
     INTO #cards
     FROM [dbo].[PoTask] t
+    -- The order's ship month -- first of the month of the earliest order_ldate across its
+    -- lines -- pre-formatted as the &month value /order-planning and /bom read. Both pages
+    -- load one month at a time, so a link without it lands on today's month and the order
+    -- is simply absent from the list. Computed once here, used by every link branch above.
+    -- No matching order row -> NULL -> the branches append nothing and the page keeps today.
+    OUTER APPLY (
+        SELECT N'&month=' + CONVERT(nvarchar(10),
+                   DATEADD(DAY, 1 - DAY(MIN(o.[order_ldate])), MIN(o.[order_ldate])), 23) AS [MonthParam]
+        FROM   [dbo].[tbl_order] o WITH (NOLOCK)
+        WHERE  o.[order_no] = t.[OrderNo]
+    ) om
+    -- The link's query values, trimmed once so every branch can share them and test presence
+    -- with a plain NULL check. They go out as-is; the board percent-encodes them right before
+    -- it navigates (GoToUrl in PoTasks.razor.cs), so free text holding a space or '&' survives.
+    CROSS APPLY (VALUES (
+        NULLIF(LTRIM(RTRIM(t.[OrderNo])), ''),
+        NULLIF(LTRIM(RTRIM(t.[Guage])),   '')
+    )) q([OrderNo], [Guage])
+    -- The yarn order this production order sits under, shared by the stage 12 and 20 links.
+    -- A PO normally belongs to one yarn order; TOP 1 DESC stays deterministic if it was
+    -- re-ordered under a later one. No match -> NULL, which each branch handles its own way.
+    OUTER APPLY (
+        SELECT TOP (1) od.[yo_id]
+        FROM   [dbo].[tbl_yarn_order_detail] od WITH (NOLOCK)
+        WHERE  od.[order_no] = t.[OrderNo]
+        ORDER BY od.[yo_id] DESC
+    ) yo
     WHERE t.[IsActive] = 1
       AND t.[Status] <> 'X'
       AND (@Stage IS NULL OR t.[Stage] = @Stage)

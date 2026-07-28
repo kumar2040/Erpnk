@@ -1,0 +1,59 @@
+@using NkplmErp.Blazor.Services.Loading
+@implements IDisposable
+@inject LoadingService Loading
+
+@if (Loading.IsVisible)
+{
+    <div class="global-loading-overlay">
+        <div class="global-loading-spinner"></div>
+        <p class="global-loading-text">@(Loading.Message ?? "Loading…")</p>
+    </div>
+}
+
+<style>
+    .global-loading-overlay {
+        position: fixed;
+        inset: 0;
+        /* One below ToastContainer's 9999: if a load fails and toasts an error, that error
+           has to sit above the veil rather than behind it. */
+        z-index: 9998;
+        background: rgba(255, 255, 255, 0.82);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Same ring as DataModal's spinner-apple, owned here: a global overlay cannot depend on
+       another component happening to be on the page. 36px rather than 32 because this one is
+       centred in a full viewport, where 32 reads undersized. */
+    .global-loading-spinner {
+        width: 36px;
+        height: 36px;
+        border: 3px solid rgba(0, 0, 0, 0.1);
+        border-top-color: #0071e3;
+        border-radius: 50%;
+        animation: global-loading-spin 0.8s linear infinite;
+    }
+
+    .global-loading-text {
+        font-size: 13px;
+        font-weight: 500;
+        color: #86868b;
+        margin-top: 16px;
+    }
+
+    @@keyframes global-loading-spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+
+@code {
+    protected override void OnInitialized() => Loading.OnChange += HandleChange;
+
+    // InvokeAsync because Show/Hide can be called from a non-render thread, same as
+    // ToastContainer does for its own event.
+    private async void HandleChange() => await InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Loading.OnChange -= HandleChange;
+}

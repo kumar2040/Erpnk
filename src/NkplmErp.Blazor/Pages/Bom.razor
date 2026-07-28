@@ -50,7 +50,18 @@ else
                     {
                         @foreach (var o in FilteredOrders)
                         {
-                            <div class="bom-ord @(o.OrderNo == SelectedOrderNo ? "active" : "")"
+                            @* Trimmed / case-insensitive to match how order numbers are compared
+                               everywhere else here: SelectOrderAsync is handed a trimmed value
+                               (including from the ?orderNo= deep link), so an exact compare
+                               against an untrimmed column would silently drop the highlight. *@
+                            var isSelected = !string.IsNullOrWhiteSpace(SelectedOrderNo)
+                                             && string.Equals(o.OrderNo.Trim(), SelectedOrderNo.Trim(), StringComparison.OrdinalIgnoreCase);
+                            @* One fixed id on whichever row is selected, rather than an id per
+                               order: order numbers here hold spaces ("PO-NK AW26-03 PRODUCTION"),
+                               so a per-order id would need escaping. Only one row is ever
+                               selected, so this stays unique. Null = attribute omitted. *@
+                            <div class="bom-ord @(isSelected ? "active" : "")"
+                                 id="@(isSelected ? "bom-selected-order" : null)"
                                  @onclick="@(() => SelectOrderAsync(o.OrderNo))">
                                 <div class="no">@o.OrderNo</div>
                                 <div class="foot">

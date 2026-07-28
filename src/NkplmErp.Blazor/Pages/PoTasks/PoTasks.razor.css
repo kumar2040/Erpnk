@@ -2,7 +2,7 @@
 .main-body{
   --navy:#1a3353; --teal:#2ab3b1; --muted:#7a8fa6; --line:#e5e9f0; --ink:#111827;
   --sched:#2563eb; --prog:#d97706; --hold:#7c3aed; --done:#059669; --due:#dc2626;
-  padding:14px 18px; color:var(--ink);
+  padding:0 18px 14px; color:var(--ink);
   font-family:'Inter', system-ui, sans-serif; font-size:13px;
 }
 .main-body *{font-family:inherit}
@@ -48,7 +48,7 @@
 .board-row.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .board-row.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
 .board-row.cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}
-.board-col{background:#fff;border:1px solid var(--line);border-radius:12px;padding:0;height:calc(100vh - 300px);min-height:360px;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;box-shadow:0 1px 3px rgba(16,24,40,.05)}
+.board-col{background:#fff;border:1px solid var(--line);border-radius:12px;padding:0;height:calc(100vh - 278px);min-height:360px;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;box-shadow:0 1px 3px rgba(16,24,40,.05)}
 /* Single-status view: no header (the lit stat card names it), cards flow 3-up like /task. */
 .board-col.flow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:9px;align-items:stretch;align-content:start}
 .board-col.flow > .tcard{margin:0}
@@ -225,7 +225,7 @@
 
 @media (max-width: 900px){
   .stats-grid,.board-row{grid-template-columns:repeat(2,1fr)}
-  .board-col{height:calc(100vh - 360px)}
+  .board-col{height:calc(100vh - 338px)}
 }
 
 /* Popup (modal) body text in #222 — keeps colored buttons/badges/pills intact. */

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.JSInterop;
@@ -24,6 +25,9 @@ public partial class OrderPlanning
     private TokenProvider _tokenProvider { get; set; } = default!;
 
     [Inject]
+    private NkplmErp.Blazor.Services.Loading.LoadingService _loading { get; set; } = default!;
+
+    [Inject]
     private ToastService ToastService { get; set; } = default!;
 
     [Inject]
@@ -36,6 +40,11 @@ public partial class OrderPlanning
     // /order-planning?orderNo=PO-1933&gauge=7 opens that order's planning straight away.
     [Parameter, SupplyParameterFromQuery(Name = "orderNo")] public string? FromOrderNo { get; set; }
     [Parameter, SupplyParameterFromQuery(Name = "gauge")] public string? FromGauge { get; set; }
+
+    // The order's ship month, sent alongside orderNo by sp_GetPoTask. LoadMonths otherwise
+    // leaves the page on the current month, and an order shipping in another month is then
+    // genuinely absent from AllOrders — see OpenFromTaskLinkAsync.
+    [Parameter, SupplyParameterFromQuery(Name = "month")] public string? FromMonth { get; set; }
 
     private List<MonthlyOrderSummaryDto> Months { get; set; } = new();
     private List<MonthlyOrderDetailDto> AllOrders { get; set; } = new();
@@ -2981,13 +2990,31 @@ public partial class OrderPlanning
             return;
         }
 
-        await LoadOrderCollectionTypes();
-        await LoadMonths();
-        await LoadOrders();
-        await LoadGaugeUtilization();
-        IsLoading = false;
+        // Veil the whole arrival when a task card sent us here. A plain visit paints the page
+        // while it fills and needs no veil; the deep link then goes on to pull production
+        // status, open the modal and select the gauge, which is the stretch that felt dead.
+        var fromTaskLink = !string.IsNullOrWhiteSpace(FromOrderNo);
+        if (fromTaskLink)
+            _loading.Show($"Loading planning for {FromOrderNo}…");
 
-        await OpenFromTaskLinkAsync();
+        try
+        {
+            await LoadOrderCollectionTypes();
+            await LoadMonths();
+            ApplyLinkedMonth();
+            await LoadOrders();
+            await LoadGaugeUtilization();
+            IsLoading = false;
+
+            await OpenFromTaskLinkAsync();
+        }
+        finally
+        {
+            // finally: a throw anywhere above must not strand the user behind a veil that
+            // never lifts. IsLoading is settled here too, for the same reason.
+            IsLoading = false;
+            if (fromTaskLink) _loading.Hide();
+        }
     }
 
     // Arrived from a Planning task card. Selects the task's order and opens its planning
@@ -3032,6 +3059,20 @@ public partial class OrderPlanning
         {
             Console.WriteLine($"Error loading gauge utilization: {ex.Message}");
         }
+    }
+
+    // Runs between LoadMonths and LoadOrders so the month the link asked for is the one
+    // actually queried. Snaps to the matching dropdown entry when there is one, so the
+    // control agrees with what got loaded; an unlisted month is still honoured.
+    private void ApplyLinkedMonth()
+    {
+        if (string.IsNullOrWhiteSpace(FromMonth)
+            || !DateTime.TryParse(FromMonth, CultureInfo.InvariantCulture, DateTimeStyles.None, out var linked))
+            return;
+
+        var match = Months.FirstOrDefault(m => m.MonthStartDate.Year == linked.Year
+                                            && m.MonthStartDate.Month == linked.Month);
+        SelectedMonth = match?.MonthStartDate ?? linked;
     }
 
     private async Task LoadMonths()

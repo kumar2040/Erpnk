@@ -48,3 +48,12 @@ function closeModal() {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeModal();
 });
+
+// Scrolls one element into view inside its nearest scrollable ancestor. Used by the
+// /bom deep link to bring the linked order into view in the orders column. Missing
+// element is not an error: a placed order is filtered out of the list, so there is
+// simply no row to scroll to.
+window.scrollElementIntoView = function (id) {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+};

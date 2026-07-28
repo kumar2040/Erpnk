@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.AspNetCore.WebUtilities;
 using NkplmErp.Blazor.Components;
 using NkplmErp.Blazor.Services.Dropdown.Manager.Interface;
 using NkplmErp.Blazor.Services.PoTask;
@@ -374,7 +375,30 @@ namespace NkplmErp.Blazor.Pages.PoTasks
         // Navigate to the URL the procedure built for this card. The board knows no
         // routes — a stage's link is added in sp_GetPoTask, never here. Only called for
         // cards whose LinkUrl is non-empty.
-        private void GoToUrl(string url) => Nav.NavigateTo(url);
+        // sp_GetPoTask hands back the link with its query values as plain text, so an order no
+        // or gauge holding a space, '&' or '#' would truncate the link or invent a parameter.
+        // Encode the VALUES here, right before navigating -- not the whole string, which would
+        // eat the '?', '&' and '=' the URL is made of. The target page's
+        // [SupplyParameterFromQuery] decodes them back on arrival.
+        private void GoToUrl(string url) => Nav.NavigateTo(EncodeQueryValues(url));
+
+        private static string EncodeQueryValues(string url)
+        {
+            var split = url.IndexOf('?');
+            if (split < 0) return url;                       // no query, nothing to encode
+
+            // Split the raw pairs ourselves rather than with QueryHelpers.ParseQuery, which
+            // DECODES as it parses. The proc emits these values unencoded, so a literal '%' in
+            // an order no is not an escape sequence -- decoding first would mangle it. The
+            // encoding itself is AddQueryString's job.
+            var pairs = url[(split + 1)..]
+                .Split('&', StringSplitOptions.RemoveEmptyEntries)
+                .Select(pair => pair.Split('=', 2))
+                .Select(parts => new KeyValuePair<string, string?>(
+                    parts[0], parts.Length > 1 ? parts[1] : string.Empty));
+
+            return QueryHelpers.AddQueryString(url[..split], pairs);
+        }
 
         private async Task ToggleChecklist(int checklistId)
         {
