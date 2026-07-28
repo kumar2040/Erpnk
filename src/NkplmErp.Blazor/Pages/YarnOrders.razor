@@ -52,7 +52,13 @@ else
                     {
                         @foreach (var o in FilteredOrders)
                         {
-                            <div class="yo-card @(Selected?.YoId == o.YoId ? "active" : "")" @onclick="@(() => SelectOrderAsync(o))">
+                            var isSelected = Selected?.YoId == o.YoId;
+                            @* Fixed id on whichever card is selected, so the /yarn-orders/{id}
+                               deep link can scroll it into view. Only one is ever selected, so
+                               it stays unique. Null = attribute omitted. *@
+                            <div class="yo-card @(isSelected ? "active" : "")"
+                                 id="@(isSelected ? "yo-selected-order" : null)"
+                                 @onclick="@(() => SelectOrderAsync(o))">
                                 <div class="row1">
                                     <span class="no">@o.YoNo</span>
                                     <span class="kg">@o.TotalKg.ToString("N2") kg</span>

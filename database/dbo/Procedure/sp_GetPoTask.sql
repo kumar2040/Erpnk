@@ -170,15 +170,17 @@ BEGIN
                                    + ISNULL(om.[MonthParam], N'') END
 
             -- Yarn order lifecycle (12: placed / departure / arrival) -> the placed order on
-            -- /yarn-orders, keyed by yo_id. A production order belongs to exactly one yarn
-            -- order; TOP 1 DESC stays deterministic if a PO is re-ordered. No match -> NULL.
-            WHEN 12 THEN (SELECT TOP (1) N'/yarn-orders/' + CAST(od.[yo_id] AS nvarchar(20))
-                          FROM   [dbo].[tbl_yarn_order_detail] od WITH (NOLOCK)
-                          WHERE  od.[order_no] = t.[OrderNo]
-                          ORDER BY od.[yo_id] DESC)
+            -- /yarn-orders, keyed by yo_id. No match -> NULL (not clickable).
+            WHEN 12 THEN CASE WHEN yo.[yo_id] IS NOT NULL
+                              THEN N'/yarn-orders/' + CAST(yo.[yo_id] AS nvarchar(20)) END
 
-            -- Manual (20) -> the yarn-orders list (not tied to one placed order).
-            WHEN 20 THEN N'/yarn-orders'
+            -- Manual (20) -> the yarn-orders list, EXCEPT when the order behind it has a yarn
+            -- order: then open that one. The lifecycle hook only started stamping Stage 12
+            -- later on, so every "Yarn order <n> placed" task raised before that is still
+            -- sitting on 20 -- its title names one specific yarn order, and dropping the user
+            -- on an unselected list is the bug this fixes. A hand-made task whose order has no
+            -- yarn order behind it still gets the plain list, as before.
+            WHEN 20 THEN COALESCE(N'/yarn-orders/' + CAST(yo.[yo_id] AS nvarchar(20)), N'/yarn-orders')
 
             ELSE NULL
         END                                            AS [LinkUrl],
@@ -234,6 +236,15 @@ BEGIN
         NULLIF(LTRIM(RTRIM(t.[OrderNo])), ''),
         NULLIF(LTRIM(RTRIM(t.[Guage])),   '')
     )) q([OrderNo], [Guage])
+    -- The yarn order this production order sits under, shared by the stage 12 and 20 links.
+    -- A PO normally belongs to one yarn order; TOP 1 DESC stays deterministic if it was
+    -- re-ordered under a later one. No match -> NULL, which each branch handles its own way.
+    OUTER APPLY (
+        SELECT TOP (1) od.[yo_id]
+        FROM   [dbo].[tbl_yarn_order_detail] od WITH (NOLOCK)
+        WHERE  od.[order_no] = t.[OrderNo]
+        ORDER BY od.[yo_id] DESC
+    ) yo
     WHERE t.[IsActive] = 1
       AND t.[Status] <> 'X'
       AND (@Stage IS NULL OR t.[Stage] = @Stage)

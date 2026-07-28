@@ -85,8 +85,23 @@ public partial class YarnOrders
         {
             var target = Orders.FirstOrDefault(o => o.YoId == YoId.Value);
             if (target is not null)
+            {
                 await SelectOrderAsync(target);
+                // Deep link only — a card the user clicked is already on screen, the linked
+                // one can be anywhere down the list. Deferred to OnAfterRenderAsync because
+                // the card isn't in the DOM until this render lands.
+                _scrollToSelected = true;
+            }
         }
+    }
+
+    private bool _scrollToSelected;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_scrollToSelected) return;
+        _scrollToSelected = false;   // cleared first, so this runs once even if the call throws
+        await JS.InvokeVoidAsync("scrollElementIntoView", "yo-selected-order");
     }
 
     private async Task LoadOrdersAsync()
