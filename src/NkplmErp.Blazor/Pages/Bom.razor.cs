@@ -1,4 +1,6 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using NkplmErp.Application.Interfaces;
 using NkplmErp.Blazor.Services.Bom;
 using NkplmErp.Blazor.Services.RoleManagement;
@@ -11,11 +13,17 @@ public partial class Bom
     [Inject] private BomApiClient BomApi { get; set; } = default!;
     [Inject] private IProductionPlanningService PlanningService { get; set; } = default!;
     [Inject] private PermissionService PermSvc { get; set; } = default!;
+    [Inject] private IJSRuntime JS { get; set; } = default!;
 
     // ===== State =====
     // Deep link from a BOM task card on /tasks: /bom?orderNo=GT-26011A opens that order's
     // yarn requirement straight away.
     [Parameter, SupplyParameterFromQuery(Name = "orderNo")] public string? FromOrderNo { get; set; }
+
+    // The month that order ships in, sent alongside orderNo by sp_GetPoTask. Without it the
+    // list below defaults to today, so an order shipping in another month opens a list it
+    // isn't in. Any date in the month works — the report is queried by month.
+    [Parameter, SupplyParameterFromQuery(Name = "month")] public string? FromMonth { get; set; }
 
     private bool AccessDenied = false;
 
@@ -93,6 +101,12 @@ public partial class Bom
             return;
         }
 
+        // Set the month BEFORE the list loads, so the deep link's month is the one queried
+        // rather than today's and then re-fetched.
+        if (!string.IsNullOrWhiteSpace(FromMonth)
+            && DateTime.TryParse(FromMonth, CultureInfo.InvariantCulture, DateTimeStyles.None, out var linkedMonth))
+            SelectedMonth = linkedMonth;
+
         await LoadPlacedOrdersAsync();
         await LoadOrdersAsync();
 
@@ -100,7 +114,22 @@ public partial class Bom
         // SelectOrderAsync calls the requirement API directly, so it works even though a
         // placed order is normally filtered out of the left-hand list.
         if (!string.IsNullOrWhiteSpace(FromOrderNo))
+        {
             await SelectOrderAsync(FromOrderNo.Trim());
+            // Deep link only. A row the user clicked is already on screen; the linked one can
+            // be anywhere in a 38-order list. The scroll itself waits for OnAfterRenderAsync,
+            // because the row doesn't exist in the DOM until this render lands.
+            _scrollToSelected = true;
+        }
+    }
+
+    private bool _scrollToSelected;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_scrollToSelected) return;
+        _scrollToSelected = false;   // cleared first, so this runs once even if the call throws
+        await JS.InvokeVoidAsync("scrollElementIntoView", "bom-selected-order");
     }
 
     private async Task LoadOrdersAsync()

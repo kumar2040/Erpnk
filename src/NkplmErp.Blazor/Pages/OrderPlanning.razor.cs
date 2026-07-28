@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.JSInterop;
@@ -36,6 +37,11 @@ public partial class OrderPlanning
     // /order-planning?orderNo=PO-1933&gauge=7 opens that order's planning straight away.
     [Parameter, SupplyParameterFromQuery(Name = "orderNo")] public string? FromOrderNo { get; set; }
     [Parameter, SupplyParameterFromQuery(Name = "gauge")] public string? FromGauge { get; set; }
+
+    // The order's ship month, sent alongside orderNo by sp_GetPoTask. LoadMonths otherwise
+    // leaves the page on the current month, and an order shipping in another month is then
+    // genuinely absent from AllOrders — see OpenFromTaskLinkAsync.
+    [Parameter, SupplyParameterFromQuery(Name = "month")] public string? FromMonth { get; set; }
 
     private List<MonthlyOrderSummaryDto> Months { get; set; } = new();
     private List<MonthlyOrderDetailDto> AllOrders { get; set; } = new();
@@ -2983,6 +2989,7 @@ public partial class OrderPlanning
 
         await LoadOrderCollectionTypes();
         await LoadMonths();
+        ApplyLinkedMonth();
         await LoadOrders();
         await LoadGaugeUtilization();
         IsLoading = false;
@@ -3032,6 +3039,20 @@ public partial class OrderPlanning
         {
             Console.WriteLine($"Error loading gauge utilization: {ex.Message}");
         }
+    }
+
+    // Runs between LoadMonths and LoadOrders so the month the link asked for is the one
+    // actually queried. Snaps to the matching dropdown entry when there is one, so the
+    // control agrees with what got loaded; an unlisted month is still honoured.
+    private void ApplyLinkedMonth()
+    {
+        if (string.IsNullOrWhiteSpace(FromMonth)
+            || !DateTime.TryParse(FromMonth, CultureInfo.InvariantCulture, DateTimeStyles.None, out var linked))
+            return;
+
+        var match = Months.FirstOrDefault(m => m.MonthStartDate.Year == linked.Year
+                                            && m.MonthStartDate.Month == linked.Month);
+        SelectedMonth = match?.MonthStartDate ?? linked;
     }
 
     private async Task LoadMonths()
