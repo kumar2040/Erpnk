@@ -13,12 +13,17 @@ public class DapperRepository : IDapperRepository
     private readonly string _connectionString;
     private readonly ILogger<DapperRepository> _logger;
     private readonly IConfiguration _configuration;
+    // Command timeout in seconds (Database:CommandTimeoutSeconds, default 120).
+    // The SqlClient default of 30s is too tight for linked-server (MySQL/ODBC)
+    // pulls and the heavier reporting procs.
+    private readonly int _commandTimeout;
     public DapperRepository(ILogger<DapperRepository> logger, IConfiguration configuration)
     {
         _configuration = configuration;
         this._connectionString = (Environment.GetEnvironmentVariable("DOCKER_RUNNING") == "TRUE") ? $"Data Source={Environment.GetEnvironmentVariable("DB_HOST")};Initial Catalog={Environment.GetEnvironmentVariable("DB_NAME")};User ID={Environment.GetEnvironmentVariable("DB_USER")};Password={Environment.GetEnvironmentVariable("DB_PASSWORD")};pooling='true';Max Pool Size=200000;TrustServerCertificate=True;"
             : _configuration.GetConnectionString("DefaultConnection")!;
         this._logger = logger;
+        _commandTimeout = _configuration.GetValue<int?>("Database:CommandTimeoutSeconds") ?? 120;
     }
     /// <summary>
     /// Executes the query to get the results.
@@ -37,7 +42,7 @@ public class DapperRepository : IDapperRepository
             try
             {
                 sqlConnection.Open();
-                var command = new CommandDefinition(sqlQuery, sqlParam, commandType: queryType);
+                var command = new CommandDefinition(sqlQuery, sqlParam, commandType: queryType, commandTimeout: _commandTimeout);
                 var result = await sqlConnection.QueryAsync<T>(command);
                 return result.ToList();
             }
@@ -69,7 +74,7 @@ public class DapperRepository : IDapperRepository
             try
             {
                 sqlConnection.Open();
-                var command = new CommandDefinition(sqlQuery, sqlParam, commandType: queryType);
+                var command = new CommandDefinition(sqlQuery, sqlParam, commandType: queryType, commandTimeout: _commandTimeout);
                 var result = await sqlConnection.QueryFirstOrDefaultAsync<T>(command);
                 return result;
             }
@@ -101,7 +106,7 @@ public class DapperRepository : IDapperRepository
             try
             {
                 sqlConnection.Open();
-                var command = new CommandDefinition(sqlQuery, sqlParam, commandType: queryType);
+                var command = new CommandDefinition(sqlQuery, sqlParam, commandType: queryType, commandTimeout: _commandTimeout);
                 var result = await sqlConnection.QueryFirstOrDefaultAsync<SystemResponse>(command);
                 return result;
             }
@@ -133,7 +138,7 @@ public class DapperRepository : IDapperRepository
             try
             {
                 sqlConnection.Open();
-                var command = new CommandDefinition(sqlQuery, sqlParam, commandType: queryType);
+                var command = new CommandDefinition(sqlQuery, sqlParam, commandType: queryType, commandTimeout: _commandTimeout);
                 var result = await sqlConnection.QueryMultipleAsync(command);
                 var res = new List<object> { result.Read<T0>().ToList(), result.Read<T1>().ToList() };
                 return res;
@@ -159,7 +164,7 @@ public class DapperRepository : IDapperRepository
             try
             {
                 sqlConnection.Open();
-                var command = new CommandDefinition(sqlQuery, sqlParam, commandType: queryType);
+                var command = new CommandDefinition(sqlQuery, sqlParam, commandType: queryType, commandTimeout: _commandTimeout);
                 var result = await sqlConnection.QueryMultipleAsync(command);
                 var res = new List<object> { result.Read<T0>().ToList(), result.Read<T1>().ToList(), result.Read<T2>().ToList() };
                 return res;
@@ -184,7 +189,7 @@ public class DapperRepository : IDapperRepository
             try
             {
                 sqlConnection.Open();
-                var command = new CommandDefinition(sqlQuery, sqlParam, commandType: queryType);
+                var command = new CommandDefinition(sqlQuery, sqlParam, commandType: queryType, commandTimeout: _commandTimeout);
                 var result = await sqlConnection.QueryMultipleAsync(command);
                 var res = new List<object> { result.Read<T0>().ToList(), result.Read<T1>().ToList(), result.Read<T2>().ToList(), result.Read<T3>().ToList() };
                 return res;

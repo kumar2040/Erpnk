@@ -72,26 +72,27 @@ public class BomController(
 
         var result = await _bomService.PlaceYarnOrderAsync(request, GetCurrentUserId());
 
-        // Automation hook: a placed BOM / yarn order auto-creates the order's BOM task,
-        // assigned to the yarn role's members, with the first reminder +2 days out.
+        // Automation hook: placing the BOM / yarn order fulfils that order's BOM task —
+        // mark it Completed (creating it first if it never existed).
         if (result.IsSuccess)
-            await CreateBomTasksAsync(request);
+            await AdvanceBomTasksAsync(request, result.YoNo);
 
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
 
-    // Fan out a BOM-stage task per distinct order in the yarn order, assigned to the
-    // configured yarn role (TaskAutomation:YarnRoleName, default "Yarn"). Idempotent per
-    // order. Best-effort: a hook failure never breaks placing the yarn order.
-    private async Task CreateBomTasksAsync(PlaceYarnOrderRequest request)
+    // For each distinct order in the yarn order: ensure its BOM-stage task exists (assigned
+    // to the Production Manager role — same owner as the review sweep's seeding), then
+    // transition it to Completed. Idempotent per order. Best-effort: a hook failure never
+    // breaks placing the yarn order.
+    private async Task AdvanceBomTasksAsync(PlaceYarnOrderRequest request, string? yoNo)
     {
         try
         {
             var userId = GetCurrentUserId();
-            var yarnRole = _configuration["TaskAutomation:YarnRoleName"] ?? "Yarn";
+            var pmRole = _configuration["TaskAutomation:ProductionManagerRoleName"] ?? "Production Manager";
 
             var members = (await _roleService.GetAllUsersWithRolesAsync())
-                .Where(u => string.Equals(u.RoleName, yarnRole, StringComparison.OrdinalIgnoreCase))
+                .Where(u => string.Equals(u.RoleName, pmRole, StringComparison.OrdinalIgnoreCase))
                 .Select(u => u.UserId)
                 .Distinct()
                 .ToList();
@@ -102,11 +103,23 @@ public class BomController(
                 .Distinct(StringComparer.OrdinalIgnoreCase);
 
             foreach (var orderNo in orders)
-                await _poTaskService.EnsureBomTaskAsync(orderNo, null, members, BomNotifyAfterDays, userId);
+            {
+                // Ensure returns the task id (idempotent per order — creates or reuses).
+                var taskId = await _poTaskService.EnsureBomTaskAsync(orderNo, null, members, BomNotifyAfterDays, userId);
+                if (taskId > 0)
+                {
+                    await _poTaskService.TransitionAsync(new TransitionPoTaskRequest
+                    {
+                        PoTaskId = taskId,
+                        ToStatus = "C",
+                        Note = $"Yarn order {yoNo} created — BOM done."
+                    }, userId);
+                }
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "BOM auto-task hook failed.");
+            _logger.LogWarning(ex, "BOM task-complete hook failed.");
         }
     }
 
