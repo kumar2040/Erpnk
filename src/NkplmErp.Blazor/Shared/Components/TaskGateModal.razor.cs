@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
-using NkplmErp.Blazor.Model.Task_Gate;
+using NkplmErp.Shared.DTOs.Task_Gate;
 using NkplmErp.Blazor.Services.Task_Gate;
 using NkplmErp.Blazor.Services.Task_Gate.Manager.Interface;
 using NkplmErp.Blazor.Services.Toast;

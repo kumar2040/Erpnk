@@ -1,4 +1,4 @@
-using NkplmErp.Blazor.Model.Task_Gate;
+using NkplmErp.Shared.DTOs.Task_Gate;
 
 namespace NkplmErp.Blazor.Services.Task_Gate
 {

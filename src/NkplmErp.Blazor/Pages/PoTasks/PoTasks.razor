@@ -20,11 +20,12 @@ else
             <div class="compact-filters">
                 @* Reusable date-range picker. The page owns the window (selectedStartDate/
                    selectedEndDate via @bind) and reloads the board on OnChanged. Starts on
-                   "All Dates" so the board opens unfiltered, as it always has. *@
+                   "Today" (both dates seeded to today in the code-behind) so the board opens
+                   scoped to today, matching InitialPreset below. *@
                 <div class="filter-item">
                     <CompactDateRangeFilter @bind-StartDate="selectedStartDate"
                                             @bind-EndDate="selectedEndDate"
-                                            InitialPreset="all"
+                                            InitialPreset="today"
                                             ShowLabel="false"
                                             OnChanged="OnFilterChanged" />
                 </div>
@@ -48,14 +49,9 @@ else
                    pins them to it regardless of what's sent, so a single control is safe
                    for everyone. *@
                 <div class="filter-item">
-                    <select class="compact-select" value="@(selectedFactoryType ?? "")"
-                            @onchange="OnFactoryTypeChanged" style="height:34px" title="Filter by facility">
-                        <option value="">All Factories</option>
-                        @foreach (var ft in FactoryOptions)
-                        {
-                            <option value="@ft">@ft</option>
-                        }
-                    </select>
+                    <AutoCompleteSelect DropDownModels="FactoryDropDownModels" All="1"
+                                        Placeholder="All Factories"
+                                        Value="@FactoryValueForControl" ValueChanged="OnFactoryTypeSelectedAsync" />
                 </div>
 
                 @if (CanEdit)

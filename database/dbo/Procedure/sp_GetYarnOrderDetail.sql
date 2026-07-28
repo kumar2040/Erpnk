@@ -16,7 +16,6 @@ BEGIN
         FROM dbo.tbl_yarn_import_detail AS d
         INNER JOIN dbo.tbl_yarn_import AS yi ON d.imp_id = yi.id
         WHERE CAST(d.yarn AS VARCHAR(100)) = yod.product_id
-          AND d.color = yod.color
         ORDER BY yi.entry_date DESC, yi.id DESC
     ) AS v
     WHERE yod.yo_id = @YoId

@@ -8,6 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Model\**" />
+    <Content Remove="Model\**" />
+    <EmbeddedResource Remove="Model\**" />
+    <None Remove="Model\**" />
+  </ItemGroup>
+
+  <ItemGroup>
 	  <PackageReference Include="ClosedXML" Version="0.104.2" />
     <PackageReference Include="Asp.Versioning.Mvc" Version="8.1.1" />
     <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.1" />
@@ -30,12 +37,6 @@
     <ProjectReference Include="..\NkplmErp.Shared\NkplmErp.Shared.csproj" />
     <ProjectReference Include="..\NkplmErp.Infrastructure\NkplmErp.Infrastructure.csproj" />
 	  
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Model\" />
-    <Folder Include="Services\Implementation\" />
-    <Folder Include="Services\Interface\" />
   </ItemGroup>
 
 </Project>
