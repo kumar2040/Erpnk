@@ -43,6 +43,23 @@ public class PoTaskReminderService : BackgroundService
                 using var scope = _scopeFactory.CreateScope();
                 var svc = scope.ServiceProvider.GetRequiredService<IPoTaskService>();
 
+                // Pull new order reviews from the MySQL source into the local copy first
+                // (best-effort: if the linked server is down, keep sweeping what we have).
+                try
+                {
+                    var pulled = await svc.SyncOrderReviewsAsync();
+                    if (pulled > 0)
+                        _logger.LogInformation("Order-review sync pulled {Count} new review(s).", pulled);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Order-review sync from linked server failed; using the local copy.");
+                }
+
+                // Seed the lifecycle for newly-reviewed orders (pulled into tbl_order_review):
+                // "Create plan" task -> Production Manager, "BOM" task -> Yarn role (+BOM calc).
+                await ProcessOrderReviewsAsync(scope.ServiceProvider);
+
                 // Advance per-gauge Planning tasks from knitter records (started -> P, fully returned -> C).
                 var advanced = await svc.RunPlanProgressSyncAsync();
                 if (advanced > 0)
@@ -71,5 +88,74 @@ public class PoTaskReminderService : BackgroundService
     {
         try { return await timer.WaitForNextTickAsync(token); }
         catch (OperationCanceledException) { return false; }
+    }
+
+    // ======================================================================
+    // Order-review sweep: for every reviewed order (local tbl_order_review)
+    // with no PO-Entry task yet, seed the front of the lifecycle:
+    //   • "Create plan" task (Stage 1) -> Production Manager role, due +N days
+    //   • "BOM" task (Stage 2) -> Yarn role, reminder +2 days, with a yarn
+    //     requirement summary computed via IBomService (knitYarnRequirement)
+    // Idempotent: "a Stage-1 task exists" is the processed marker (enforced by
+    // sp_PoTask_PendingReviews + the CREATE dedupe). Per-order best-effort.
+    // ======================================================================
+    private async Task ProcessOrderReviewsAsync(IServiceProvider sp)
+    {
+        var svc = sp.GetRequiredService<IPoTaskService>();
+
+        var pending = await svc.GetPendingReviewOrdersAsync();
+        if (pending.Count == 0) return;
+
+        var roleSvc = sp.GetRequiredService<IRoleManagementService>();
+        var bomSvc = sp.GetRequiredService<IBomService>();
+
+        var pmRole = _configuration["TaskAutomation:ProductionManagerRoleName"] ?? "Production Manager";
+        var dueDays = _configuration.GetValue<int?>("TaskAutomation:PlanTaskDueDays") ?? 3;
+
+        // Both seeded tasks (plan + BOM) go to the Production Manager role.
+        var users = (await roleSvc.GetAllUsersWithRolesAsync()).ToList();
+        var pms = users.Where(u => string.Equals(u.RoleName, pmRole, StringComparison.OrdinalIgnoreCase))
+                       .Select(u => u.UserId).Distinct().ToList();
+        if (pms.Count == 0)
+            _logger.LogWarning("Order-review sweep: role '{Role}' has no members; seeded tasks will be unassigned.", pmRole);
+
+        foreach (var review in pending)
+        {
+            try
+            {
+                // ① "Create plan" -> Production Manager.
+                var detail = $"Order reviewed on {review.ReviewDate:yyyy-MM-dd}." +
+                             (string.IsNullOrWhiteSpace(review.Remark) ? "" : $" Remark: {review.Remark}");
+                await svc.EnsurePoEntryTaskAsync(review.OrderNo, detail, pms, dueDays, "system");
+
+                // ② BOM calculation summary (best-effort — the task is created regardless).
+                string? bomSummary = null;
+                try
+                {
+                    var lines = await bomSvc.GetYarnRequirementAsync(review.OrderNo, 1);
+                    if (lines.Count > 0)
+                    {
+                        var shortCount = lines.Count(l => l.ShortfallKg > 0);
+                        bomSummary = shortCount > 0
+                            ? $"BOM calculated: {lines.Count} yarn line(s), {shortCount} short — import needed."
+                            : $"BOM calculated: {lines.Count} yarn line(s), stock covers all — no import needed.";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "BOM calc failed for {OrderNo}; creating the BOM task without a summary.", review.OrderNo);
+                }
+
+                // ③ "BOM" -> Production Manager too, +2-day reminder.
+                await svc.EnsureBomTaskAsync(review.OrderNo, null, pms, 2, "system", bomSummary);
+
+                _logger.LogInformation("Order-review sweep seeded tasks for {OrderNo}.", review.OrderNo);
+            }
+            catch (Exception ex)
+            {
+                // This order retries next tick (its Stage-1 task doesn't exist yet).
+                _logger.LogWarning(ex, "Order-review sweep failed for {OrderNo}; will retry.", review.OrderNo);
+            }
+        }
     }
 }

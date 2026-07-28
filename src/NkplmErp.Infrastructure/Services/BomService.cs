@@ -28,7 +28,7 @@ public class BomService : IBomService
 
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
-        using var cmd = new SqlCommand("knitYarnRequirement", connection) { CommandType = CommandType.StoredProcedure };
+        using var cmd = new SqlCommand("knitYarnRequirement", connection) { CommandType = CommandType.StoredProcedure, CommandTimeout = 120 };
         cmd.Parameters.AddWithValue("@OrderNo", orderNo.Trim());
         cmd.Parameters.AddWithValue("@Flag", flag);
 
@@ -83,7 +83,7 @@ public class BomService : IBomService
 
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
-        using var cmd = new SqlCommand("sp_SaveYarnOrder", connection) { CommandType = CommandType.StoredProcedure };
+        using var cmd = new SqlCommand("sp_SaveYarnOrder", connection) { CommandType = CommandType.StoredProcedure, CommandTimeout = 120 };
         cmd.Parameters.AddWithValue("@CreatedBy", (object?)createdBy ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@LinesJson", json);
 
@@ -106,7 +106,7 @@ public class BomService : IBomService
         var result = new List<YarnOrderHeaderDto>();
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
-        using var cmd = new SqlCommand("sp_GetYarnOrders", connection) { CommandType = CommandType.StoredProcedure };
+        using var cmd = new SqlCommand("sp_GetYarnOrders", connection) { CommandType = CommandType.StoredProcedure, CommandTimeout = 120 };
         // The proc decides what "ordered" means; a blank filter goes down as NULL
         // so it falls into the "every header" branch.
         cmd.Parameters.AddWithValue("@Status",
@@ -136,7 +136,7 @@ public class BomService : IBomService
         var result = new List<YarnOrderDetailLineDto>();
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
-        using var cmd = new SqlCommand("sp_GetYarnOrderDetail", connection) { CommandType = CommandType.StoredProcedure };
+        using var cmd = new SqlCommand("sp_GetYarnOrderDetail", connection) { CommandType = CommandType.StoredProcedure, CommandTimeout = 120 };
         cmd.Parameters.AddWithValue("@YoId", yoId);
 
         using var reader = await cmd.ExecuteReaderAsync();
@@ -163,7 +163,7 @@ public class BomService : IBomService
         var result = new List<string>();
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
-        using var cmd = new SqlCommand("sp_GetYarnOrderedOrders", connection) { CommandType = CommandType.StoredProcedure };
+        using var cmd = new SqlCommand("sp_GetYarnOrderedOrders", connection) { CommandType = CommandType.StoredProcedure, CommandTimeout = 120 };
 
         using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
@@ -195,7 +195,7 @@ public class BomService : IBomService
 
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
-        using var cmd = new SqlCommand("sp_SaveYarnVendorOrder", connection) { CommandType = CommandType.StoredProcedure };
+        using var cmd = new SqlCommand("sp_SaveYarnVendorOrder", connection) { CommandType = CommandType.StoredProcedure, CommandTimeout = 120 };
         cmd.Parameters.AddWithValue("@YoId", request.YoId);
         cmd.Parameters.AddWithValue("@Vendor", (object?)request.Vendor ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@CreatedBy", (object?)createdBy ?? DBNull.Value);
@@ -220,7 +220,7 @@ public class BomService : IBomService
         var result = new List<YarnVendorOrderDto>();
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
-        using var cmd = new SqlCommand("sp_GetYarnVendorOrders", connection) { CommandType = CommandType.StoredProcedure };
+        using var cmd = new SqlCommand("sp_GetYarnVendorOrders", connection) { CommandType = CommandType.StoredProcedure, CommandTimeout = 120 };
         cmd.Parameters.AddWithValue("@YoId", yoId);
 
         using var reader = await cmd.ExecuteReaderAsync();
@@ -249,7 +249,7 @@ public class BomService : IBomService
         var export = new YarnVendorOrderExport();
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
-        using var cmd = new SqlCommand("sp_GetYarnVendorOrder", connection) { CommandType = CommandType.StoredProcedure };
+        using var cmd = new SqlCommand("sp_GetYarnVendorOrder", connection) { CommandType = CommandType.StoredProcedure, CommandTimeout = 120 };
         cmd.Parameters.AddWithValue("@VyoId", vyoId);
 
         using var reader = await cmd.ExecuteReaderAsync();
@@ -301,7 +301,7 @@ public class BomService : IBomService
 
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
-        using var cmd = new SqlCommand("sp_ManageYarnOrder", connection) { CommandType = CommandType.StoredProcedure };
+        using var cmd = new SqlCommand("sp_ManageYarnOrder", connection) { CommandType = CommandType.StoredProcedure, CommandTimeout = 120 };
         cmd.Parameters.AddWithValue("@Flag", "D");
         cmd.Parameters.AddWithValue("@VyoId", vyoId);
         cmd.Parameters.AddWithValue("@ColorsJson", json);
@@ -328,7 +328,7 @@ public class BomService : IBomService
     {
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
-        using var cmd = new SqlCommand("sp_SetYarnVendorOrderDate", connection) { CommandType = CommandType.StoredProcedure };
+        using var cmd = new SqlCommand("sp_SetYarnVendorOrderDate", connection) { CommandType = CommandType.StoredProcedure, CommandTimeout = 120 };
         cmd.Parameters.AddWithValue("@VyoId", vyoId);
         cmd.Parameters.AddWithValue("@Kind", kind);
         cmd.Parameters.AddWithValue("@Date", date.Date);
