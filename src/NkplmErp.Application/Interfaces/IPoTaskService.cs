@@ -86,7 +86,25 @@ public interface IPoTaskService
     /// No RefId: the board derives the task's yarn order from its OrderNo (see sp_GetPoTask's
     /// LinkUrl), so nothing has to be stored here — and dedupe stays per (OrderNo, Stage).
     /// </summary>
-    Task<int> EnsureBomTaskAsync(string orderNo, string? factoryType, IEnumerable<string> assigneeUserIds, int notifyAfterDays, string userId);
+    Task<int> EnsureBomTaskAsync(string orderNo, string? factoryType, IEnumerable<string> assigneeUserIds, int notifyAfterDays, string userId, string? detail = null);
+
+    /// <summary>
+    /// Reviewed orders (local tbl_order_review) that have no PO-Entry task yet — the
+    /// order-review sweep's work list. "A Stage-1 task exists" is the processed marker.
+    /// </summary>
+    Task<List<PoOrderReviewDto>> GetPendingReviewOrdersAsync();
+
+    /// <summary>
+    /// Auto-create the "Create plan" task (Stage 1 = PoEntry) for a reviewed order,
+    /// assigned to the production-manager role's members. Idempotent per order.
+    /// </summary>
+    Task<int> EnsurePoEntryTaskAsync(string orderNo, string? detail, IEnumerable<string> assigneeUserIds, int dueDays, string userId);
+
+    /// <summary>
+    /// Complete every open task of (orderNo, stage) — e.g. saving a plan completes the
+    /// order's "Create plan" task. Returns how many were completed.
+    /// </summary>
+    Task<int> CompleteStageAsync(string orderNo, byte stage, string? note, string userId);
 
     // ---- in-app notifications (bell) ----
 
@@ -101,6 +119,13 @@ public interface IPoTaskService
 
     /// <summary>Mark all of the user's notifications read.</summary>
     Task MarkAllNotificationsReadAsync(string userId);
+
+    /// <summary>
+    /// Pull new order reviews from the MySQL source (linked server) into the local
+    /// tbl_order_review copy that feeds the pending-review sweep. Idempotent; returns
+    /// how many rows were pulled. Default no-op for HTTP-client implementations.
+    /// </summary>
+    Task<int> SyncOrderReviewsAsync() => Task.FromResult(0);
 
     /// <summary>Fire any due "+N day" reminders (called by the background sweep). Returns how many tasks fired.</summary>
     Task<int> RunDueRemindersAsync();

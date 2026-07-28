@@ -272,6 +272,10 @@ public class ProductionPlanningController : ControllerBase
 
             await _poTaskService.EnsurePlanningTaskAsync(
                 request.OrderNo, request.KnitType, request.Guage, result, masters, GetCurrentUserId());
+
+            // Making the plan IS completing the "Create plan" (Stage 1) task the
+            // order-review sweep opened for the Production Manager — close it.
+            await _poTaskService.CompleteStageAsync(request.OrderNo, 1, "auto: plan created", GetCurrentUserId());
         }
         catch (Exception ex)
         {
