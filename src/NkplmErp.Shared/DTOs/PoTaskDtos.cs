@@ -113,6 +113,14 @@ public class PoTaskGroupDto
     public int MemberCount { get; set; }
 }
 
+// One reviewed order not yet seeded into the lifecycle (sp_PoTask_PendingReviews).
+public class PoOrderReviewDto
+{
+    public string OrderNo { get; set; } = string.Empty;
+    public string? Remark { get; set; }
+    public DateTime? ReviewDate { get; set; }
+}
+
 // Bundled result of the DETAIL read (task + assignees + checklist + attachments).
 public class PoTaskDetailResult
 {

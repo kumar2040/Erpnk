@@ -253,7 +253,7 @@ public class PoTaskService : IPoTaskService
             UserIds = assigneeUserIds?.Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList() ?? new()
         }, userId);
 
-    public Task<int> EnsureBomTaskAsync(string orderNo, string? factoryType, IEnumerable<string> assigneeUserIds, int notifyAfterDays, string userId)
+    public Task<int> EnsureBomTaskAsync(string orderNo, string? factoryType, IEnumerable<string> assigneeUserIds, int notifyAfterDays, string userId, string? detail = null)
     {
         var notify = DateTime.Today.AddDays(notifyAfterDays);
         return CreateAsync(new CreatePoTaskRequest
@@ -262,7 +262,7 @@ public class PoTaskService : IPoTaskService
             Stage = 2,                               // BomTask
             FactoryType = factoryType,
             Title = $"BOM — {orderNo}",
-            Detail = "Auto-created when a yarn order / BOM was placed.",
+            Detail = detail ?? "Auto-created when a yarn order / BOM was placed.",
             NotificationDate = notify,
             DueDate = notify,                        // first reminder + due date land together
             CompletionRule = 1,
@@ -270,6 +270,28 @@ public class PoTaskService : IPoTaskService
             UserIds = assigneeUserIds?.Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList() ?? new()
         }, userId);
     }
+
+    public Task<List<PoOrderReviewDto>> GetPendingReviewOrdersAsync() =>
+        _repo.GetQueryResultAsync<PoOrderReviewDto>("sp_PoTask_PendingReviews",
+            new { Top = 50 }, CommandType.StoredProcedure);
+
+    public Task<int> EnsurePoEntryTaskAsync(string orderNo, string? detail, IEnumerable<string> assigneeUserIds, int dueDays, string userId) =>
+        CreateAsync(new CreatePoTaskRequest
+        {
+            OrderNo = orderNo,
+            Stage = 1,                               // PoEntry — "Create plan"
+            Title = $"{orderNo} reviewed — create production plan",
+            Detail = detail,
+            StartDate = DateTime.Today,
+            DueDate = DateTime.Today.AddDays(dueDays),
+            CompletionRule = 2,                      // Any: one PM planning it completes it for all
+            UserIds = assigneeUserIds?.Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList() ?? new()
+        }, userId);
+
+    public Task<int> CompleteStageAsync(string orderNo, byte stage, string? note, string userId) =>
+        _repo.GetQueryFirstOrDefaultResultAsync<int>("sp_PoTask_CompleteStage",
+            new { OrderNo = orderNo, Stage = stage, Note = note, UserId = userId },
+            CommandType.StoredProcedure);
 
     // -------------------------------------------------------- notifications ----
 
@@ -296,6 +318,11 @@ public class PoTaskService : IPoTaskService
 
     public Task<int> RunPlanProgressSyncAsync() =>
         _repo.GetQueryFirstOrDefaultResultAsync<int>("sp_PoTask_SyncPlanProgress", new { }, CommandType.StoredProcedure);
+
+    // Pull new order reviews from the MySQL source (linked server) into the local
+    // tbl_order_review copy the pending-review sweep reads. Idempotent by id.
+    public Task<int> SyncOrderReviewsAsync() =>
+        _repo.GetQueryFirstOrDefaultResultAsync<int>("sp_SyncOrderReviews", new { }, CommandType.StoredProcedure);
 
     // Outbox drain: push every not-yet-pushed notification to its recipient over SignalR,
     // then mark them pushed. Called after writes that create notifications and by the
