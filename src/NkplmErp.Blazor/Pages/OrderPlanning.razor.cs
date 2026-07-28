@@ -25,6 +25,9 @@ public partial class OrderPlanning
     private TokenProvider _tokenProvider { get; set; } = default!;
 
     [Inject]
+    private NkplmErp.Blazor.Services.Loading.LoadingService _loading { get; set; } = default!;
+
+    [Inject]
     private ToastService ToastService { get; set; } = default!;
 
     [Inject]
@@ -2987,14 +2990,31 @@ public partial class OrderPlanning
             return;
         }
 
-        await LoadOrderCollectionTypes();
-        await LoadMonths();
-        ApplyLinkedMonth();
-        await LoadOrders();
-        await LoadGaugeUtilization();
-        IsLoading = false;
+        // Veil the whole arrival when a task card sent us here. A plain visit paints the page
+        // while it fills and needs no veil; the deep link then goes on to pull production
+        // status, open the modal and select the gauge, which is the stretch that felt dead.
+        var fromTaskLink = !string.IsNullOrWhiteSpace(FromOrderNo);
+        if (fromTaskLink)
+            _loading.Show($"Loading planning for {FromOrderNo}…");
 
-        await OpenFromTaskLinkAsync();
+        try
+        {
+            await LoadOrderCollectionTypes();
+            await LoadMonths();
+            ApplyLinkedMonth();
+            await LoadOrders();
+            await LoadGaugeUtilization();
+            IsLoading = false;
+
+            await OpenFromTaskLinkAsync();
+        }
+        finally
+        {
+            // finally: a throw anywhere above must not strand the user behind a veil that
+            // never lifts. IsLoading is settled here too, for the same reason.
+            IsLoading = false;
+            if (fromTaskLink) _loading.Hide();
+        }
     }
 
     // Arrived from a Planning task card. Selects the task's order and opens its planning

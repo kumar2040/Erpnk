@@ -41,6 +41,10 @@ builder.Services.AddScoped<CustomAuthStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<CustomAuthStateProvider>());
 builder.Services.AddScoped<ToastService>();
 
+// App-wide loading veil, driven by _loading.Show()/Hide() from any page. Scoped, so each
+// user circuit gets its own: a Singleton would show one user's spinner to everyone.
+builder.Services.AddScoped<NkplmErp.Blazor.Services.Loading.LoadingService>();
+
 // Login task gate state: scoped so it lives per circuit, shared by the gate
 // modal and the header badge.
 builder.Services.AddScoped<TaskGateState>();
