@@ -70,7 +70,9 @@
 .vplaced-row .vno{font-weight:800;color:var(--navy)}
 .vplaced-row .vname{color:#334155;font-weight:600}
 .vplaced-row .vmeta{color:var(--muted);margin-left:auto}
-.vplaced-row .vstat{font-size:.62rem;font-weight:800;color:#047857;background:rgba(5,150,105,.13);border-radius:20px;padding:1px 8px}
+.vplaced-row .vstat{font-size:.62rem;font-weight:800;border-radius:20px;padding:1px 8px;color:#047857;background:rgba(5,150,105,.13)}
+.vplaced-row .vstat.wait{color:#92600b;background:rgba(234,159,39,.16)}
+.vplaced-row .vstat.done{color:#047857;background:rgba(5,150,105,.13)}
 .vxl-btn{font-size:.64rem;font-weight:800;border:1px solid #1d7044;background:rgba(5,150,105,.08);color:#0f7a4a;border-radius:6px;padding:2px 8px;cursor:pointer}
 .vxl-btn:hover{background:rgba(5,150,105,.16)}
 .vplaced-card{border-top:1px solid var(--line);padding-top:5px;margin-top:3px}
@@ -80,6 +82,21 @@
 .vlife-date{height:26px;border:1px solid #d6dbe4;border-radius:6px;padding:0 6px;font-size:.72rem;color:var(--navy)}
 .vlife-save{font-size:.64rem;font-weight:800;border:none;background:var(--teal);color:#fff;border-radius:6px;padding:3px 9px;cursor:pointer}
 .vlife-drop{font-size:.64rem;font-weight:800;border:1px solid rgba(220,38,38,.4);background:rgba(220,38,38,.06);color:#b91c1c;border-radius:6px;padding:3px 9px;cursor:pointer;margin-left:auto}
+.vlife-save:disabled{opacity:.5;cursor:not-allowed}
+
+/* invoice — the "yarn arrived, ready for use" field */
+.vlife-lbl.done{color:#047857}
+.vlife-inv{height:26px;width:112px;border:1px solid #d6dbe4;border-radius:6px;padding:0 7px;font-size:.72rem;color:var(--navy)}
+.vlife-inv:focus{outline:none;border-color:var(--teal)}
+.vlife-invno{font-size:.72rem;font-weight:800;color:#04342c;background:rgba(5,150,105,.1);border:1px solid rgba(5,150,105,.35);border-radius:6px;padding:3px 9px}
+.vlife-edit{font-size:.64rem;font-weight:800;border:1px solid #d6dbe4;background:#fff;color:#64748b;border-radius:6px;padding:3px 9px;cursor:pointer}
+.vlife-edit:hover{border-color:#94a3b8;color:#334155}
+.vlife-cancel{font-size:.64rem;font-weight:800;border:1px solid #d6dbe4;background:#fff;color:#64748b;border-radius:6px;padding:3px 9px;cursor:pointer}
+
+/* invoice confirm dialog body */
+.inv-box{background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:8px 11px;margin:8px 0}
+.inv-k{font-size:.62rem;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:700;margin-bottom:2px}
+.inv-v{font-size:.9rem;font-weight:800;color:var(--navy);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 
 /* vendor group */
 .vgroup{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:10px}

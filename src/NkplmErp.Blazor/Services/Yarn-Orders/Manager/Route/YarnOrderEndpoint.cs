@@ -7,5 +7,8 @@ namespace NkplmErp.Blazor.Services.Yarn_Orders.Manager.Route
 
         // Set a vendor sub-order's departure and/or arrival date (POST).
         public const string Update = Base + "/update";
+
+        // Record or clear a vendor sub-order's invoice number (POST).
+        public const string Invoice = Base + "/invoice";
     }
 }

@@ -20,5 +20,11 @@ namespace NkplmErp.Blazor.Services.Yarn_Orders.Manager.Implementation
             var response = await _http.PostAsJsonAsync<YarnOrderResponseModel>(YarnOrderEndpoint.Update, request);
             return response;
         }
+
+        public async Task<IResponse<YarnOrderResponseModel>> SaveInvoiceAsync(YarnOrderRequestModel request)
+        {
+            var response = await _http.PostAsJsonAsync<YarnOrderResponseModel>(YarnOrderEndpoint.Invoice, request);
+            return response;
+        }
     }
 }
