@@ -47,5 +47,23 @@ namespace NkplmErp.API.Controllers.Yarn_Orders
             var result = await _yarnOrderService.UpdateYarnOrderAsync(request);
             return result.Succeeded ? Ok(result) : BadRequest(result);
         }
+
+        // POST api/v1/YarnOrder/invoice
+        // Body: { "yarnId": "12", "invoiceNo": "INV-90317" }
+        // The invoice number is the "yarn arrived from the vendor, ready for use" marker: it
+        // completes that vendor sub-order, and when it is the last one outstanding the parent
+        // order is received and a Planning task is raised for it.
+        // A blank invoiceNo is the correction path — it clears the invoice and reopens the
+        // sub-order — so it is NOT rejected here; the procedure decides what a blank means.
+        [HttpPost("invoice")]
+        public async Task<IActionResult> SaveInvoice([FromBody] YarnOrderRequestModel request)
+        {
+            var userId = GetCurrentUserId();
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            if (!await CanEditAsync(userId)) return Forbid();
+
+            var result = await _yarnOrderService.SaveInvoiceAsync(request, userId);
+            return result.Succeeded ? Ok(result) : BadRequest(result);
+        }
     }
 }

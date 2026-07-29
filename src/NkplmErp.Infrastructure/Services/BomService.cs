@@ -238,6 +238,9 @@ public class BomService : IBomService
                 LineCount = reader["line_count"] != DBNull.Value ? Convert.ToInt32(reader["line_count"]) : 0,
                 DepartureDate = reader["departure_date"] != DBNull.Value ? Convert.ToDateTime(reader["departure_date"]) : null,
                 ArrivalDate = reader["arrival_date"] != DBNull.Value ? Convert.ToDateTime(reader["arrival_date"]) : null,
+                InvoiceNo = reader["invoice_no"] != DBNull.Value ? reader["invoice_no"]?.ToString() : null,
+                InvoiceDate = reader["invoice_date"] != DBNull.Value ? Convert.ToDateTime(reader["invoice_date"]) : null,
+                InvoiceBy = reader["invoice_by"] != DBNull.Value ? reader["invoice_by"]?.ToString() : null,
                 Status = reader["status"]?.ToString() ?? string.Empty
             });
         }

@@ -1,5 +1,9 @@
 -- Scripted from live DB [NatureKnit] on 2026-07-24 (read-only). Source of truth = database.
 -- Table: dbo.tbl_yarn_vendor_order  (columns + PK + defaults + identity; indexes/FKs appended below)
+--
+-- The invoice_* columns and IX_vyo_yo_id_invoice were added after that scripting date;
+-- an existing database gets them from Table/alter_tbl_yarn_vendor_order_invoice.sql.
+-- They are folded in here so this file still describes the whole table.
 CREATE TABLE [dbo].[tbl_yarn_vendor_order] (
     [vyo_id] int IDENTITY(1,1) NOT NULL,
     [yo_id] int NOT NULL,
@@ -11,12 +15,21 @@ CREATE TABLE [dbo].[tbl_yarn_vendor_order] (
     [line_count] int NOT NULL CONSTRAINT [DF__tbl_yarn___line___278EDA44] DEFAULT ((0)),
     [departure_date] date NULL,
     [arrival_date] date NULL,
+    -- Vendor invoice = "the yarn arrived and is ready for use". Nullable and NOT unique on
+    -- purpose: blank means still outstanding, and that blank is what the Pending/Completed
+    -- split in sp_GetYarnOrders is computed from.
+    [invoice_no] varchar(50) NULL,
+    [invoice_date] datetime NULL,
+    [invoice_by] varchar(50) NULL,
     [status] varchar(20) NOT NULL CONSTRAINT [DF__tbl_yarn___statu__2882FE7D] DEFAULT ('Placed'),
     CONSTRAINT [PK__tbl_yarn__A674C705E75567A6] PRIMARY KEY CLUSTERED ([vyo_id] ASC)
 );
 
 -- Indexes
 CREATE NONCLUSTERED INDEX [IX_vyo_yo_id] ON [dbo].[tbl_yarn_vendor_order] ([yo_id] ASC);
+-- Answers "does this header still have a vendor order with a blank invoice?" -- run once
+-- per header row by the /yarn-orders list filter -- straight from the index.
+CREATE NONCLUSTERED INDEX [IX_vyo_yo_id_invoice] ON [dbo].[tbl_yarn_vendor_order] ([yo_id] ASC, [invoice_no] ASC);
 
 -- Foreign keys (require referenced tables)
 ALTER TABLE [dbo].[tbl_yarn_vendor_order] ADD CONSTRAINT [FK__tbl_yarn___yo_id__24B26D99] FOREIGN KEY ([yo_id]) REFERENCES [dbo].[tbl_yarn_order] ([yo_id]);

@@ -10,8 +10,8 @@
     @Filter2   optional second cascade key
 
   Types
-    'YarnOrderStatus'      Order state filter on /yarn-orders. 'Pending' and any
-                           later state slot in as another row in the VALUES list.
+    'YarnOrderStatus'      Order state filter on /yarn-orders. Any later state
+                           slots in as another row in the VALUES list.
     'TaskPriority'         Add-Task priority. Ids match PoTask.PriorityId.
     'TaskUpdateFrequency'  Add-Task progress cadence. Ids match PoTask.UpdateFrequency.
     'TaskCompletionRule'   Add-Task roll-up rule. Ids match PoTask.CompletionRule.
@@ -46,14 +46,21 @@ BEGIN
     DECLARE @Flag NVARCHAR(50) = UPPER(LTRIM(RTRIM(@Type)));
 
     /* -------------------------------------------------- YarnOrderStatus
-       Ordered = the yarn order has at least one vendor order placed against it.
-       The codes here are what sp_GetYarnOrders takes as @Status. */
+       The yarn order's lifecycle, left to right:
+         Not ordered -> no vendor order placed yet
+         Pending     -> vendor order(s) placed, at least one still uninvoiced
+         Completed   -> every vendor order invoiced = the yarn arrived and is
+                        ready for use (this is what raises the Planning task)
+       The codes here are what sp_GetYarnOrders takes as @Status. The old 'O'
+       (Ordered) row was replaced by 'P' -- no table stores these codes, so
+       there is nothing to migrate; the proc still honours 'O' as P+C. */
     IF (@Flag = 'YARNORDERSTATUS')
     BEGIN
         SELECT [Id], [Value]
         FROM (VALUES
-            ('O', 'Ordered',     1),
-            ('N', 'Not ordered', 2)
+            ('N', 'Not ordered', 1),
+            ('P', 'Pending',     2),
+            ('C', 'Completed',   3)
         ) AS v([Id], [Value], [SortOrder])
         ORDER BY [SortOrder];
         RETURN;

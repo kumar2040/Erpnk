@@ -168,6 +168,15 @@ public class YarnVendorOrderDto
     public int LineCount { get; set; }
     public DateTime? DepartureDate { get; set; }
     public DateTime? ArrivalDate { get; set; }
+
+    /// <summary>Vendor invoice number. Null/blank = the yarn has not arrived yet.</summary>
+    public string? InvoiceNo { get; set; }
+    public DateTime? InvoiceDate { get; set; }
+    public string? InvoiceBy { get; set; }
+
+    /// <summary>True once an invoice number exists — this sub-order's yarn is in and usable.</summary>
+    public bool IsInvoiced => !string.IsNullOrWhiteSpace(InvoiceNo);
+
     public string Status { get; set; } = string.Empty;
 }
 
