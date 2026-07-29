@@ -155,28 +155,34 @@ namespace NkplmErp.Blazor.Pages.PoTasks
             }
             CanEdit = PermSvc.CanEdit(PageKey);
 
-            // All the board's status text comes from spDropdown -- columns, step buttons,
-            // and the detail-drawer status/rule labels. The column flags double as the
-            // board's bucket keys, so they're loaded before the first board fetch.
-            BoardColumns = await Dropdowns.GetDropDownListAsync("PoTaskBoardColumn");
-            _buckets = BoardColumns.ToDictionary(c => c.Id, _ => new List<PoTaskCardDto>());
-            AssigneeStatuses = await Dropdowns.GetDropDownListAsync("TaskAssigneeStatus");
-            _statusLabels = (await Dropdowns.GetDropDownListAsync("TaskStatus"))
-                .ToDictionary(x => x.Id, x => x.Value);
-            _ruleLabels = (await Dropdowns.GetDropDownListAsync("TaskCompletionRule"))
-                .ToDictionary(x => x.Id, x => x.Value);
+            // Everything the board's first fetch depends on -- columns (also the bucket
+            // keys), step/status/rule labels, facility scope, and the Add-Task staff/groups
+            // -- is independent of everything else here, so it's resolved in one parallel
+            // batch instead of six sequential round-trips. LoadBoardAsync only fires once,
+            // after the whole batch lands, so the board never fetches against a filter set
+            // (columns/scope/factory) that hasn't finished settling.
+            var boardColumnsTask = Dropdowns.GetDropDownListAsync("PoTaskBoardColumn");
+            var assigneeStatusesTask = Dropdowns.GetDropDownListAsync("TaskAssigneeStatus");
+            var taskStatusTask = Dropdowns.GetDropDownListAsync("TaskStatus");
+            var ruleTask = Dropdowns.GetDropDownListAsync("TaskCompletionRule");
+            var scopeTask = TaskMgr.GetScopeAsync();
+            var groupsTask = CanEdit ? Api.GetGroupsAsync() : Task.FromResult(new List<PoTaskGroupDto>());
+            var staffTask = CanEdit ? Roles.GetAllUsersWithRolesAsync() : Task.FromResult(new List<UserWithRolesDto>());
 
-            // Staff + groups for the Add Task form (deduped staff by user id).
-            if (CanEdit)
-            {
-                groups = await Api.GetGroupsAsync();
-                staff = (await Roles.GetAllUsersWithRolesAsync())
-                    .GroupBy(u => u.UserId).Select(g => g.First()).ToList();
-            }
+            await Task.WhenAll(boardColumnsTask, assigneeStatusesTask, taskStatusTask, ruleTask,
+                (Task)scopeTask, groupsTask, staffTask);
+
+            BoardColumns = boardColumnsTask.Result;
+            _buckets = BoardColumns.ToDictionary(c => c.Id, _ => new List<PoTaskCardDto>());
+            AssigneeStatuses = assigneeStatusesTask.Result;
+            _statusLabels = taskStatusTask.Result.ToDictionary(x => x.Id, x => x.Value);
+            _ruleLabels = ruleTask.Result.ToDictionary(x => x.Id, x => x.Value);
+            groups = groupsTask.Result;
+            staff = staffTask.Result.GroupBy(u => u.UserId).Select(g => g.First()).ToList();
 
             // Resolve the user's facility scope. A gauge-restricted user is pinned to their
             // own factory_type; everyone else starts on "All Factories" (null) and may change it.
-            scope = (await TaskMgr.GetScopeAsync()).Data;
+            scope = scopeTask.Result.Data;
             if (scope?.IsRestricted == true)
                 selectedFactoryType = scope.AssignedGauge;
 
