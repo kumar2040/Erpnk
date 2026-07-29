@@ -162,9 +162,14 @@ BEGIN
                               THEN N'/bom?orderNo=' + q.[OrderNo]
                                    + ISNULL(om.[MonthParam], N'') END
 
-            -- Planning (3) -> opens by order (+ gauge when present). RefId (the plan line,
-            -- MasterPlanChildId) must exist, matching the old "no plan line, no link" gate.
-            WHEN 3  THEN CASE WHEN t.[RefId] > 0 AND q.[OrderNo] IS NOT NULL
+            -- Planning (3) -> opens by order (+ gauge when present). A task raised FROM a
+            -- plan line carries RefId (MasterPlanChildId) and keeps the old "no plan line,
+            -- no link" gate. A task raised BEFORE any plan exists -- the "yarn received,
+            -- go plan this order" card that the last vendor invoice creates -- has no RefId
+            -- by definition, and gating it on one rendered it dead. It falls back to the
+            -- plain order link, the same shape stage 1 uses for exactly this reason:
+            -- creating the plan IS the task.
+            WHEN 3  THEN CASE WHEN q.[OrderNo] IS NOT NULL
                               THEN N'/order-planning?orderNo=' + q.[OrderNo]
                                    + ISNULL(N'&gauge=' + q.[Guage], N'')
                                    + ISNULL(om.[MonthParam], N'') END

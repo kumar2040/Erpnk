@@ -44,6 +44,12 @@ public partial class YarnOrders
     // Per-vendor-order date edit buffers (yyyy-MM-dd).
     private Dictionary<int, string> DepartureEdit = new();
     private Dictionary<int, string> ArrivalEdit = new();
+
+    // Per-vendor-order invoice buffer, plus which one (if any) is currently open for
+    // editing. A saved invoice renders as a read-only chip until Edit is clicked, so a
+    // completed order can't be reopened by a stray keystroke in an always-live input.
+    private Dictionary<int, string> InvoiceEdit = new();
+    private int? InvoiceEditing;
     private string StatusMessage = "";
     private bool IsError = false;
 
@@ -156,6 +162,8 @@ public partial class YarnOrders
     {
         DepartureEdit = VendorOrders.ToDictionary(v => v.VyoId, v => v.DepartureDate?.ToString("yyyy-MM-dd") ?? "");
         ArrivalEdit = VendorOrders.ToDictionary(v => v.VyoId, v => v.ArrivalDate?.ToString("yyyy-MM-dd") ?? "");
+        InvoiceEdit = VendorOrders.ToDictionary(v => v.VyoId, v => v.InvoiceNo ?? "");
+        InvoiceEditing = null;
     }
 
     private async Task SaveDepartureAsync(YarnVendorOrderDto v)
@@ -207,6 +215,131 @@ public partial class YarnOrders
         {
             Toast.ShowError(result.Messages ?? "Could not save the date.");
         }
+    }
+
+    // ---- Invoice number = "the yarn arrived from the vendor and is ready for use". It
+    // completes ONE vendor sub-order; the parent order is only completed once every vendor
+    // sub-order under it has one, and it's that last invoice which raises the planning task
+    // (decided by sp_ManageYarnOrder flag 'I', not here). ----
+    private bool showInvoiceConfirm;
+    private bool invoiceSaving;
+    private YarnVendorOrderDto? invoiceVendor;
+
+    /// <summary>What's in the input for the vendor order awaiting confirmation, trimmed.</summary>
+    private string PendingInvoiceNo =>
+        invoiceVendor is null ? "" : (InvoiceEdit.GetValueOrDefault(invoiceVendor.VyoId) ?? "").Trim();
+
+    /// <summary>Blank on an already-invoiced order = the correction path: wipe it and reopen.</summary>
+    private bool IsClearingInvoice => string.IsNullOrWhiteSpace(PendingInvoiceNo);
+
+    private int OtherOpenVendorCount =>
+        VendorOrders.Count(v => v.VyoId != invoiceVendor?.VyoId && !v.IsInvoiced);
+
+    private bool InvoiceCompletesOrder => OtherOpenVendorCount == 0;
+
+    private string InvoiceTitle(YarnVendorOrderDto v) =>
+        $"Invoice {v.InvoiceNo}" +
+        (v.InvoiceDate is null ? "" : $" · received {v.InvoiceDate:dd MMM yyyy}") +
+        (string.IsNullOrWhiteSpace(v.InvoiceBy) ? "" : $" · by {v.InvoiceBy}");
+
+    private void BeginInvoiceEdit(YarnVendorOrderDto v)
+    {
+        InvoiceEdit[v.VyoId] = v.InvoiceNo ?? "";
+        InvoiceEditing = v.VyoId;
+    }
+
+    private void CancelInvoiceEdit()
+    {
+        // Drop whatever was typed and go back to the saved chip.
+        if (InvoiceEditing is int id)
+        {
+            var v = VendorOrders.FirstOrDefault(x => x.VyoId == id);
+            InvoiceEdit[id] = v?.InvoiceNo ?? "";
+        }
+        InvoiceEditing = null;
+    }
+
+    // Nothing is sent until the user confirms — a typo here would silently mark yarn as
+    // received, so the claim is always restated back to them first.
+    private void OpenInvoiceConfirm(YarnVendorOrderDto v)
+    {
+        invoiceVendor = v;
+
+        var typed = PendingInvoiceNo;
+
+        // Blank on an order that was never invoiced is just an empty save, not a correction.
+        if (string.IsNullOrWhiteSpace(typed) && !v.IsInvoiced)
+        {
+            Toast.ShowWarning("Invoice number can't be empty.");
+            return;
+        }
+
+        if (string.Equals(typed, v.InvoiceNo?.Trim() ?? "", StringComparison.Ordinal))
+        {
+            Toast.ShowInfo("That's already the saved invoice number.");
+            InvoiceEditing = null;
+            return;
+        }
+
+        showInvoiceConfirm = true;
+    }
+
+    private async Task OnInvoiceConfirmResult(bool confirmed)
+    {
+        if (confirmed)
+            await SaveInvoiceAsync();
+        else
+            showInvoiceConfirm = false;
+    }
+
+    private async Task SaveInvoiceAsync()
+    {
+        if (invoiceVendor is null) return;
+
+        invoiceSaving = true;
+        StateHasChanged();
+
+        var result = await YarnApi.SaveInvoiceAsync(new YarnOrderRequestModel
+        {
+            YarnId = invoiceVendor.VyoId.ToString(),
+            InvoiceNo = PendingInvoiceNo   // blank travels as-is; the SP reads it as "clear"
+        });
+
+        invoiceSaving = false;
+
+        if (result.Succeeded)
+        {
+            // The proc reports what actually happened — how many vendor orders are still
+            // outstanding, or that the order is complete and a planning task went out.
+            Toast.ShowSuccess(result.Data?.Message ?? "Invoice saved.");
+            showInvoiceConfirm = false;
+            InvoiceEditing = null;
+            await ReloadAfterInvoiceAsync();
+        }
+        else
+        {
+            Toast.ShowError(result.Messages ?? "Could not save the invoice number.");
+            showInvoiceConfirm = false;   // close the confirm, leave the input open to retry
+        }
+        StateHasChanged();
+    }
+
+    // An invoice can move the header between Pending and Completed, so the left list has to
+    // be re-fetched too — under a Pending filter the order it just completed should leave.
+    private async Task ReloadAfterInvoiceAsync()
+    {
+        if (Selected is null) return;
+
+        var yoId = Selected.YoId;
+        await ReloadVendorOrdersAsync();
+        await LoadOrdersAsync();
+
+        // Re-point at the refreshed header so the strip's Status reflects the new state.
+        // If the filter now excludes it, keep the detail on screen rather than blanking the
+        // pane out from under the user — only its own status text goes stale, and the
+        // vendor cards below it are freshly loaded.
+        var refreshed = Orders.FirstOrDefault(o => o.YoId == yoId);
+        if (refreshed is not null) Selected = refreshed;
     }
 
     // ---- Drop-color modal (multi-select). Server persistence is deferred for now: the

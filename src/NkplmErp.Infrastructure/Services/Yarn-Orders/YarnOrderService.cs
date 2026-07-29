@@ -45,5 +45,40 @@ namespace NkplmErp.Infrastructure.Services.Yarn_Orders
                 return Response<YarnOrderResponseModel>.Fail(ex.Message);
             }
         }
+
+        // sp_ManageYarnOrder flag 'I'. Everything that makes this more than a column write
+        // -- completing the sub-order, deciding whether the whole yarn order is now received,
+        // raising the Planning task and its bell notifications -- happens inside the procedure,
+        // in one place next to the data. Here it is success vs fail and the SP's own message.
+        //
+        // A blank InvoiceNo is passed through as null on purpose: that is the correction path
+        // (clear the invoice, reopen the order), not a missing value to reject.
+        public async Task<IResponse<YarnOrderResponseModel>> SaveInvoiceAsync(YarnOrderRequestModel request, string userId)
+        {
+            try
+            {
+                var row = await _genericRepository.GetQueryFirstOrDefaultResultAsync<YarnOrderResponseModel>(
+                    "sp_ManageYarnOrder",
+                    new
+                    {
+                        Flag = "I",
+                        request.YarnId,
+                        InvoiceNo = string.IsNullOrWhiteSpace(request.InvoiceNo) ? null : request.InvoiceNo.Trim(),
+                        InvoiceBy = userId
+                    },
+                    CommandType.StoredProcedure);
+
+                if (row is null)
+                    return Response<YarnOrderResponseModel>.Fail("No response from procedure.");
+
+                return row.UpdatedCount > 0
+                    ? Response<YarnOrderResponseModel>.Success(row, row.Message)
+                    : Response<YarnOrderResponseModel>.Fail(row.Message);
+            }
+            catch (Exception ex)
+            {
+                return Response<YarnOrderResponseModel>.Fail(ex.Message);
+            }
+        }
     }
 }
