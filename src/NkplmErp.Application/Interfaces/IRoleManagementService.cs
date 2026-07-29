@@ -22,6 +22,9 @@ public interface IRoleManagementService
     Task<RoleOperationResult> SavePageAsync(SavePageRequest request);
     Task<RoleOperationResult> DeletePageAsync(int appPageId);
 
+    // Menu categories a page can nest under (identity.Menu)
+    Task<IEnumerable<MenuDto>> GetMenusAsync();
+
     // Role permissions (per-page View/Edit/Delete flags)
     Task<IEnumerable<RolePagePermissionDto>> GetPermissionsByRoleAsync(string roleId);
     Task<RoleOperationResult> SavePermissionAsync(SavePermissionRequest request);

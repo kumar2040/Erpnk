@@ -120,6 +120,18 @@ public class RoleManagementApiClient
         catch (Exception ex) { _logger.LogError(ex, "DeletePageAsync failed"); return null; }
     }
 
+    public async Task<List<MenuDto>> GetMenusAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"{Base}/menus");
+            if (response.IsSuccessStatusCode)
+                return await response.Content.ReadFromJsonAsync<List<MenuDto>>() ?? new();
+            return new();
+        }
+        catch (Exception ex) { _logger.LogError(ex, "GetMenusAsync failed"); return new(); }
+    }
+
     // ===== Role Permissions =====
 
     public async Task<List<RolePagePermissionDto>> GetPermissionsByRoleAsync(string roleId)

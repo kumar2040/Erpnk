@@ -11,12 +11,18 @@
 <div class="page bg-gray-200">
     <main>
         <header class="sticky top-0 z-50 flex h-16 w-full items-center justify-between border-b border-gray-100 bg-white/80 px-6 backdrop-blur-md">
-             <div class="flex items-center gap-1">
-            <div class="p-2 hover:bg-gray-50 rounded-lg cursor-pointer">
+             <div class="flex items-center gap-1" style="position: relative;">
+            <div class="p-2 hover:bg-gray-50 rounded-lg cursor-pointer" @onclick="ToggleMenu" @onclick:stopPropagation="true">
                 <span class="oi oi-menu text-gray-400"></span>
             </div>
-            
-             
+            @if (showMenu)
+            {
+                <div class="fixed inset-0 z-40" @onclick="() => showMenu = false"></div>
+                <div class="menu-dropdown-panel" @onclick:stopPropagation="true">
+                    <NavMenu />
+                </div>
+            }
+
             <div class="flex items-center gap-1">
                 <div class="flex items-center gap-2">
                     <img src="logoon.webp" alt="Logo" class="h-10 w-10 object-contain" />
@@ -84,9 +90,21 @@
 </div>
 
 @code {
+    private bool showMenu = false;
+    private void ToggleMenu() => showMenu = !showMenu;
+
     protected override void OnInitialized()
     {
         TokenProvider.OnSessionExpired += HandleSessionExpired;
+        Navigation.LocationChanged += HandleLocationChanged;
+    }
+
+    // Close the dropdown once navigation actually happens (clicking a menu link).
+    private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        if (!showMenu) return;
+        showMenu = false;
+        InvokeAsync(StateHasChanged);
     }
 
     private bool _sessionExpiredHandled = false;
@@ -127,6 +145,7 @@
     public void Dispose()
     {
         TokenProvider.OnSessionExpired -= HandleSessionExpired;
+        Navigation.LocationChanged -= HandleLocationChanged;
     }
 }
 

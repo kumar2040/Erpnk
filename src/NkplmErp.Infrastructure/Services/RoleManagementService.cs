@@ -118,6 +118,9 @@ public class RoleManagementService : IRoleManagementService
                 PageUrl      = reader["PageUrl"]?.ToString(),
                 IsActive     = Convert.ToBoolean(reader["IsActive"]),
                 DisplayOrder = reader["DisplayOrder"] != DBNull.Value ? Convert.ToInt32(reader["DisplayOrder"]) : 0,
+                Icon         = reader["Icon"]?.ToString(),
+                MenuId       = reader["MenuId"] != DBNull.Value ? Convert.ToInt32(reader["MenuId"]) : null,
+                MenuTitle    = reader["MenuTitle"]?.ToString(),
             });
         }
         return result;
@@ -151,6 +154,8 @@ public class RoleManagementService : IRoleManagementService
                 PageUrl      = reader["PageUrl"]?.ToString(),
                 IsActive     = Convert.ToBoolean(reader["IsActive"]),
                 DisplayOrder = reader["DisplayOrder"] != DBNull.Value ? Convert.ToInt32(reader["DisplayOrder"]) : 0,
+                Icon         = reader["Icon"]?.ToString(),
+                MenuId       = reader["MenuId"] != DBNull.Value ? Convert.ToInt32(reader["MenuId"]) : null,
             };
         }
         return null;
@@ -168,6 +173,8 @@ public class RoleManagementService : IRoleManagementService
         cmd.Parameters.AddWithValue("@pageUrl",      string.IsNullOrWhiteSpace(request.PageUrl) ? (object)DBNull.Value : request.PageUrl.Trim());
         cmd.Parameters.AddWithValue("@isActive",     request.IsActive);
         cmd.Parameters.AddWithValue("@displayOrder", request.DisplayOrder);
+        cmd.Parameters.AddWithValue("@icon",         string.IsNullOrWhiteSpace(request.Icon) ? (object)DBNull.Value : request.Icon.Trim());
+        cmd.Parameters.AddWithValue("@menuId",       (object?)request.MenuId ?? DBNull.Value);
         using var reader = await cmd.ExecuteReaderAsync();
         if (await reader.ReadAsync())
             return new RoleOperationResult { Result = Convert.ToInt32(reader["Result"]), Message = reader["Message"]?.ToString() ?? "" };
@@ -185,6 +192,25 @@ public class RoleManagementService : IRoleManagementService
         if (await reader.ReadAsync())
             return new RoleOperationResult { Result = Convert.ToInt32(reader["Result"]), Message = reader["Message"]?.ToString() ?? "" };
         return new RoleOperationResult { Result = -1, Message = "No response." };
+    }
+
+    public async Task<IEnumerable<MenuDto>> GetMenusAsync()
+    {
+        var result = new List<MenuDto>();
+        using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        using var cmd = new SqlCommand("sp_ManagePage", connection) { CommandType = CommandType.StoredProcedure };
+        cmd.Parameters.AddWithValue("@flag", 6);
+        using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            result.Add(new MenuDto
+            {
+                Id    = Convert.ToInt32(reader["Id"]),
+                Title = reader["Title"]?.ToString() ?? "",
+            });
+        }
+        return result;
     }
 
     // =========================================================

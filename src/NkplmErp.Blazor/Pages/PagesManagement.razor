@@ -128,6 +128,20 @@ else
                         <label>Display Order</label>
                         <input class="pm-input" type="number" @bind="EditPage.DisplayOrder" id="input-page-order" />
                     </div>
+                    <div class="pm-field">
+                        <label>Icon (Font Awesome class)</label>
+                        <input class="pm-input" @bind="EditPage.Icon" placeholder="e.g. fa-solid fa-box" id="input-page-icon" />
+                    </div>
+                    <div class="pm-field">
+                        <label>Menu</label>
+                        <select class="pm-input" @bind="MenuIdStr" id="select-page-menu">
+                            <option value="">— None (top-level) —</option>
+                            @foreach (var m in Menus)
+                            {
+                                <option value="@m.Id">@m.Title</option>
+                            }
+                        </select>
+                    </div>
                     <div class="pm-field pm-full">
                         <label class="pm-check">
                             <input type="checkbox" @bind="EditPage.IsActive" id="chk-page-active" /> Active
@@ -157,6 +171,8 @@ else
                                 <th>Page Key</th>
                                 <th>Name</th>
                                 <th>URL</th>
+                                <th class="c">Icon</th>
+                                <th>Menu</th>
                                 <th class="c">Order</th>
                                 <th class="c">Status</th>
                                 @if (CanEdit || CanDelete)
@@ -172,6 +188,8 @@ else
                                     <td><span class="pm-key">@p.PageKey</span></td>
                                     <td><span class="pm-name">@p.PageName</span></td>
                                     <td class="pm-url">@(string.IsNullOrWhiteSpace(p.PageUrl) ? "—" : p.PageUrl)</td>
+                                    <td class="c">@if (!string.IsNullOrWhiteSpace(p.Icon)) { <i class="@p.Icon"></i> } else { <span class="pm-url">—</span> }</td>
+                                    <td class="pm-url">@(p.MenuTitle ?? "—")</td>
                                     <td class="c">@p.DisplayOrder</td>
                                     <td class="c">
                                         <span class="pm-badge @(p.IsActive ? "on" : "off")">@(p.IsActive ? "Active" : "Inactive")</span>

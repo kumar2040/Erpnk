@@ -12,9 +12,17 @@ public partial class PagesManagement : IDisposable
     [Inject] private IJSRuntime JS { get; set; } = default!;
 
     private List<AppPageDto> Pages = new();
+    private List<MenuDto> Menus = new();
     private SavePageRequest EditPage = new();
     private bool ShowForm = false;
     private bool IsLoading = false;
+
+    // <select> binds a string; "" means "no menu" (ungrouped, top-level).
+    private string MenuIdStr
+    {
+        get => EditPage.MenuId?.ToString() ?? "";
+        set => EditPage.MenuId = string.IsNullOrEmpty(value) ? (int?)null : int.Parse(value);
+    }
 
     private string StatusMessage = "";
     private bool IsError = false;
@@ -41,6 +49,7 @@ public partial class PagesManagement : IDisposable
             return;
         }
 
+        Menus = await RoleApi.GetMenusAsync();
         await LoadPagesAsync();
     }
 
@@ -68,6 +77,8 @@ public partial class PagesManagement : IDisposable
             PageUrl      = page.PageUrl,
             IsActive     = page.IsActive,
             DisplayOrder = page.DisplayOrder,
+            Icon         = page.Icon,
+            MenuId       = page.MenuId,
             Flag         = 2  // Update
         };
         ShowForm = true;
