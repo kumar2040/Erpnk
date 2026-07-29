@@ -96,7 +96,7 @@ else
                 {
                     <div class="yo-strip">
                         <div><div class="k">Placed</div><div class="v">@Selected.CreatedDate.ToString("dd MMM yyyy, HH:mm")</div></div>
-                        <div><div class="k">By</div><div class="v">@(string.IsNullOrWhiteSpace(Selected.CreatedBy) ? "—" : Selected.CreatedBy)</div></div>
+                        @* "By" removed: created_by holds the raw user GUID, which is noise on screen. *@
                         <div><div class="k">Need</div><div class="v need">@Selected.TotalKg.ToString("N2") kg</div></div>
                         <div><div class="k">Order (cones)</div><div class="v imp">@DetailOrderKg.ToString("N0") kg</div></div>
                         <div><div class="k">Status</div><div class="v">@Selected.Status</div></div>
