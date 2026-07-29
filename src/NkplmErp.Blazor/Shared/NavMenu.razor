@@ -1,28 +1,29 @@
-<nav class="flex-column">
-    <div class="nav-section-label">Main menu</div>
+@{
+    const string RowBase = "flex items-center gap-2 mx-1 my-0.5 rounded-lg px-2.5 py-1.5 text-[13px] text-gray-700 no-underline outline-none focus:outline-none hover:bg-gray-100 hover:text-gray-900 [&.active]:bg-blue-50 [&.active]:text-blue-600";
+    const string SubRowBase = "flex items-center gap-1.5 mx-1 my-0.5 rounded-lg px-2 py-1 text-[11px] text-gray-600 no-underline outline-none focus:outline-none hover:bg-gray-100 hover:text-gray-900 [&.active]:bg-blue-50 [&.active]:text-blue-600";
+}
 
-    <div class="nav-item px-3">
-        <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-            <span class="oi oi-home" aria-hidden="true"></span> Home
-        </NavLink>
-    </div>
+<nav class="flex-column py-2">
+    <div class="text-gray-400 text-[10px] uppercase tracking-wide px-3 pt-1.5 pb-1">Main menu</div>
+
+    <NavLink class="@RowBase" href="" Match="NavLinkMatch.All">
+        <span class="oi oi-home text-[13px] w-[15px] text-center" aria-hidden="true"></span> Home
+    </NavLink>
 
     @* Pages with no MenuId sit flat under the section label, same as Home above. *@
     @foreach (var pg in UngroupedPages)
     {
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="@pg.PageUrl">
-                @if (!string.IsNullOrWhiteSpace(pg.Icon))
-                {
-                    <i class="@pg.Icon" aria-hidden="true"></i>
-                }
-                else
-                {
-                    <span class="oi oi-chevron-right" aria-hidden="true"></span>
-                }
-                @pg.PageName
-            </NavLink>
-        </div>
+        <NavLink class="@RowBase" href="@pg.PageUrl">
+            @if (!string.IsNullOrWhiteSpace(pg.Icon))
+            {
+                <i class="@pg.Icon text-[13px] w-[15px] text-center" aria-hidden="true"></i>
+            }
+            else
+            {
+                <span class="oi oi-chevron-right text-[13px] w-[15px] text-center" aria-hidden="true"></span>
+            }
+            @pg.PageName
+        </NavLink>
     }
 
     @* Grouped pages: the group itself is a full row (icon + title + chevron), same
@@ -30,50 +31,43 @@
        indented underneath. *@
     @foreach (var group in GroupedPages)
     {
-        <div class="nav-item px-3">
-            <button type="button" class="nav-link nav-group-toggle" @onclick="() => ToggleGroup(group.MenuId)" @onclick:stopPropagation="true">
-                <i class="@GroupIcon(group.Pages)" aria-hidden="true"></i>
-                <span class="nav-group-label">@group.MenuTitle</span>
-                <span class="oi @(IsExpanded(group.MenuId) ? "oi-chevron-bottom" : "oi-chevron-right") nav-group-chev" aria-hidden="true"></span>
-            </button>
-        </div>
+        <button type="button" class="@RowBase w-[calc(100%-0.5rem)] bg-transparent border-0 text-left cursor-pointer"
+                @onclick="() => ToggleGroup(group.MenuId)" @onclick:stopPropagation="true">
+            <i class="@GroupIcon(group.Pages) text-[13px] w-[15px] text-center" aria-hidden="true"></i>
+            <span>@group.MenuTitle</span>
+            <span class="oi @(IsExpanded(group.MenuId) ? "oi-chevron-bottom" : "oi-chevron-right") ml-auto text-[10px] text-gray-400" aria-hidden="true"></span>
+        </button>
         @if (IsExpanded(group.MenuId))
         {
-            <div class="nav-subgroup">
+            <div class="ml-[18px] pl-2.5 border-l border-gray-200">
                 @foreach (var pg in group.Pages)
                 {
-                    <div class="nav-item nav-item-sub">
-                        <NavLink class="nav-link" href="@pg.PageUrl">
-                            @if (!string.IsNullOrWhiteSpace(pg.Icon))
-                            {
-                                <i class="@pg.Icon" aria-hidden="true"></i>
-                            }
-                            else
-                            {
-                                <span class="oi oi-chevron-right" aria-hidden="true"></span>
-                            }
-                            @pg.PageName
-                        </NavLink>
-                    </div>
+                    <NavLink class="@SubRowBase" href="@pg.PageUrl">
+                        @if (!string.IsNullOrWhiteSpace(pg.Icon))
+                        {
+                            <i class="@pg.Icon text-[11px] w-[13px] text-center" aria-hidden="true"></i>
+                        }
+                        else
+                        {
+                            <span class="oi oi-chevron-right text-[11px] w-[13px] text-center" aria-hidden="true"></span>
+                        }
+                        @pg.PageName
+                    </NavLink>
                 }
             </div>
         }
     }
 
-    <div class="nav-divider"></div>
+    <div class="border-t border-gray-200 mx-3 my-1.5"></div>
 
     <AuthorizePermission Permission="Permissions.Invoices.View">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="fetchdata">
-                <span class="oi oi-list-rich" aria-hidden="true"></span> Fetch data
-            </NavLink>
-        </div>
+        <NavLink class="@RowBase" href="fetchdata">
+            <span class="oi oi-list-rich text-[13px] w-[15px] text-center" aria-hidden="true"></span> Fetch data
+        </NavLink>
     </AuthorizePermission>
     <AuthorizeView>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="profile">
-                <span class="oi oi-person" aria-hidden="true"></span> Profile
-            </NavLink>
-        </div>
+        <NavLink class="@RowBase" href="profile">
+            <span class="oi oi-person text-[13px] w-[15px] text-center" aria-hidden="true"></span> Profile
+        </NavLink>
     </AuthorizeView>
 </nav>

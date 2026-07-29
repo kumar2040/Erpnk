@@ -18,7 +18,7 @@
             @if (showMenu)
             {
                 <div class="fixed inset-0 z-40" @onclick="() => showMenu = false"></div>
-                <div class="menu-dropdown-panel" @onclick:stopPropagation="true">
+                <div class="absolute top-[calc(100%+8px)] left-0 z-50 w-[240px] max-h-[calc(100vh-96px)] overflow-y-auto bg-white border border-gray-200 rounded-2xl shadow-2xl" @onclick:stopPropagation="true">
                     <NavMenu />
                 </div>
             }
