@@ -113,6 +113,34 @@ public class PoTaskGroupDto
     public int MemberCount { get; set; }
 }
 
+// One attachment WITH its bytes (sp_PoTask_GetAttachment) — fetched only on download.
+// byte[] round-trips as base64 in JSON, so no separate wire shape is needed.
+public class PoTaskAttachmentContentDto
+{
+    public int AttachmentId { get; set; }
+    public int PoTaskId { get; set; }
+    public string FileName { get; set; } = string.Empty;
+    public string? ContentType { get; set; }
+    public int SizeBytes { get; set; }
+    public byte[]? Content { get; set; }
+}
+
+// One assignable user (sp_PoTask_Staff) — feeds the Add Task / drawer staff pickers.
+// PoTask-gated, so task editors don't need RoleManagement permission to see it.
+public class PoTaskStaffDto
+{
+    public string UserId { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string? Email { get; set; }
+}
+
+// Document count per task (sp_PoTask_AttachmentCounts) — drives the board's 📎 badge.
+public class PoTaskAttachmentCountDto
+{
+    public int PoTaskId { get; set; }
+    public int FileCount { get; set; }
+}
+
 // One reviewed order not yet seeded into the lifecycle (sp_PoTask_PendingReviews).
 public class PoOrderReviewDto
 {
@@ -167,8 +195,8 @@ public class CreatePoTaskRequest
     // Optional checklist sub-items (the Description "+" rows).
     public List<string> ChecklistItems { get; set; } = new();
 
-    // Optional single upload (< 1 MB).
-    public PoTaskAttachmentUpload? Attachment { get; set; }
+    // Optional uploads — one or more files, each < 1 MB (server re-validates per file).
+    public List<PoTaskAttachmentUpload> Attachments { get; set; } = new();
 }
 
 public class AssignPoTaskRequest

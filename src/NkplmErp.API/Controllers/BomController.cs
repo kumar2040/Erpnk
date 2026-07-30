@@ -90,9 +90,16 @@ public class BomController(
         {
             var userId = GetCurrentUserId();
             var pmRole = _configuration["TaskAutomation:ProductionManagerRoleName"] ?? "Production Manager";
+            var yarnRole = _configuration["TaskAutomation:YarnRoleName"] ?? "Yarn";
 
-            var members = (await _roleService.GetAllUsersWithRolesAsync())
+            var users = (await _roleService.GetAllUsersWithRolesAsync()).ToList();
+            var members = users
                 .Where(u => string.Equals(u.RoleName, pmRole, StringComparison.OrdinalIgnoreCase))
+                .Select(u => u.UserId)
+                .Distinct()
+                .ToList();
+            var yarnUsers = users
+                .Where(u => string.Equals(u.RoleName, yarnRole, StringComparison.OrdinalIgnoreCase))
                 .Select(u => u.UserId)
                 .Distinct()
                 .ToList();
@@ -115,6 +122,18 @@ public class BomController(
                         Note = $"Yarn order {yoNo} created — BOM done."
                     }, userId);
                 }
+
+                // Follow-up: the Yarn role now places the actual vendor order(s).
+                await _poTaskService.CreateAsync(new CreatePoTaskRequest
+                {
+                    OrderNo = orderNo,
+                    Title = $"Make yarn order - {orderNo}",
+                    Detail = $"BOM {yoNo} placed for {orderNo}. Split by vendor on the Yarn Orders page and send the purchase order(s) to the supplier(s).",
+                    PriorityId = 2,
+                    CompletionRule = 2,        // any one completes
+                    StartDate = DateTime.Today,
+                    UserIds = yarnUsers
+                }, userId);
             }
         }
         catch (Exception ex)
