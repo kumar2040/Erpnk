@@ -130,6 +130,65 @@ public class PoTaskController(
         return Ok();
     }
 
+    // POST api/v1/PoTask/{id}/unassign?targetUserId=  (Edit) — remove one person's assignment.
+    // Zero Trust: beyond the Edit permission, only the task's creator or an Admin may
+    // remove an assignee, and the creator may never remove themselves.
+    [HttpPost("{id:int}/unassign")]
+    public async Task<IActionResult> Unassign(int id, [FromQuery] string targetUserId)
+    {
+        var userId = GetCurrentUserId();
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+        if (!await CanEditAsync(userId)) return Forbid();
+        if (string.IsNullOrWhiteSpace(targetUserId)) return BadRequest("targetUserId is required.");
+
+        if (!User.IsInRole("Admin"))
+        {
+            var createdBy = (await _poTaskService.GetDetailAsync(id)).Task?.CreatedBy;
+            if (!string.Equals(createdBy, userId, StringComparison.OrdinalIgnoreCase)) return Forbid();
+            if (string.Equals(targetUserId, userId, StringComparison.OrdinalIgnoreCase))
+                return BadRequest("The task creator cannot remove themselves from the task.");
+        }
+
+        await _poTaskService.UnassignAsync(id, targetUserId);
+        return Ok();
+    }
+
+    // GET api/v1/PoTask/attachments/{id}  (View) — one attachment with its bytes, for download
+    [HttpGet("attachments/{id:int}")]
+    public async Task<IActionResult> GetAttachment(int id)
+    {
+        var userId = GetCurrentUserId();
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+        if (!await CanViewAsync(userId)) return Forbid();
+
+        var att = await _poTaskService.GetAttachmentAsync(id);
+        return att is null ? NotFound() : Ok(att);
+    }
+
+    // GET api/v1/PoTask/staff  (Edit) — active users for the assign pickers.
+    // Gated by the PoTask permission, NOT RoleManagement, so a task editor (e.g. a
+    // Production Manager) can assign people without role-admin rights.
+    [HttpGet("staff")]
+    public async Task<IActionResult> GetStaff()
+    {
+        var userId = GetCurrentUserId();
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+        if (!await CanEditAsync(userId)) return Forbid();
+
+        return Ok(await _poTaskService.GetStaffAsync());
+    }
+
+    // GET api/v1/PoTask/attachments/counts  (View) — file count per task, for the board badge
+    [HttpGet("attachments/counts")]
+    public async Task<IActionResult> GetAttachmentCounts()
+    {
+        var userId = GetCurrentUserId();
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+        if (!await CanViewAsync(userId)) return Forbid();
+
+        return Ok(await _poTaskService.GetAttachmentCountsAsync());
+    }
+
     // POST api/v1/PoTask/my-update  — "update my side" (View; SP enforces own row)
     [HttpPost("my-update")]
     public async Task<IActionResult> MyUpdate([FromBody] MyUpdatePoTaskRequest request)

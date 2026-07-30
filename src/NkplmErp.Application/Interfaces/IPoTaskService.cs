@@ -40,6 +40,18 @@ public interface IPoTaskService
     /// <summary>Add individual users and/or a group's members to a task.</summary>
     Task AssignAsync(AssignPoTaskRequest request, string userId);
 
+    /// <summary>Remove one user's active assignment from a task, then re-roll the parent up.</summary>
+    Task UnassignAsync(int poTaskId, string targetUserId);
+
+    /// <summary>One attachment with its bytes — fetched only when the user downloads it.</summary>
+    Task<PoTaskAttachmentContentDto?> GetAttachmentAsync(int attachmentId);
+
+    /// <summary>Document count per task (only tasks that have files) — for the board's 📎 badge.</summary>
+    Task<List<PoTaskAttachmentCountDto>> GetAttachmentCountsAsync();
+
+    /// <summary>Active users for the assign pickers (PoTask-gated — no RoleManagement permission needed).</summary>
+    Task<List<PoTaskStaffDto>> GetStaffAsync();
+
     /// <summary>"Update my side": move ONLY the acting user's own assignee row, then roll up.</summary>
     Task MyUpdateAsync(MyUpdatePoTaskRequest request, string userId);
 
