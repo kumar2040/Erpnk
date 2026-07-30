@@ -69,6 +69,51 @@ public class PoTaskApiClient
 
     public Task<bool> AssignAsync(AssignPoTaskRequest request) => PostOkAsync($"{Base}/assign", request);
 
+    public Task<bool> UnassignAsync(int poTaskId, string targetUserId) =>
+        PostOkAsync($"{Base}/{poTaskId}/unassign?targetUserId={Uri.EscapeDataString(targetUserId)}", null);
+
+    public async Task<PoTaskAttachmentContentDto?> GetAttachmentAsync(int attachmentId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"{Base}/attachments/{attachmentId}");
+            if (response.IsSuccessStatusCode)
+                return await response.Content.ReadFromJsonAsync<PoTaskAttachmentContentDto>();
+            return null;
+        }
+        catch (Exception ex) { _logger.LogError(ex, "GetAttachmentAsync({Id}) failed", attachmentId); return null; }
+    }
+
+    // Active users for the assign pickers (PoTask-gated).
+    public async Task<List<PoTaskStaffDto>> GetStaffAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"{Base}/staff");
+            if (response.IsSuccessStatusCode)
+                return await response.Content.ReadFromJsonAsync<List<PoTaskStaffDto>>() ?? new();
+            _logger.LogWarning("GetStaffAsync returned {Status}", response.StatusCode);
+            return new();
+        }
+        catch (Exception ex) { _logger.LogError(ex, "GetStaffAsync failed"); return new(); }
+    }
+
+    // Task id -> file count, for the board's 📎 badge (tasks without files are absent).
+    public async Task<Dictionary<int, int>> GetAttachmentCountsAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"{Base}/attachments/counts");
+            if (response.IsSuccessStatusCode)
+            {
+                var rows = await response.Content.ReadFromJsonAsync<List<PoTaskAttachmentCountDto>>() ?? new();
+                return rows.ToDictionary(r => r.PoTaskId, r => r.FileCount);
+            }
+            return new();
+        }
+        catch (Exception ex) { _logger.LogError(ex, "GetAttachmentCountsAsync failed"); return new(); }
+    }
+
     public Task<bool> MyUpdateAsync(MyUpdatePoTaskRequest request) => PostOkAsync($"{Base}/my-update", request);
 
     public Task<bool> TransitionAsync(TransitionPoTaskRequest request) => PostOkAsync($"{Base}/transition", request);

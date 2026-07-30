@@ -146,6 +146,12 @@ else
                                     {
                                         <span class="rollup">@card.AssigneeDone/@card.AssigneeTotal</span>
                                     }
+                                    @if (FileCount(card.TaskId) > 0)
+                                    {
+                                        @* Documents indicator — clicking the card opens the drawer where
+                                           the files are listed and downloadable. *@
+                                        <span class="filebadge" title="@FileCount(card.TaskId) document(s) attached">📎 @FileCount(card.TaskId)</span>
+                                    }
                                 </span>
                                 @if (card.PriorityName is not null)
                                 {
@@ -290,24 +296,26 @@ else
                     }
                 }
 
-                <div class="fsection">Upload Documents <span class="lt1">(less than 1MB)</span></div>
+                <div class="fsection">Upload Documents <span class="lt1">(each less than 1MB, up to @MaxAttachmentFiles files)</span></div>
                 <div class="dropzone @(isDragging ? "drag" : "")"
                      @ondragenter="() => isDragging = true"
                      @ondragleave="() => isDragging = false"
                      @ondragover:preventDefault="true">
-                    <InputFile OnChange="OnFileSelected" class="dz-input" />
+                    <InputFile OnChange="OnFilesSelected" class="dz-input" multiple />
                     <div class="dz-inner">
                         <span class="dz-ic">⬆</span>
-                        @if (string.IsNullOrEmpty(attachmentName))
-                        {
-                            <span class="dz-text">Drag &amp; drop a file here, or <b>click to browse</b></span>
-                        }
-                        else
-                        {
-                            <span class="dz-file">@attachmentName</span>
-                        }
+                        <span class="dz-text">Drag &amp; drop files here, or <b>click to browse</b></span>
                     </div>
                 </div>
+                @if (newTask.Attachments.Count > 0)
+                {
+                    <div class="chk-chips" style="margin-top:8px">
+                        @foreach (var f in newTask.Attachments)
+                        {
+                            <span class="chk-chip">📎 @f.FileName <span class="x" @onclick="@(() => RemoveAttachment(f))">✕</span></span>
+                        }
+                    </div>
+                }
 
                 @if (!string.IsNullOrEmpty(addError))
                 {
@@ -358,9 +366,33 @@ else
                         {
                             <div class="assignee-row">
                                 <span class="a-name">@(string.IsNullOrWhiteSpace(a.UserName) ? a.UserId : a.UserName)</span>
-                                <span class="a-status s-@a.Status">@StatusName(a.Status)</span>
+                                <span style="display:flex;align-items:center;gap:6px">
+                                    <span class="a-status s-@a.Status">@StatusName(a.Status)</span>
+                                    @if (CanEdit && CanRemoveAssignee(a.UserId))
+                                    {
+                                        <button class="a-remove" title="Remove this assignee"
+                                                @onclick="() => RemoveAssigneeAsync(a.UserId)">✕</button>
+                                    }
+                                </span>
                             </div>
                         }
+                    </div>
+                }
+
+                @if (CanEdit)
+                {
+                    @* Add a person to this task after creation. Only staff not already
+                       actively assigned are offered; assigning fires the bell push. *@
+                    <div class="assignee-add">
+                        <select @bind="drawerStaffPick">
+                            <option value="">Add person…</option>
+                            @foreach (var s in UnassignedStaff())
+                            {
+                                <option value="@s.UserId">@(string.IsNullOrWhiteSpace(s.FullName) ? s.Email : s.FullName)</option>
+                            }
+                        </select>
+                        <button class="mini-btn" disabled="@string.IsNullOrEmpty(drawerStaffPick)"
+                                @onclick="AddAssigneeAsync">Add</button>
                     </div>
                 }
 
@@ -374,6 +406,26 @@ else
                             <span class="@(c.IsDone ? "done" : "")">@c.Text</span>
                         </label>
                     }
+                }
+
+                @if (detail.Attachments.Count > 0)
+                {
+                    <div class="detail-section">Documents</div>
+                    <div class="att-list">
+                        @foreach (var f in detail.Attachments)
+                        {
+                            <div class="att-row">
+                                <span class="att-name" title="@f.FileName">📎 @f.FileName</span>
+                                <span style="display:flex;align-items:center;gap:8px">
+                                    <span class="att-size">@FormatSize(f.SizeBytes)</span>
+                                    <button class="mini-btn" disabled="@(downloadingId == f.AttachmentId)"
+                                            @onclick="() => DownloadAttachmentAsync(f.AttachmentId)">
+                                        @(downloadingId == f.AttachmentId ? "…" : "Download")
+                                    </button>
+                                </span>
+                            </div>
+                        }
+                    </div>
                 }
 
                 @if (CanEdit)

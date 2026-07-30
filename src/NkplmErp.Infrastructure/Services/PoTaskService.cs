@@ -112,19 +112,20 @@ public class PoTaskService : IPoTaskService
         foreach (var item in req.ChecklistItems.Where(t => !string.IsNullOrWhiteSpace(t)))
             await AddChecklistAsync(newId, item, userId);
 
-        // Optional single upload — decode + re-validate the 1 MB cap on the server.
-        if (req.Attachment is { ContentBase64.Length: > 0 })
+        // Optional uploads — one PoTaskAttachment row per file; decode + re-validate the
+        // 1 MB cap per file on the server.
+        foreach (var att in req.Attachments.Where(a => !string.IsNullOrEmpty(a.ContentBase64)))
         {
-            var bytes = Convert.FromBase64String(req.Attachment.ContentBase64);
+            var bytes = Convert.FromBase64String(att.ContentBase64);
             if (bytes.Length > MaxAttachmentBytes)
-                throw new InvalidOperationException("Attachment exceeds the 1 MB limit.");
+                throw new InvalidOperationException($"Attachment '{att.FileName}' exceeds the 1 MB limit.");
 
             await _repo.ExecuteAsync(WriteSp, new
             {
                 Flag = "ATTACH",
                 PoTaskId = newId,
-                FileName = req.Attachment.FileName,
-                ContentType = req.Attachment.ContentType,
+                FileName = att.FileName,
+                ContentType = att.ContentType,
                 SizeBytes = bytes.Length,
                 Content = bytes,
                 UserId = userId
@@ -148,6 +149,27 @@ public class PoTaskService : IPoTaskService
 
         await DispatchPendingPushesAsync();
     }
+
+    // The SP's UNASSIGN flag soft-removes (PoTaskId, @UserId)'s active row and re-rolls
+    // the parent up — @UserId here is the user being REMOVED, not the actor.
+    public Task UnassignAsync(int poTaskId, string targetUserId) =>
+        _repo.ExecuteAsync(WriteSp, new
+        {
+            Flag = "UNASSIGN",
+            PoTaskId = poTaskId,
+            UserId = targetUserId
+        }, CommandType.StoredProcedure);
+
+    public Task<PoTaskAttachmentContentDto?> GetAttachmentAsync(int attachmentId) =>
+        _repo.GetQueryFirstOrDefaultResultAsync<PoTaskAttachmentContentDto?>(
+            "sp_PoTask_GetAttachment", new { AttachmentId = attachmentId }, CommandType.StoredProcedure);
+
+    public Task<List<PoTaskAttachmentCountDto>> GetAttachmentCountsAsync() =>
+        _repo.GetQueryResultAsync<PoTaskAttachmentCountDto>(
+            "sp_PoTask_AttachmentCounts", new { }, CommandType.StoredProcedure);
+
+    public Task<List<PoTaskStaffDto>> GetStaffAsync() =>
+        _repo.GetQueryResultAsync<PoTaskStaffDto>("sp_PoTask_Staff", new { }, CommandType.StoredProcedure);
 
     public Task MyUpdateAsync(MyUpdatePoTaskRequest req, string userId) =>
         _repo.ExecuteAsync(WriteSp, new

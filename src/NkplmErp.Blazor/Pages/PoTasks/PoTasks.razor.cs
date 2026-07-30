@@ -1,6 +1,9 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.JSInterop;
 using NkplmErp.Blazor.Components;
 using NkplmErp.Blazor.Services.Dropdown.Manager.Interface;
 using NkplmErp.Blazor.Services.PoTask;
@@ -20,12 +23,19 @@ namespace NkplmErp.Blazor.Pages.PoTasks
         [Inject] private ITaskManagementManager TaskMgr { get; set; } = default!;
         [Inject] private IDropdownManager Dropdowns { get; set; } = default!;
         [Inject] private NavigationManager Nav { get; set; } = default!;
+        [Inject] private Microsoft.JSInterop.IJSRuntime JS { get; set; } = default!;
+        [Inject] private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
 
         private const string PageKey = "PoTask";
 
         private bool AccessDenied;
         private bool CanEdit;
         private bool loading = true;
+
+        // Who's looking at the board — drives the unassign rule (creator/Admin only,
+        // creator can't remove themselves) mirrored client-side from the server check.
+        private string? _currentUserId;
+        private bool _isAdmin;
 
         // Filters
         private bool MineOnly;
@@ -104,11 +114,10 @@ namespace NkplmErp.Blazor.Pages.PoTasks
         private readonly List<string> selectedStaff = new();
         private string staffPick = "";              // transient: the dropdown's current pick
         private string newChecklistText = "";       // Description "+" buffer
-        private string? attachmentName;             // selected upload file name
         private bool isDragging;                    // drop-zone drag highlight
         private CreatePoTaskRequest newTask = NewBlankTask();
         private List<PoTaskGroupDto> groups = new();
-        private List<UserWithRolesDto> staff = new();
+        private List<PoTaskStaffDto> staff = new();
 
         // Detail drawer
         private bool showDetail;
@@ -155,6 +164,10 @@ namespace NkplmErp.Blazor.Pages.PoTasks
             }
             CanEdit = PermSvc.CanEdit(PageKey);
 
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            _currentUserId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.FindFirstValue("sub");
+            _isAdmin = authState.User.IsInRole("Admin");
+
             // Everything the board's first fetch depends on -- columns (also the bucket
             // keys), step/status/rule labels, facility scope, and the Add-Task staff/groups
             // -- is independent of everything else here, so it's resolved in one parallel
@@ -174,11 +187,20 @@ namespace NkplmErp.Blazor.Pages.PoTasks
 
             BoardColumns = boardColumnsTask.Result;
             _buckets = BoardColumns.ToDictionary(c => c.Id, _ => new List<PoTaskCardDto>());
-            AssigneeStatuses = assigneeStatusesTask.Result;
-            _statusLabels = taskStatusTask.Result.ToDictionary(x => x.Id, x => x.Value);
-            _ruleLabels = ruleTask.Result.ToDictionary(x => x.Id, x => x.Value);
-            groups = groupsTask.Result;
-            staff = staffTask.Result.GroupBy(u => u.UserId).Select(g => g.First()).ToList();
+            AssigneeStatuses = await Dropdowns.GetDropDownListAsync("TaskAssigneeStatus");
+            _statusLabels = (await Dropdowns.GetDropDownListAsync("TaskStatus"))
+                .ToDictionary(x => x.Id, x => x.Value);
+            _ruleLabels = (await Dropdowns.GetDropDownListAsync("TaskCompletionRule"))
+                .ToDictionary(x => x.Id, x => x.Value);
+
+            // Staff + groups for the Add Task form (deduped staff by user id).
+            if (CanEdit)
+            {
+                groups = await Api.GetGroupsAsync();
+                // PoTask-gated staff list (sp_PoTask_Staff) — the RoleManagement users API
+                // needs RoleManagement.View, which task editors don't necessarily hold.
+                staff = await Api.GetStaffAsync();
+            }
 
             // Resolve the user's facility scope. A gauge-restricted user is pinned to their
             // own factory_type; everyone else starts on "All Factories" (null) and may change it.
@@ -208,9 +230,11 @@ namespace NkplmErp.Blazor.Pages.PoTasks
             // Every filter applies to both scopes, so the facility dropdown behaves the same
             // on All and on My tasks.
             var flags = _buckets.Keys.ToList();
+            var countsTask = Api.GetAttachmentCountsAsync();   // 📎 badge data, fetched alongside the columns
             var results = await Task.WhenAll(flags.Select(flag => MineOnly
                 ? Api.GetMyTasksAsync(flag, startDate: start, endDate: end, orderNo: search, factoryType: factory)
                 : Api.GetBoardAsync(flag, startDate: start, endDate: end, orderNo: search, factoryType: factory)));
+            var counts = await countsTask;
 
             // A newer filter change started while we awaited -> drop these stale results so the
             // board never shows data that doesn't match the filters currently on screen.
@@ -218,10 +242,16 @@ namespace NkplmErp.Blazor.Pages.PoTasks
 
             for (var i = 0; i < flags.Count; i++)
                 _buckets[flags[i]] = results[i];
+            _fileCounts = counts;
 
             loading = false;
             StateHasChanged();
         }
+
+        // Task id -> document count (only tasks with files are present). Drives the
+        // 📎 badge on each card; refreshed together with the board columns.
+        private Dictionary<int, int> _fileCounts = new();
+        private int FileCount(int taskId) => _fileCounts.TryGetValue(taskId, out var n) ? n : 0;
 
         private List<PoTaskCardDto> Cards(string flag) =>
             _buckets.TryGetValue(flag, out var list) ? list : new();
@@ -268,7 +298,6 @@ namespace NkplmErp.Blazor.Pages.PoTasks
             selectedStaff.Clear();
             staffPick = "";
             newChecklistText = "";
-            attachmentName = null;
             isDragging = false;
             selectedGroupId = 0;
             assignGroup = false;
@@ -289,25 +318,42 @@ namespace NkplmErp.Blazor.Pages.PoTasks
 
         private void RemoveChecklistLine(string item) => newTask.ChecklistItems.Remove(item);
 
-        // Upload Documents (< 1 MB) — read into the task's attachment.
-        private async Task OnFileSelected(InputFileChangeEventArgs e)
+        // Upload Documents — multiple files, each < 1 MB, appended to the pending list.
+        // A picker/drop can be repeated; duplicates (same name) replace the earlier pick.
+        private const int MaxAttachmentFiles = 5;
+
+        private async Task OnFilesSelected(InputFileChangeEventArgs e)
         {
             isDragging = false;
-            var file = e.File;
-            if (file is null) return;
-            if (file.Size > 1_000_000) { addError = "File must be less than 1 MB."; return; }
-
-            using var ms = new MemoryStream();
-            await file.OpenReadStream(1_000_000).CopyToAsync(ms);
-            newTask.Attachment = new PoTaskAttachmentUpload
-            {
-                FileName = file.Name,
-                ContentType = file.ContentType,
-                ContentBase64 = Convert.ToBase64String(ms.ToArray())
-            };
-            attachmentName = file.Name;
             addError = null;
+
+            foreach (var file in e.GetMultipleFiles(MaxAttachmentFiles))
+            {
+                if (newTask.Attachments.Count >= MaxAttachmentFiles)
+                {
+                    addError = $"Maximum {MaxAttachmentFiles} files per task.";
+                    break;
+                }
+                if (file.Size > 1_000_000)
+                {
+                    addError = $"'{file.Name}' is over 1 MB — skipped.";
+                    continue;
+                }
+
+                using var ms = new MemoryStream();
+                await file.OpenReadStream(1_000_000).CopyToAsync(ms);
+
+                newTask.Attachments.RemoveAll(a => a.FileName == file.Name);   // re-pick replaces
+                newTask.Attachments.Add(new PoTaskAttachmentUpload
+                {
+                    FileName = file.Name,
+                    ContentType = file.ContentType,
+                    ContentBase64 = Convert.ToBase64String(ms.ToArray())
+                });
+            }
         }
+
+        private void RemoveAttachment(PoTaskAttachmentUpload f) => newTask.Attachments.Remove(f);
 
         // Tag-style staff picker: add the dropdown's pick as a chip, then reset it.
         private void AddStaff(ChangeEventArgs e)
@@ -411,6 +457,78 @@ namespace NkplmErp.Blazor.Pages.PoTasks
             await Api.ToggleChecklistAsync(checklistId);
             if (detail?.Task is not null) await OpenDetail(detail.Task.PoTaskId);
         }
+
+        // ---- Drawer: assign / unassign (Edit-gated in the markup) ----
+
+        // The add-person dropdown's transient pick.
+        private string drawerStaffPick = "";
+
+        // Staff not already actively assigned to the open task.
+        private IEnumerable<PoTaskStaffDto> UnassignedStaff()
+        {
+            var assigned = detail?.Assignees.Select(a => a.UserId).ToHashSet() ?? new HashSet<string>();
+            return staff.Where(s => !assigned.Contains(s.UserId));
+        }
+
+        // Only the task creator or an Admin may remove an assignee, and the creator can
+        // never remove themselves — mirrors the server-side check in PoTaskController.Unassign.
+        private bool CanRemoveAssignee(string targetUserId)
+        {
+            if (detail?.Task is null) return false;
+            if (!_isAdmin && !string.Equals(detail.Task.CreatedBy, _currentUserId, StringComparison.OrdinalIgnoreCase))
+                return false;
+            return _isAdmin || !string.Equals(targetUserId, _currentUserId, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private async Task AddAssigneeAsync()
+        {
+            if (detail?.Task is null || string.IsNullOrEmpty(drawerStaffPick)) return;
+            await Api.AssignAsync(new AssignPoTaskRequest
+            {
+                PoTaskId = detail.Task.PoTaskId,
+                UserIds = new List<string> { drawerStaffPick }
+            });
+            drawerStaffPick = "";
+            await AfterDetailWrite(detail.Task.PoTaskId);
+        }
+
+        private async Task RemoveAssigneeAsync(string targetUserId)
+        {
+            if (detail?.Task is null) return;
+            await Api.UnassignAsync(detail.Task.PoTaskId, targetUserId);
+            await AfterDetailWrite(detail.Task.PoTaskId);
+        }
+
+        // ---- Drawer: attachment download ----
+
+        // Which attachment is currently downloading (disables just that button).
+        private int? downloadingId;
+
+        private async Task DownloadAttachmentAsync(int attachmentId)
+        {
+            downloadingId = attachmentId;
+            try
+            {
+                var att = await Api.GetAttachmentAsync(attachmentId);
+                if (att?.Content is { Length: > 0 })
+                {
+                    // Reuses the app-wide helper from wwwroot/js/file-download.js.
+                    await JS.InvokeVoidAsync("bomDownloadFile",
+                        att.FileName,
+                        Convert.ToBase64String(att.Content),
+                        string.IsNullOrWhiteSpace(att.ContentType) ? "application/octet-stream" : att.ContentType);
+                }
+            }
+            finally
+            {
+                downloadingId = null;
+            }
+        }
+
+        private static string FormatSize(int bytes) =>
+            bytes >= 1024 * 1024 ? $"{bytes / (1024.0 * 1024.0):0.#} MB"
+            : bytes >= 1024 ? $"{bytes / 1024.0:0.#} KB"
+            : $"{bytes} B";
 
         private async Task OverrideAsync(string toStatus)
         {

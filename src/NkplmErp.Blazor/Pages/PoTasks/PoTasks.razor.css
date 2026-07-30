@@ -73,6 +73,8 @@
 .tcard-meta{font-size:.68rem;color:var(--muted);font-weight:600;display:flex;flex-wrap:wrap;gap:4px;margin-bottom:9px}
 .tcard-foot{display:flex;align-items:center;justify-content:space-between;margin-top:auto}
 .rollup{font-size:.68rem;font-weight:800;color:#0f766e;background:rgba(42,179,177,.14);padding:1px 8px;border-radius:20px}
+.tcard-foot .people{display:flex;align-items:center;gap:6px}
+.filebadge{font-size:.68rem;font-weight:800;color:#475569;background:#eef1f6;padding:1px 8px;border-radius:20px;white-space:nowrap}
 .prio{font-size:.66rem;padding:2px 8px;border-radius:20px;font-weight:800}
 .prio.p-1{background:#f1f5f9;color:#475569}
 .prio.p-2{background:#fef3c7;color:#854d0e}
@@ -221,6 +223,19 @@
 .a-status.s-H{background:#fef3c7;color:#854d0e}
 .check-row{display:flex;align-items:center;gap:8px;font-size:13px;padding:3px 0;color:var(--navy)}
 .check-row .done{text-decoration:line-through;color:var(--muted)}
+
+/* drawer: remove-assignee ✕ + add-person row */
+.a-remove{width:20px;height:20px;border:none;border-radius:6px;background:#fee2e2;color:#b91c1c;font-size:10px;font-weight:800;cursor:pointer;line-height:1}
+.a-remove:hover{filter:brightness(.95)}
+.assignee-add{display:flex;align-items:center;gap:8px;margin-top:8px}
+.assignee-add select{height:32px;border:1px solid #d6dbe4;border-radius:8px;padding:0 10px;font-size:12.5px;color:var(--navy);flex:1;max-width:260px;background:#fff}
+.assignee-add select:focus{outline:none;border-color:var(--teal)}
+
+/* drawer: attachments */
+.att-list{display:flex;flex-direction:column;gap:6px}
+.att-row{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:var(--navy);border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:#fafbfd}
+.att-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px}
+.att-size{font-size:.68rem;color:var(--muted);font-weight:700}
 .muted{color:var(--muted);font-size:12px}
 
 @media (max-width: 900px){
