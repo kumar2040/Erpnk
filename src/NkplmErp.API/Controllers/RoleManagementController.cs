@@ -152,6 +152,14 @@ public class RoleManagementController(IRoleManagementService roleManagementServi
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
 
+    [HttpGet("menus")]
+    public async Task<IActionResult> GetMenus()
+    {
+        if (!await CanViewAnyAsync("RoleManagement", "PagesManagement")) return Forbid();
+        var result = await _roleService.GetMenusAsync();
+        return Ok(result);
+    }
+
     // =========================================================
     // ROLE PERMISSIONS
     // =========================================================

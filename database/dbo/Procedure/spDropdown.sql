@@ -48,18 +48,18 @@ BEGIN
     /* -------------------------------------------------- YarnOrderStatus
        The yarn order's lifecycle, left to right:
          Not ordered -> no vendor order placed yet
-         Pending     -> vendor order(s) placed, at least one still uninvoiced
+         Ordered     -> vendor order(s) placed, at least one still uninvoiced
          Completed   -> every vendor order invoiced = the yarn arrived and is
                         ready for use (this is what raises the Planning task)
-       The codes here are what sp_GetYarnOrders takes as @Status. The old 'O'
-       (Ordered) row was replaced by 'P' -- no table stores these codes, so
-       there is nothing to migrate; the proc still honours 'O' as P+C. */
+       The codes here are what sp_GetYarnOrders takes as @Status. Code 'P'
+       still means the same underlying state (uninvoiced) -- only its label
+       changed back to "Ordered"; the proc still honours legacy 'O' as P+C. */
     IF (@Flag = 'YARNORDERSTATUS')
     BEGIN
         SELECT [Id], [Value]
         FROM (VALUES
             ('N', 'Not ordered', 1),
-            ('P', 'Pending',     2),
+            ('P', 'Ordered',     2),
             ('C', 'Completed',   3)
         ) AS v([Id], [Value], [SortOrder])
         ORDER BY [SortOrder];

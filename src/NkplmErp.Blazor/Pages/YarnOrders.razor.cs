@@ -324,8 +324,8 @@ public partial class YarnOrders
         StateHasChanged();
     }
 
-    // An invoice can move the header between Pending and Completed, so the left list has to
-    // be re-fetched too — under a Pending filter the order it just completed should leave.
+    // An invoice can move the header between Ordered and Completed, so the left list has to
+    // be re-fetched too — under an Ordered filter the order it just completed should leave.
     private async Task ReloadAfterInvoiceAsync()
     {
         if (Selected is null) return;

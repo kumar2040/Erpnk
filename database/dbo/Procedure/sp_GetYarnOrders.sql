@@ -1,9 +1,9 @@
 CREATE OR ALTER PROCEDURE [dbo].[sp_GetYarnOrders]
     -- Order state filter, codes supplied by spDropdown 'YarnOrderStatus'.
     --   'N'  not ordered -> no vendor order placed yet
-    --   'P'  pending     -> vendor order(s) placed, at least one NOT yet invoiced
+    --   'P'  ordered     -> vendor order(s) placed, at least one NOT yet invoiced
     --   'C'  completed   -> vendor order(s) placed and EVERY one of them invoiced
-    --   'O'  legacy      -> "ordered" = P + C, kept so an older cached client
+    --   'O'  legacy      -> P + C combined, kept so an older cached client
     --                       still returns something sane instead of nothing
     --   NULL/'' (default)-> no filter, every header
     @Status CHAR(1) = NULL
@@ -35,7 +35,7 @@ BEGIN
                 WHEN     EXISTS (SELECT 1 FROM dbo.tbl_yarn_vendor_order v WITH (NOLOCK)
                                   WHERE v.yo_id = o.yo_id
                                     AND NULLIF(LTRIM(RTRIM(ISNULL(v.invoice_no, ''))), '') IS NULL)
-                                                                               THEN 'Pending'
+                                                                               THEN 'Ordered'
                 ELSE 'Completed' END,
             order_no = (SELECT STRING_AGG(CONVERT(nvarchar(max), x.order_no), ', ')
                                    WITHIN GROUP (ORDER BY x.order_no)

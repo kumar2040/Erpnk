@@ -1,100 +1,73 @@
-<div class="top-row ps-3 navbar navbar-dark glass-brand">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">
-            <span class="brand-accent">NKPLM</span> ERP
-        </a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </div>
-</div>
-
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="oi oi-home" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="oi oi-plus" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="orders-dashboard">
-                <span class="oi oi-spreadsheet" aria-hidden="true"></span> Orders Dashboard
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="knit-gantt-chart">
-                <span class="oi oi-bar-chart" aria-hidden="true"></span> Knit Gyan Chart
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="manage-users">
-                <span class="oi oi-people" aria-hidden="true"></span> Users
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="knitter-management">
-                <span class="oi oi-people" aria-hidden="true"></span> Knitter Management
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="machine-management">
-                <span class="oi oi-cog" aria-hidden="true"></span> Machine Management
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="tasks">
-                <span class="oi oi-task" aria-hidden="true"></span> Tasks
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="bom">
-                <span class="oi oi-spreadsheet" aria-hidden="true"></span> Bill of Materials
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="yarn-orders">
-                <span class="oi oi-box" aria-hidden="true"></span> Saved Yarn Orders
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="role-management">
-                <span class="oi oi-key" aria-hidden="true"></span> Role Management
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="pages-management">
-                <span class="oi oi-folder" aria-hidden="true"></span> Pages / Modules
-            </NavLink>
-        </div>
-        <AuthorizePermission Permission="Permissions.Invoices.View">
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="fetchdata">
-                    <span class="oi oi-list-rich" aria-hidden="true"></span> Fetch data
-                </NavLink>
-            </div>
-        </AuthorizePermission>
-        <AuthorizeView>
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="profile">
-                    <span class="oi oi-person" aria-hidden="true"></span> Profile
-                </NavLink>
-            </div>
-        </AuthorizeView>
-    </nav>
-</div>
-
-@code {
-    private bool collapseNavMenu = true;
-
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-
-    private void ToggleNavMenu()
-    {
-        collapseNavMenu = !collapseNavMenu;
-    }
+@{
+    const string RowBase = "flex items-center gap-2 mx-1 my-0.5 rounded-lg px-2.5 py-1.5 text-[13px] text-gray-700 no-underline outline-none focus:outline-none hover:bg-gray-100 hover:text-gray-900 [&.active]:bg-blue-50 [&.active]:text-blue-600";
+    const string SubRowBase = "flex items-center gap-1.5 mx-1 my-0.5 rounded-lg px-2 py-1 text-[11px] text-gray-600 no-underline outline-none focus:outline-none hover:bg-gray-100 hover:text-gray-900 [&.active]:bg-blue-50 [&.active]:text-blue-600";
 }
+
+<nav class="flex-column py-2">
+    <div class="text-gray-400 text-[10px] uppercase tracking-wide px-3 pt-1.5 pb-1">Main menu</div>
+
+    <NavLink class="@RowBase" href="" Match="NavLinkMatch.All">
+        <span class="oi oi-home text-[13px] w-[15px] text-center" aria-hidden="true"></span> Home
+    </NavLink>
+
+    @* Pages with no MenuId sit flat under the section label, same as Home above. *@
+    @foreach (var pg in UngroupedPages)
+    {
+        <NavLink class="@RowBase" href="@pg.PageUrl">
+            @if (!string.IsNullOrWhiteSpace(pg.Icon))
+            {
+                <i class="@pg.Icon text-[13px] w-[15px] text-center" aria-hidden="true"></i>
+            }
+            else
+            {
+                <span class="oi oi-chevron-right text-[13px] w-[15px] text-center" aria-hidden="true"></span>
+            }
+            @pg.PageName
+        </NavLink>
+    }
+
+    @* Grouped pages: the group itself is a full row (icon + title + chevron), same
+       treatment as a page link, collapsed by default -- click to expand its pages
+       indented underneath. *@
+    @foreach (var group in GroupedPages)
+    {
+        <button type="button" class="@RowBase w-[calc(100%-0.5rem)] bg-transparent border-0 text-left cursor-pointer"
+                @onclick="() => ToggleGroup(group.MenuId)" @onclick:stopPropagation="true">
+            <i class="@GroupIcon(group.Pages) text-[13px] w-[15px] text-center" aria-hidden="true"></i>
+            <span>@group.MenuTitle</span>
+            <span class="oi @(IsExpanded(group.MenuId) ? "oi-chevron-bottom" : "oi-chevron-right") ml-auto text-[10px] text-gray-400" aria-hidden="true"></span>
+        </button>
+        @if (IsExpanded(group.MenuId))
+        {
+            <div class="ml-[18px] pl-2.5 border-l border-gray-200">
+                @foreach (var pg in group.Pages)
+                {
+                    <NavLink class="@SubRowBase" href="@pg.PageUrl">
+                        @if (!string.IsNullOrWhiteSpace(pg.Icon))
+                        {
+                            <i class="@pg.Icon text-[11px] w-[13px] text-center" aria-hidden="true"></i>
+                        }
+                        else
+                        {
+                            <span class="oi oi-chevron-right text-[11px] w-[13px] text-center" aria-hidden="true"></span>
+                        }
+                        @pg.PageName
+                    </NavLink>
+                }
+            </div>
+        }
+    }
+
+    <div class="border-t border-gray-200 mx-3 my-1.5"></div>
+
+    <AuthorizePermission Permission="Permissions.Invoices.View">
+        <NavLink class="@RowBase" href="fetchdata">
+            <span class="oi oi-list-rich text-[13px] w-[15px] text-center" aria-hidden="true"></span> Fetch data
+        </NavLink>
+    </AuthorizePermission>
+    <AuthorizeView>
+        <NavLink class="@RowBase" href="profile">
+            <span class="oi oi-person text-[13px] w-[15px] text-center" aria-hidden="true"></span> Profile
+        </NavLink>
+    </AuthorizeView>
+</nav>

@@ -82,6 +82,9 @@ public class AppPageDto
     public string? PageUrl { get; set; }
     public bool IsActive { get; set; } = true;
     public int DisplayOrder { get; set; }
+    public string? Icon { get; set; }          // Font Awesome class, e.g. "fa-solid fa-box"
+    public int? MenuId { get; set; }           // identity.Menu.Id this page nests under; null = ungrouped
+    public string? MenuTitle { get; set; }
 }
 
 public class SavePageRequest
@@ -92,7 +95,17 @@ public class SavePageRequest
     public string? PageUrl { get; set; }
     public bool IsActive { get; set; } = true;
     public int DisplayOrder { get; set; }
+    public string? Icon { get; set; }
+    public int? MenuId { get; set; }
     public int Flag { get; set; }  // 1=Insert, 2=Update
+}
+
+// ===== Menu DTOs =====
+
+public class MenuDto
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = string.Empty;
 }
 
 // ===== Permission DTOs =====
