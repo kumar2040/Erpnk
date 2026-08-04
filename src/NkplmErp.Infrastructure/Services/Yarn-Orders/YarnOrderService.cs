@@ -64,7 +64,10 @@ namespace NkplmErp.Infrastructure.Services.Yarn_Orders
                         Flag = "I",
                         request.YarnId,
                         InvoiceNo = string.IsNullOrWhiteSpace(request.InvoiceNo) ? null : request.InvoiceNo.Trim(),
-                        InvoiceBy = userId
+                        InvoiceBy = userId,
+                        request.Weight,
+                        PragyapanNo = string.IsNullOrWhiteSpace(request.PragyapanNo) ? null : request.PragyapanNo.Trim(),
+                        LcTtNo = string.IsNullOrWhiteSpace(request.LcTtNo) ? null : request.LcTtNo.Trim()
                     },
                     CommandType.StoredProcedure);
 

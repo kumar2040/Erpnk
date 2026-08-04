@@ -8,7 +8,10 @@
     @DepartureDate VARCHAR(30)   = NULL,
     @ArrivalDate   VARCHAR(30)   = NULL,
     @InvoiceNo     VARCHAR(50)   = NULL,
-    @InvoiceBy     VARCHAR(50)   = NULL
+    @InvoiceBy     VARCHAR(50)   = NULL,
+    @Weight        VARCHAR(30)   = NULL,
+    @PragyapanNo   VARCHAR(50)   = NULL,
+    @LcTtNo        VARCHAR(50)   = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -184,6 +187,12 @@ BEGIN
        a blank/NULL @InvoiceNo is the deliberate correction path -- it clears
        the invoice and drops that sub-order back to 'Placed'.
 
+       @Weight/@PragyapanNo/@LcTtNo travel alongside the invoice and are only
+       written on the SAVE path (@inv IS NOT NULL) -- clearing an invoice is a
+       correction to the invoice itself, not a reason to erase an already-
+       recorded arrival weight/pragyapan/LC-TT, so those three columns are left
+       untouched on the clear path via COALESCE against their current value.
+
        The PARENT header only completes when EVERY vendor sub-order under it
        carries an invoice, and it is that last invoice which raises the Planning
        task: planning cannot start while part of the yarn is still at a vendor.
@@ -227,6 +236,12 @@ BEGIN
                SET invoice_no   = @inv,
                    invoice_date = CASE WHEN @inv IS NULL THEN NULL ELSE GETDATE() END,
                    invoice_by   = CASE WHEN @inv IS NULL THEN NULL ELSE @InvoiceBy END,
+                   weight       = CASE WHEN @inv IS NULL THEN weight
+                                       ELSE COALESCE(TRY_CONVERT(DECIMAL(18,3), @Weight), weight) END,
+                   pragyapan_no = CASE WHEN @inv IS NULL THEN pragyapan_no
+                                       ELSE COALESCE(NULLIF(LTRIM(RTRIM(@PragyapanNo)), ''), pragyapan_no) END,
+                   lc_tt_no     = CASE WHEN @inv IS NULL THEN lc_tt_no
+                                       ELSE COALESCE(NULLIF(LTRIM(RTRIM(@LcTtNo)), ''), lc_tt_no) END,
                    [status]     = CASE WHEN @inv IS NULL THEN 'Placed' ELSE 'Completed' END
              WHERE vyo_id = @vyo;
 

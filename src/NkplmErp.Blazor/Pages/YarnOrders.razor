@@ -144,28 +144,25 @@ else
                                                        @onchange="@(e => ArrivalEdit[v.VyoId] = e.Value?.ToString() ?? "")" />
                                                 <button class="vlife-save" @onclick="@(() => SaveArrivalAsync(v))">Save</button>
 
-                                                @* Invoice = "the yarn arrived from the vendor and is ready for use".
-                                                   Saved ones collapse to a read-only chip so the number can't be
-                                                   nudged by a stray keystroke; Edit reopens it for a correction. *@
-                                                @if (v.IsInvoiced && InvoiceEditing != v.VyoId)
+                                                @* Arrived = "the yarn physically arrived from the vendor": invoice,
+                                                   weight, pragyapan no, LC/TT no, saved together via sp_ManageYarnOrder
+                                                   flag 'I'. Saved ones collapse to a read-only summary; Edit reopens
+                                                   the modal pre-filled for a correction. *@
+                                                @if (v.IsInvoiced)
                                                 {
-                                                    <label class="vlife-lbl done">Client Invoice</label>
-                                                    <span class="vlife-invno" title="@InvoiceTitle(v)">@v.InvoiceNo</span>
-                                                    <button class="vlife-edit" title="Correct this invoice number"
-                                                            @onclick="@(() => BeginInvoiceEdit(v))">Edit</button>
+                                                    <label class="vlife-lbl done">Arrived</label>
+                                                    <div class="vlife-arrived">
+                                                        <span class="vlife-arrived-item"><span class="k">Invoice</span>@v.InvoiceNo</span>
+                                                        <span class="vlife-arrived-item"><span class="k">Weight</span>@(v.Weight?.ToString("N2") ?? "—") kg</span>
+                                                        <span class="vlife-arrived-item"><span class="k">Pragyapan</span>@(v.PragyapanNo ?? "—")</span>
+                                                        <span class="vlife-arrived-item"><span class="k">LC/TT</span>@(v.LcTtNo ?? "—")</span>
+                                                    </div>
+                                                    <button class="vlife-edit" title="Correct these arrival details"
+                                                            @onclick="@(() => OpenArrivedModal(v))">Edit</button>
                                                 }
                                                 else
                                                 {
-                                                    <label class="vlife-lbl">Client Invoice</label>
-                                                    <input class="vlife-inv" placeholder="Invoice no" maxlength="50"
-                                                           value="@InvoiceEdit.GetValueOrDefault(v.VyoId)"
-                                                           @onchange="@(e => InvoiceEdit[v.VyoId] = e.Value?.ToString() ?? "")" />
-                                                    <button class="vlife-save" disabled="@(invoiceSaving)"
-                                                            @onclick="@(() => OpenInvoiceConfirm(v))">Save</button>
-                                                    @if (v.IsInvoiced)
-                                                    {
-                                                        <button class="vlife-cancel" @onclick="CancelInvoiceEdit">Cancel</button>
-                                                    }
+                                                    <button class="vlife-arrive" disabled="@(arrivedSaving)" @onclick="@(() => OpenArrivedModal(v))">📦 Arrived</button>
                                                 }
 
                                                 <button class="vlife-drop" title="Vendor dropped a color" @onclick="@(() => OpenDropModal(v))">⚠ Drop color</button>
@@ -304,50 +301,67 @@ else
             <div class="dcf-note">This flags the color(s) as dropped by the vendor. Nothing is deleted.</div>
         </ConfirmModal>
 
-        @* ---- Invoice confirm. Typing a number is a claim that the yarn physically arrived,
-               so it never saves straight from the input — a typo would silently complete an
-               order. Clearing one is the reverse claim, so it gets the destructive styling. ---- *@
-        <ConfirmModal IsVisible="showInvoiceConfirm"
-                      Title="@(IsClearingInvoice ? "Clear this invoice?" : "Confirm this yarn has arrived")"
-                      Icon="@(IsClearingInvoice ? "⚠" : "📦")"
-                      Danger="IsClearingInvoice"
-                      ConfirmText="@(IsClearingInvoice ? "⚠ Yes, reopen it" : "✓ Yes, it arrived")"
-                      BusyText="Saving…"
-                      Busy="invoiceSaving"
-                      OnResult="OnInvoiceConfirmResult">
-            <div class="dcf-sub">On vendor order <b>@invoiceVendor?.VyoNo</b>@(string.IsNullOrWhiteSpace(invoiceVendor?.Vendor) ? "" : $" · {invoiceVendor!.Vendor}")</div>
+        @* ---- Arrived details modal (Client invoice, Weight, Pragyapan no, LC/TT no).
+               Saved together via sp_ManageYarnOrder flag 'I' (IYarnOrderManager.SaveInvoiceAsync). ---- *@
+        @if (showArrivedModal && arrivedVendor is not null)
+        {
+            <div class="dc-overlay" @onclick="CloseArrivedModal">
+                <div class="dc-card" @onclick:stopPropagation="true">
+                    <div class="dc-head">
+                        <div class="dc-head-l"><span class="dc-ic">📦</span><span>Mark as arrived</span></div>
+                        <button class="dc-x" @onclick="CloseArrivedModal" aria-label="Close">✕</button>
+                    </div>
+                    <div class="dc-body">
+                        <div class="dc-ctx">Vendor order <b>@arrivedVendor.VyoNo</b>@(string.IsNullOrWhiteSpace(arrivedVendor.Vendor) ? "" : $" · {arrivedVendor.Vendor}")</div>
 
-            @if (IsClearingInvoice)
-            {
-                <div class="dcf-note">
-                    Removing invoice <b>@invoiceVendor?.InvoiceNo</b> puts this vendor order back to
-                    pending, and @(invoiceVendor?.TotalKg.ToString("N2")) kg stops counting as received.
+                        <label class="dc-note-l">Client invoice</label>
+                        <input class="vlife-inv arr-full" placeholder="Invoice no" maxlength="50"
+                               value="@ArrivedInvoiceEdit.GetValueOrDefault(arrivedVendor.VyoId)"
+                               @onchange="@(e => ArrivedInvoiceEdit[arrivedVendor.VyoId] = e.Value?.ToString() ?? "")" />
+
+                        <div class="arr-row2">
+                            <div>
+                                <label class="dc-note-l">Weight (kg)</label>
+                                <input class="vlife-inv arr-full" placeholder="0.00" maxlength="20"
+                                       value="@ArrivedWeightEdit.GetValueOrDefault(arrivedVendor.VyoId)"
+                                       @onchange="@(e => ArrivedWeightEdit[arrivedVendor.VyoId] = e.Value?.ToString() ?? "")" />
+                            </div>
+                            <div>
+                                <label class="dc-note-l">Pragyapan no</label>
+                                <input class="vlife-inv arr-full" placeholder="Pragyapan no" maxlength="50"
+                                       value="@ArrivedPragyapanEdit.GetValueOrDefault(arrivedVendor.VyoId)"
+                                       @onchange="@(e => ArrivedPragyapanEdit[arrivedVendor.VyoId] = e.Value?.ToString() ?? "")" />
+                            </div>
+                        </div>
+
+                        <label class="dc-note-l">LC / TT no</label>
+                        <input class="vlife-inv arr-full" placeholder="LC / TT no" maxlength="50"
+                               value="@ArrivedLcTtEdit.GetValueOrDefault(arrivedVendor.VyoId)"
+                               @onchange="@(e => ArrivedLcTtEdit[arrivedVendor.VyoId] = e.Value?.ToString() ?? "")" />
+                    </div>
+                    <div class="dc-foot">
+                        <button class="dc-btn ghost" @onclick="CloseArrivedModal">Cancel</button>
+                        <button class="dc-btn primary" @onclick="OpenArrivedConfirm">Continue</button>
+                    </div>
                 </div>
-            }
-            else
-            {
-                <div class="inv-box">
-                    <div class="inv-k">Invoice number</div>
-                    <div class="inv-v">@PendingInvoiceNo</div>
-                </div>
-                <div class="dcf-note">
-                    Saving this marks @(invoiceVendor?.TotalKg.ToString("N2")) kg as received and ready for use.
-                    @if (InvoiceCompletesOrder)
-                    {
-                        <text>
-                            This is the last uninvoiced vendor order, so <b>@Selected?.YoNo</b> becomes
-                            completed and a planning task is raised.
-                        </text>
-                    }
-                    else
-                    {
-                        <text>
-                            @OtherOpenVendorCount other vendor order(s) are still uninvoiced, so
-                            <b>@Selected?.YoNo</b> stays pending.
-                        </text>
-                    }
-                </div>
-            }
+            </div>
+        }
+
+        @* ---- Confirm step before the arrived details are actually saved. ---- *@
+        <ConfirmModal IsVisible="showArrivedConfirm"
+                      Title="Confirm arrival details"
+                      Icon="📦"
+                      ConfirmText="✓ Yes, save"
+                      BusyText="Saving…"
+                      Busy="arrivedSaving"
+                      OnResult="OnArrivedConfirmResult">
+            <div class="dcf-sub">On vendor order <b>@arrivedVendor?.VyoNo</b>@(string.IsNullOrWhiteSpace(arrivedVendor?.Vendor) ? "" : $" · {arrivedVendor!.Vendor}")</div>
+            <div class="dcf-note">
+                Invoice <b>@ArrivedInvoiceEdit.GetValueOrDefault(arrivedVendor?.VyoId ?? 0)</b> ·
+                @(ArrivedWeightEdit.GetValueOrDefault(arrivedVendor?.VyoId ?? 0)) kg ·
+                Pragyapan <b>@ArrivedPragyapanEdit.GetValueOrDefault(arrivedVendor?.VyoId ?? 0)</b> ·
+                LC/TT <b>@ArrivedLcTtEdit.GetValueOrDefault(arrivedVendor?.VyoId ?? 0)</b>
+            </div>
         </ConfirmModal>
     </div>
 }
