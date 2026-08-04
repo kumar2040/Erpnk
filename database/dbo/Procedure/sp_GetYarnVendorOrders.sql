@@ -16,6 +16,7 @@ BEGIN
     SELECT vyo_id, yo_id, vyo_no, vendor, created_date, created_by,
            total_kg, line_count, departure_date, arrival_date,
            invoice_no, invoice_date, invoice_by,
+           weight, pragyapan_no, lc_tt_no,
            [status]
     FROM dbo.tbl_yarn_vendor_order
     WHERE yo_id = @YoId

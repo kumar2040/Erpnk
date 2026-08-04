@@ -174,6 +174,11 @@ public class YarnVendorOrderDto
     public DateTime? InvoiceDate { get; set; }
     public string? InvoiceBy { get; set; }
 
+    /// <summary>Arrived weight (kg), captured together with the invoice.</summary>
+    public decimal? Weight { get; set; }
+    public string? PragyapanNo { get; set; }
+    public string? LcTtNo { get; set; }
+
     /// <summary>True once an invoice number exists — this sub-order's yarn is in and usable.</summary>
     public bool IsInvoiced => !string.IsNullOrWhiteSpace(InvoiceNo);
 

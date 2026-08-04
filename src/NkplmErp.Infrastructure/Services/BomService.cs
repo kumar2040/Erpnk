@@ -241,6 +241,9 @@ public class BomService : IBomService
                 InvoiceNo = reader["invoice_no"] != DBNull.Value ? reader["invoice_no"]?.ToString() : null,
                 InvoiceDate = reader["invoice_date"] != DBNull.Value ? Convert.ToDateTime(reader["invoice_date"]) : null,
                 InvoiceBy = reader["invoice_by"] != DBNull.Value ? reader["invoice_by"]?.ToString() : null,
+                Weight = reader["weight"] != DBNull.Value ? Convert.ToDecimal(reader["weight"]) : null,
+                PragyapanNo = reader["pragyapan_no"] != DBNull.Value ? reader["pragyapan_no"]?.ToString() : null,
+                LcTtNo = reader["lc_tt_no"] != DBNull.Value ? reader["lc_tt_no"]?.ToString() : null,
                 Status = reader["status"]?.ToString() ?? string.Empty
             });
         }

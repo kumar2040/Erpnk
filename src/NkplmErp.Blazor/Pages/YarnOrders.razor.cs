@@ -45,11 +45,6 @@ public partial class YarnOrders
     private Dictionary<int, string> DepartureEdit = new();
     private Dictionary<int, string> ArrivalEdit = new();
 
-    // Per-vendor-order invoice buffer, plus which one (if any) is currently open for
-    // editing. A saved invoice renders as a read-only chip until Edit is clicked, so a
-    // completed order can't be reopened by a stray keystroke in an always-live input.
-    private Dictionary<int, string> InvoiceEdit = new();
-    private int? InvoiceEditing;
     private string StatusMessage = "";
     private bool IsError = false;
 
@@ -162,8 +157,6 @@ public partial class YarnOrders
     {
         DepartureEdit = VendorOrders.ToDictionary(v => v.VyoId, v => v.DepartureDate?.ToString("yyyy-MM-dd") ?? "");
         ArrivalEdit = VendorOrders.ToDictionary(v => v.VyoId, v => v.ArrivalDate?.ToString("yyyy-MM-dd") ?? "");
-        InvoiceEdit = VendorOrders.ToDictionary(v => v.VyoId, v => v.InvoiceNo ?? "");
-        InvoiceEditing = null;
     }
 
     private async Task SaveDepartureAsync(YarnVendorOrderDto v)
@@ -217,114 +210,93 @@ public partial class YarnOrders
         }
     }
 
-    // ---- Invoice number = "the yarn arrived from the vendor and is ready for use". It
-    // completes ONE vendor sub-order; the parent order is only completed once every vendor
-    // sub-order under it has one, and it's that last invoice which raises the planning task
-    // (decided by sp_ManageYarnOrder flag 'I', not here). ----
-    private bool showInvoiceConfirm;
-    private bool invoiceSaving;
-    private YarnVendorOrderDto? invoiceVendor;
+    // ---- "Arrived" = the yarn physically arrived from the vendor: client invoice, weight,
+    // pragyapan no, and LC/TT no, all captured together and saved as one call to
+    // sp_ManageYarnOrder flag 'I' (the same write path the old invoice-only save used). ----
+    private Dictionary<int, string> ArrivedInvoiceEdit = new();
+    private Dictionary<int, string> ArrivedWeightEdit = new();
+    private Dictionary<int, string> ArrivedPragyapanEdit = new();
+    private Dictionary<int, string> ArrivedLcTtEdit = new();
 
-    /// <summary>What's in the input for the vendor order awaiting confirmation, trimmed.</summary>
-    private string PendingInvoiceNo =>
-        invoiceVendor is null ? "" : (InvoiceEdit.GetValueOrDefault(invoiceVendor.VyoId) ?? "").Trim();
+    private bool showArrivedModal;
+    private bool showArrivedConfirm;
+    private bool arrivedSaving;
+    private YarnVendorOrderDto? arrivedVendor;
 
-    /// <summary>Blank on an already-invoiced order = the correction path: wipe it and reopen.</summary>
-    private bool IsClearingInvoice => string.IsNullOrWhiteSpace(PendingInvoiceNo);
-
-    private int OtherOpenVendorCount =>
-        VendorOrders.Count(v => v.VyoId != invoiceVendor?.VyoId && !v.IsInvoiced);
-
-    private bool InvoiceCompletesOrder => OtherOpenVendorCount == 0;
-
-    private string InvoiceTitle(YarnVendorOrderDto v) =>
-        $"Invoice {v.InvoiceNo}" +
-        (v.InvoiceDate is null ? "" : $" · received {v.InvoiceDate:dd MMM yyyy}") +
-        (string.IsNullOrWhiteSpace(v.InvoiceBy) ? "" : $" · by {v.InvoiceBy}");
-
-    private void BeginInvoiceEdit(YarnVendorOrderDto v)
+    private void OpenArrivedModal(YarnVendorOrderDto v)
     {
-        InvoiceEdit[v.VyoId] = v.InvoiceNo ?? "";
-        InvoiceEditing = v.VyoId;
+        arrivedVendor = v;
+        ArrivedInvoiceEdit[v.VyoId] = v.InvoiceNo ?? "";
+        ArrivedWeightEdit[v.VyoId] = v.Weight?.ToString("0.###") ?? "";
+        ArrivedPragyapanEdit[v.VyoId] = v.PragyapanNo ?? "";
+        ArrivedLcTtEdit[v.VyoId] = v.LcTtNo ?? "";
+        showArrivedModal = true;
     }
 
-    private void CancelInvoiceEdit()
+    private void CloseArrivedModal() => showArrivedModal = false;
+
+    // Nothing is sent until the user confirms the restated values — same "don't trust a
+    // stray keystroke" rule the old invoice-save flow used.
+    private void OpenArrivedConfirm()
     {
-        // Drop whatever was typed and go back to the saved chip.
-        if (InvoiceEditing is int id)
+        if (arrivedVendor is null) return;
+        var id = arrivedVendor.VyoId;
+
+        if (string.IsNullOrWhiteSpace(ArrivedInvoiceEdit.GetValueOrDefault(id))
+            || string.IsNullOrWhiteSpace(ArrivedWeightEdit.GetValueOrDefault(id))
+            || string.IsNullOrWhiteSpace(ArrivedPragyapanEdit.GetValueOrDefault(id))
+            || string.IsNullOrWhiteSpace(ArrivedLcTtEdit.GetValueOrDefault(id)))
         {
-            var v = VendorOrders.FirstOrDefault(x => x.VyoId == id);
-            InvoiceEdit[id] = v?.InvoiceNo ?? "";
-        }
-        InvoiceEditing = null;
-    }
-
-    // Nothing is sent until the user confirms — a typo here would silently mark yarn as
-    // received, so the claim is always restated back to them first.
-    private void OpenInvoiceConfirm(YarnVendorOrderDto v)
-    {
-        invoiceVendor = v;
-
-        var typed = PendingInvoiceNo;
-
-        // Blank on an order that was never invoiced is just an empty save, not a correction.
-        if (string.IsNullOrWhiteSpace(typed) && !v.IsInvoiced)
-        {
-            Toast.ShowWarning("Invoice number can't be empty.");
+            Toast.ShowWarning("Fill in all four fields before continuing.");
             return;
         }
 
-        if (string.Equals(typed, v.InvoiceNo?.Trim() ?? "", StringComparison.Ordinal))
-        {
-            Toast.ShowInfo("That's already the saved invoice number.");
-            InvoiceEditing = null;
-            return;
-        }
-
-        showInvoiceConfirm = true;
+        showArrivedConfirm = true;
     }
 
-    private async Task OnInvoiceConfirmResult(bool confirmed)
+    private async Task OnArrivedConfirmResult(bool confirmed)
     {
         if (confirmed)
-            await SaveInvoiceAsync();
+            await SaveArrivedAsync();
         else
-            showInvoiceConfirm = false;
+            showArrivedConfirm = false;
     }
 
-    private async Task SaveInvoiceAsync()
+    private async Task SaveArrivedAsync()
     {
-        if (invoiceVendor is null) return;
+        if (arrivedVendor is null) return;
+        var id = arrivedVendor.VyoId;
 
-        invoiceSaving = true;
+        arrivedSaving = true;
         StateHasChanged();
 
         var result = await YarnApi.SaveInvoiceAsync(new YarnOrderRequestModel
         {
-            YarnId = invoiceVendor.VyoId.ToString(),
-            InvoiceNo = PendingInvoiceNo   // blank travels as-is; the SP reads it as "clear"
+            YarnId = id.ToString(),
+            InvoiceNo = ArrivedInvoiceEdit.GetValueOrDefault(id, "").Trim(),
+            Weight = ArrivedWeightEdit.GetValueOrDefault(id, "").Trim(),
+            PragyapanNo = ArrivedPragyapanEdit.GetValueOrDefault(id, "").Trim(),
+            LcTtNo = ArrivedLcTtEdit.GetValueOrDefault(id, "").Trim()
         });
 
-        invoiceSaving = false;
+        arrivedSaving = false;
 
         if (result.Succeeded)
         {
-            // The proc reports what actually happened — how many vendor orders are still
-            // outstanding, or that the order is complete and a planning task went out.
-            Toast.ShowSuccess(result.Data?.Message ?? "Invoice saved.");
-            showInvoiceConfirm = false;
-            InvoiceEditing = null;
+            Toast.ShowSuccess(result.Data?.Message ?? "Arrival details saved.");
+            showArrivedConfirm = false;
+            showArrivedModal = false;
             await ReloadAfterInvoiceAsync();
         }
         else
         {
-            Toast.ShowError(result.Messages ?? "Could not save the invoice number.");
-            showInvoiceConfirm = false;   // close the confirm, leave the input open to retry
+            Toast.ShowError(result.Messages ?? "Could not save the arrival details.");
+            showArrivedConfirm = false;   // close the confirm, leave the modal open to retry
         }
         StateHasChanged();
     }
 
-    // An invoice can move the header between Ordered and Completed, so the left list has to
+    // An arrival can move the header between Ordered and Completed, so the left list has to
     // be re-fetched too — under an Ordered filter the order it just completed should leave.
     private async Task ReloadAfterInvoiceAsync()
     {

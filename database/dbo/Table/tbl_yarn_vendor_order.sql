@@ -3,7 +3,9 @@
 --
 -- The invoice_* columns and IX_vyo_yo_id_invoice were added after that scripting date;
 -- an existing database gets them from Table/alter_tbl_yarn_vendor_order_invoice.sql.
--- They are folded in here so this file still describes the whole table.
+-- The weight/pragyapan_no/lc_tt_no columns were added later still, from
+-- Table/alter_tbl_yarn_vendor_order_arrived.sql. Both are folded in here so this
+-- file still describes the whole table.
 CREATE TABLE [dbo].[tbl_yarn_vendor_order] (
     [vyo_id] int IDENTITY(1,1) NOT NULL,
     [yo_id] int NOT NULL,
@@ -21,6 +23,10 @@ CREATE TABLE [dbo].[tbl_yarn_vendor_order] (
     [invoice_no] varchar(50) NULL,
     [invoice_date] datetime NULL,
     [invoice_by] varchar(50) NULL,
+    -- Captured together with the invoice as the "yarn physically arrived" event.
+    [weight] decimal(18,3) NULL,
+    [pragyapan_no] varchar(50) NULL,
+    [lc_tt_no] varchar(50) NULL,
     [status] varchar(20) NOT NULL CONSTRAINT [DF__tbl_yarn___statu__2882FE7D] DEFAULT ('Placed'),
     CONSTRAINT [PK__tbl_yarn__A674C705E75567A6] PRIMARY KEY CLUSTERED ([vyo_id] ASC)
 );
