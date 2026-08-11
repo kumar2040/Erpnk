@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using NkplmErp.Shared.DTOs;
+using NkplmErp.Shared.Wrapper;
 
 namespace NkplmErp.Blazor.Services.Bom;
 
@@ -17,16 +18,28 @@ public class BomApiClient
     }
 
     /// <summary>Yarn requirement / import decision for an order (flag 1 = this order's lines).</summary>
-    public async Task<List<BomYarnLineDto>> GetYarnRequirementAsync(string orderNo, int flag = 1)
+    public async Task<Response<List<BomYarnLineDto>>> GetYarnRequirementAsync(string orderNo, int flag = 1, int? poTaskId = null)
     {
         try
         {
-            var response = await _httpClient.GetAsync($"{Base}/yarn-requirement?orderNo={Uri.EscapeDataString(orderNo)}&flag={flag}");
+            var taskPart = poTaskId.HasValue ? $"&poTaskId={poTaskId.Value}" : string.Empty;
+            var response = await _httpClient.GetAsync($"{Base}/yarn-requirement?orderNo={Uri.EscapeDataString(orderNo)}&flag={flag}{taskPart}");
             if (response.IsSuccessStatusCode)
-                return await response.Content.ReadFromJsonAsync<List<BomYarnLineDto>>() ?? new();
-            return new();
+            {
+                return await response.Content.ReadFromJsonAsync<Response<List<BomYarnLineDto>>>()
+                    ?? Response<List<BomYarnLineDto>>.Fail("The BOM API returned an empty response.");
+            }
+            var message = await response.Content.ReadAsStringAsync();
+            return Response<List<BomYarnLineDto>>.Fail(
+                string.IsNullOrWhiteSpace(message)
+                    ? $"BOM request failed ({(int)response.StatusCode})."
+                    : message);
         }
-        catch (Exception ex) { _logger.LogError(ex, "GetYarnRequirementAsync failed"); return new(); }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "GetYarnRequirementAsync failed");
+            return Response<List<BomYarnLineDto>>.Fail(ex.Message);
+        }
     }
 
     /// <summary>Place a yarn order; returns the generated reference (yo_no) or null on failure.</summary>

@@ -1,0 +1,89 @@
+@page "/tasks/report"
+@attribute [Authorize]
+@using NkplmErp.Shared.DTOs
+@using NkplmErp.Blazor.Shared
+
+@if (AccessDenied)
+{
+    <AccessDenied403 Message="You don’t have permission to view the Task report. If you need access, contact your administrator." />
+}
+else
+{
+<div class="rep-body">
+    <div class="rep-head">
+        <div>
+            <h1 class="rep-title">Task aging report</h1>
+            <p class="rep-sub">How long tasks take at each stage — completed cycle times and the age of what's still open.</p>
+        </div>
+        <div class="rep-filters">
+            <input type="date" @bind="startDate" />
+            <span class="rep-to">to</span>
+            <input type="date" @bind="endDate" />
+            <button class="rep-apply" @onclick="LoadAsync">Apply</button>
+            <a class="rep-back" href="/tasks">← Board</a>
+        </div>
+    </div>
+
+    @if (loading)
+    {
+        <div class="rep-empty">Loading…</div>
+    }
+    else if (report is null || report.Stages.Count == 0)
+    {
+        <div class="rep-empty">No tasks in this window.</div>
+    }
+    else
+    {
+        <div class="rep-tiles">
+            <div class="rep-tile"><div class="t-lbl">Avg cycle (all)</div><div class="t-val">@Fmt(OverallAvgCycle) d</div></div>
+            <div class="rep-tile"><div class="t-lbl">Slowest stage</div><div class="t-val t-sm">@SlowestStageLabel</div></div>
+            <div class="rep-tile"><div class="t-lbl">Open tasks</div><div class="t-val">@report.Stages.Sum(s => s.OpenCount)</div></div>
+            <div class="rep-tile t-danger"><div class="t-lbl">Open &gt; 7 days</div><div class="t-val">@report.Stages.Sum(s => s.OpenOver7)</div></div>
+        </div>
+
+        <div class="rep-table">
+            <div class="rep-row rep-row-head">
+                <span>Stage</span><span>Done</span><span>Wait → start</span><span>Start → done</span><span>Total cycle</span><span>Open now</span>
+            </div>
+            @foreach (var s in report.Stages)
+            {
+                <div class="rep-row">
+                    <span class="s-name">@s.StageName</span>
+                    <span>@s.CompletedCount</span>
+                    <span>@Fmt(s.AvgDaysToStart) d</span>
+                    <span>@Fmt(s.AvgWorkDays) d</span>
+                    <span class="s-cycle">
+                        <span class="s-bar @(IsSlowest(s) ? "hot" : "")" style="width:@BarWidth(s)%"></span>
+                        @Fmt(s.AvgCycleDays) d
+                    </span>
+                    <span>@s.OpenCount @(s.OpenOver7 > 0 ? $"({s.OpenOver7} old)" : "")</span>
+                </div>
+            }
+        </div>
+
+        <div class="rep-sect">Slowest open tasks</div>
+        @if (report.SlowestOpen.Count == 0)
+        {
+            <div class="rep-empty">Nothing open — all clear.</div>
+        }
+        else
+        {
+            <div class="rep-table">
+                <div class="rep-row rep-row-head slow">
+                    <span>Task</span><span>Stage</span><span>Status</span><span>Age</span><span>Due</span>
+                </div>
+                @foreach (var o in report.SlowestOpen)
+                {
+                    <div class="rep-row slow">
+                        <span class="s-name">@(string.IsNullOrWhiteSpace(o.Title) ? $"Task #{o.PoTaskId}" : o.Title)</span>
+                        <span>@o.StageName</span>
+                        <span>@o.StatusName</span>
+                        <span class="@(o.AgeDays > 7 ? "age-hot" : "age")">@o.AgeDays.ToString("0.#") d</span>
+                        <span>@(o.DueDate?.ToString("dd MMM") ?? "—")</span>
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
+}

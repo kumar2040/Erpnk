@@ -208,7 +208,7 @@ namespace NkplmErp.Blazor.Pages.PoTasks
             if (scope?.IsRestricted == true)
                 selectedFactoryType = scope.AssignedGauge;
 
-            await LoadBoardAsync();
+             LoadBoardAsync();
         }
 
         // -------------------------------------------------------------- board ----
@@ -231,21 +231,35 @@ namespace NkplmErp.Blazor.Pages.PoTasks
             // on All and on My tasks.
             var flags = _buckets.Keys.ToList();
             var countsTask = Api.GetAttachmentCountsAsync();   // 📎 badge data, fetched alongside the columns
+            var ranksTask = Api.GetReviewRanksAsync();         // order_no -> latest review id (sort key)
             var results = await Task.WhenAll(flags.Select(flag => MineOnly
                 ? Api.GetMyTasksAsync(flag, startDate: start, endDate: end, orderNo: search, factoryType: factory)
                 : Api.GetBoardAsync(flag, startDate: start, endDate: end, orderNo: search, factoryType: factory)));
             var counts = await countsTask;
+            var ranks = await ranksTask;
 
             // A newer filter change started while we awaited -> drop these stale results so the
             // board never shows data that doesn't match the filters currently on screen.
             if (token != _loadSeq) return;
 
+            // Column order: NEWEST tbl_order_review.id first; tasks whose order has no
+            // review (manual tasks, unreviewed POs) follow, newest task first.
             for (var i = 0; i < flags.Count; i++)
-                _buckets[flags[i]] = results[i];
+                _buckets[flags[i]] = results[i]
+                    .OrderByDescending(c => LatestReviewRank(c, ranks))
+                    .ThenByDescending(c => c.TaskId)
+                    .ToList();
             _fileCounts = counts;
 
             loading = false;
             StateHasChanged();
+        }
+
+        private static int LatestReviewRank(PoTaskCardDto card, IReadOnlyDictionary<string, int> ranks)
+        {
+            var orders = (card.OrderNos ?? card.OrderNo ?? string.Empty)
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            return orders.Select(o => ranks.TryGetValue(o, out var rank) ? rank : -1).DefaultIfEmpty(-1).Max();
         }
 
         // Task id -> document count (only tasks with files are present). Drives the

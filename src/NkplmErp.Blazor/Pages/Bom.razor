@@ -107,6 +107,10 @@ else
                     {
                         <div class="bom-empty">Calculating yarn requirement…</div>
                     }
+                    else if (!string.IsNullOrWhiteSpace(CalculationError))
+                    {
+                        <div class="bom-empty">BOM calculation failed: @CalculationError</div>
+                    }
                     else if (!YarnLines.Any())
                     {
                         <div class="bom-empty">No yarn requirement found for @SelectedOrderNo (nothing remaining to knit).</div>

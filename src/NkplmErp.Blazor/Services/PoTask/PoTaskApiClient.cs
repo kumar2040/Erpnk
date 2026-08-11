@@ -84,6 +84,24 @@ public class PoTaskApiClient
         catch (Exception ex) { _logger.LogError(ex, "GetAttachmentAsync({Id}) failed", attachmentId); return null; }
     }
 
+    // Aging report: cycle-time averages per stage + slowest open tasks.
+    public async Task<PoTaskAgingReportResult?> GetAgingReportAsync(DateTime? startDate = null, DateTime? endDate = null)
+    {
+        try
+        {
+            var url = $"{Base}/aging-report";
+            var sep = '?';
+            if (startDate.HasValue) { url += $"{sep}startDate={startDate.Value:yyyy-MM-dd}"; sep = '&'; }
+            if (endDate.HasValue) { url += $"{sep}endDate={endDate.Value:yyyy-MM-dd}"; }
+
+            var response = await _httpClient.GetAsync(url);
+            if (response.IsSuccessStatusCode)
+                return await response.Content.ReadFromJsonAsync<PoTaskAgingReportResult>();
+            return null;
+        }
+        catch (Exception ex) { _logger.LogError(ex, "GetAgingReportAsync failed"); return null; }
+    }
+
     // Active users for the assign pickers (PoTask-gated).
     public async Task<List<PoTaskStaffDto>> GetStaffAsync()
     {
@@ -96,6 +114,24 @@ public class PoTaskApiClient
             return new();
         }
         catch (Exception ex) { _logger.LogError(ex, "GetStaffAsync failed"); return new(); }
+    }
+
+    // order_no -> latest review id, the board's "newest review first" sort key.
+    public async Task<Dictionary<string, int>> GetReviewRanksAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"{Base}/review-ranks");
+            if (response.IsSuccessStatusCode)
+            {
+                var rows = await response.Content.ReadFromJsonAsync<List<PoOrderReviewRankDto>>() ?? new();
+                return rows
+                    .GroupBy(r => r.OrderNo.Trim(), StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.Max(r => r.ReviewId), StringComparer.OrdinalIgnoreCase);
+            }
+            return new(StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) { _logger.LogError(ex, "GetReviewRanksAsync failed"); return new(StringComparer.OrdinalIgnoreCase); }
     }
 
     // Task id -> file count, for the board's 📎 badge (tasks without files are absent).

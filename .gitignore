@@ -19,3 +19,5 @@
 !/database/NkplmErp.Database.sqlproj
 /docs
 /.worktrees/
+/.superpowers
+/tests

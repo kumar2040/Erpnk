@@ -1,4 +1,5 @@
 using NkplmErp.Shared.DTOs;
+using NkplmErp.Shared.Wrapper;
 
 namespace NkplmErp.Application.Interfaces;
 
@@ -14,7 +15,7 @@ public interface IBomService
     /// Flag 1 = import-decision rows for this order (qty &gt; 0),
     /// Flag 2 = full picture incl. backlog-only yarns.
     /// </summary>
-    Task<List<BomYarnLineDto>> GetYarnRequirementAsync(string orderNo, int flag = 1);
+    Task<IResponse<List<BomYarnLineDto>>> GetYarnRequirementAsync(string? orderNo, int flag = 1, int? poTaskId = null);
 
     /// <summary>
     /// Save a yarn order (one header + per-order detail rows) and return the

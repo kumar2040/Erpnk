@@ -1,4 +1,5 @@
 using NkplmErp.Shared.DTOs;
+using NkplmErp.Shared.Wrapper;
 
 namespace NkplmErp.Application.Interfaces;
 
@@ -52,6 +53,12 @@ public interface IPoTaskService
     /// <summary>Active users for the assign pickers (PoTask-gated — no RoleManagement permission needed).</summary>
     Task<List<PoTaskStaffDto>> GetStaffAsync();
 
+    /// <summary>Cycle-time averages per stage + slowest open tasks, filtered by CreatedDate window.</summary>
+    Task<PoTaskAgingReportResult> GetAgingReportAsync(DateTime? startDate, DateTime? endDate);
+
+    /// <summary>order_no -> latest tbl_order_review.id — the board's "newest review first" sort key.</summary>
+    Task<List<PoOrderReviewRankDto>> GetReviewRanksAsync();
+
     /// <summary>"Update my side": move ONLY the acting user's own assignee row, then roll up.</summary>
     Task MyUpdateAsync(MyUpdatePoTaskRequest request, string userId);
 
@@ -98,7 +105,7 @@ public interface IPoTaskService
     /// No RefId: the board derives the task's yarn order from its OrderNo (see sp_GetPoTask's
     /// LinkUrl), so nothing has to be stored here — and dedupe stays per (OrderNo, Stage).
     /// </summary>
-    Task<int> EnsureBomTaskAsync(string orderNo, string? factoryType, IEnumerable<string> assigneeUserIds, int notifyAfterDays, string userId, string? detail = null);
+    Task<int> EnsureBomTaskAsync(string orderNo, string? factoryType, IEnumerable<string> assigneeUserIds, int notifyAfterDays, string userId, string? detail = null, int? reviewId = null);
 
     /// <summary>
     /// Reviewed orders (local tbl_order_review) that have no PO-Entry task yet — the
@@ -117,6 +124,8 @@ public interface IPoTaskService
     /// order's "Create plan" task. Returns how many were completed.
     /// </summary>
     Task<int> CompleteStageAsync(string orderNo, byte stage, string? note, string userId);
+
+    Task<IResponse<PoTaskBomCompleteResultDto>> CompleteBomOrderAsync(int poTaskId, string orderNo, string? note, string userId);
 
     // ---- in-app notifications (bell) ----
 

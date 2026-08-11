@@ -68,7 +68,7 @@
 .vplaced-h{font-size:.62rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:700;margin-bottom:5px}
 .vplaced-row{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:.74rem}
 .vplaced-row .vno{font-weight:800;color:var(--navy)}
-.vplaced-row .vname{color:#334155;font-weight:600}
+.vplaced-row .vname{color:#334155;font-weight:600;text-transform:uppercase}
 .vplaced-row .vmeta{color:var(--muted);margin-left:auto}
 .vplaced-row .vstat{font-size:.62rem;font-weight:800;border-radius:20px;padding:1px 8px;color:#047857;background:rgba(5,150,105,.13)}
 .vplaced-row .vstat.wait{color:#92600b;background:rgba(234,159,39,.16)}
@@ -104,7 +104,7 @@
 .vgroup{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:10px}
 .vhead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 11px;background:#eef2f7;border-bottom:1px solid var(--line)}
 .vh-left{display:flex;flex-direction:column}
-.vh-name{font-weight:800;color:var(--navy);font-size:.8rem}
+.vh-name{font-weight:800;color:var(--navy);font-size:.8rem;text-transform:uppercase}
 .vh-meta{font-size:.66rem;color:var(--muted);font-weight:600;margin-top:1px}
 .vh-btn{border:none;border-radius:7px;background:var(--teal);color:#fff;font-weight:800;font-size:.72rem;padding:7px 12px;cursor:pointer}
 .vh-btn:disabled{opacity:.5;cursor:not-allowed}

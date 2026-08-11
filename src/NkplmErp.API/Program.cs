@@ -365,7 +365,7 @@ if (app.Environment.IsDevelopment())
 // Recurring jobs. The outbox drain sends pending tblMailLog rows every minute
 // through the tblEmailSetting row 1 SMTP account; a mail that keeps failing
 // stops retrying after 5 attempts (reason kept in tblMailLog.error_msg).
-RecurringJob.AddOrUpdate<IEmailService>("send-email-job", x => x.SendEmailTask(1), Cron.Minutely);
+//RecurringJob.AddOrUpdate<IEmailService>("send-email-job", x => x.SendEmailTask(1), Cron.Minutely);
 
 app.MapControllers();
 app.MapHub<NkplmErp.API.Hubs.NotificationHub>("/hubs/notifications");

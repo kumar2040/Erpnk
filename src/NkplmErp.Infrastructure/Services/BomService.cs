@@ -2,8 +2,11 @@ using System.Data;
 using System.Text.Json;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using NkplmErp.Application.Interfaces;
+using NkplmErp.Shared.DataAccess.GenericRepository;
 using NkplmErp.Shared.DTOs;
+using NkplmErp.Shared.Wrapper;
 
 namespace NkplmErp.Infrastructure.Services;
 
@@ -14,54 +17,35 @@ namespace NkplmErp.Infrastructure.Services;
 public class BomService : IBomService
 {
     private readonly string _connectionString;
+    private readonly IGenericRepository _genericRepository;
+    private readonly ILogger<BomService> _logger;
 
-    public BomService(IConfiguration configuration)
+    public BomService(
+        IConfiguration configuration,
+        IGenericRepository genericRepository,
+        ILogger<BomService> logger)
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+        _genericRepository = genericRepository;
+        _logger = logger;
     }
 
-    public async Task<List<BomYarnLineDto>> GetYarnRequirementAsync(string orderNo, int flag = 1)
+    public async Task<IResponse<List<BomYarnLineDto>>> GetYarnRequirementAsync(string? orderNo, int flag = 1, int? poTaskId = null)
     {
-        var result = new List<BomYarnLineDto>();
-        if (string.IsNullOrWhiteSpace(orderNo)) return result;
-
-        using var connection = new SqlConnection(_connectionString);
-        await connection.OpenAsync();
-        using var cmd = new SqlCommand("knitYarnRequirement", connection) { CommandType = CommandType.StoredProcedure, CommandTimeout = 120 };
-        cmd.Parameters.AddWithValue("@OrderNo", orderNo.Trim());
-        cmd.Parameters.AddWithValue("@Flag", flag);
-
-        using var reader = await cmd.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
+        try
         {
-            var dto = new BomYarnLineDto();
-            for (int i = 0; i < reader.FieldCount; i++)
-            {
-                string col = reader.GetName(i).Replace("_", "").Replace(" ", "").ToLower();
-                if (reader.IsDBNull(i)) continue;
-
-                switch (col)
-                {
-                    case "productid": dto.ProductId = reader[i].ToString()?.Trim() ?? string.Empty; break;
-                    case "yarnname": dto.YarnName = reader[i].ToString()?.Trim() ?? string.Empty; break;
-                    case "ordercolor": dto.OrderColor = reader[i].ToString()?.Trim() ?? string.Empty; break;
-                    case "styleguage": dto.StyleGuage = reader[i].ToString()?.Trim() ?? string.Empty; break;
-                    case "styleply": dto.StylePly = reader[i].ToString()?.Trim() ?? string.Empty; break;
-                    case "itemqty": dto.ItemQty = ToDecimalSafe(reader[i]); break;
-                    case "selfwt": dto.SelfWt = ToDecimalSafe(reader[i]); break;
-                    case "othwt": dto.OthWt = ToDecimalSafe(reader[i]); break;
-                    case "mainqty": dto.MainQty = ToDecimalSafe(reader[i]); break;
-                    case "plmqty": dto.PlmQty = ToDecimalSafe(reader[i]); break;
-                    case "knitterqty": dto.KnitterQty = ToDecimalSafe(reader[i]); break;
-                    case "stockqty": dto.StockQty = ToDecimalSafe(reader[i]); break;
-                    case "shortfallkg": dto.ShortfallKg = ToDecimalSafe(reader[i]); break;
-                    case "decision": dto.Decision = reader[i].ToString()?.Trim() ?? string.Empty; break;
-                }
-            }
-            result.Add(dto);
+            var rows = await _genericRepository.GetQueryResultAsync<BomYarnLineDto>(
+                "knitYarnRequirement",
+                new { OrderNo = orderNo, Flag = flag, PoTaskId = poTaskId },
+                CommandType.StoredProcedure);
+            return Response<List<BomYarnLineDto>>.Success(rows);
         }
-        return result;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "BOM calculation failed for order {OrderNo}, task {PoTaskId}.", orderNo, poTaskId);
+            return Response<List<BomYarnLineDto>>.Fail(ex.Message);
+        }
     }
 
     public async Task<PlaceYarnOrderResult> PlaceYarnOrderAsync(PlaceYarnOrderRequest request, string? createdBy)

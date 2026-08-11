@@ -14,7 +14,7 @@ else
     <div class="page-header-container">
         <div class="header-row">
             <div class="page-title-section">
-                <h1 class="page-title">Tasks</h1>
+                <h1 class="page-title">Task Management</h1>
             </div>
 
             <div class="compact-filters">
@@ -38,8 +38,11 @@ else
                 </div>
 
                 <div class="filter-item">
-                    <input type="text" class="compact-search" placeholder="Search Order No"
-                           value="@orderNo" @onchange="OnOrderNoChanged" />
+                    <label class="compact-search" aria-label="Search order number">
+                        <i class="fa-solid fa-search" aria-hidden="true"></i>
+                        <input type="text" class="compact-search-input" placeholder="Search Order No"
+                               value="@orderNo" @onchange="OnOrderNoChanged" />
+                    </label>
                 </div>
 
                 @* Facility filter — one dropdown, always shown, in both All and My tasks.
@@ -54,11 +57,19 @@ else
                                         Value="@FactoryValueForControl" ValueChanged="OnFactoryTypeSelectedAsync" />
                 </div>
 
+                <div class="filter-item">
+                    <a class="report-btn" href="/tasks/report" title="Task aging report">
+                        <i class="fa-solid fa-chart-column" aria-hidden="true"></i>
+                        <span>Report</span>
+                    </a>
+                </div>
+
                 @if (CanEdit)
                 {
                     <div class="filter-item">
                         <button type="button" class="add-btn" @onclick="OpenAdd">
-                            <span>+ Add task</span>
+                            <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                            <span>Add task</span>
                         </button>
                     </div>
                 }
@@ -66,22 +77,25 @@ else
         </div>
 
         @* Stat cards double as the board filter (like /task's ShowBubble): click one to
-           show only that status, click Work Load for the grouped view. Status cards come
-           from BoardColumns; Work Load is a view control, injected after On Hold. *@
+           show only that status, click Work Load for the grouped view. Status cards stay
+           dynamic from BoardColumns; Work Load is the leading grouped-view control. *@
         <div class="stats-grid">
+            <div class="stat-card stat-workload @(activeView == WorkloadView ? "active" : "")"
+                 @onclick="() => ShowView(WorkloadView)">
+                <div class="stat-content">
+                    <div class="stat-label"><span class="stat-dot" aria-hidden="true"></span>Work Load</div>
+                    <div class="stat-value">@Workload</div>
+                </div>
+            </div>
             @foreach (var col in BoardColumns)
             {
                 <div class="stat-card stat-@col.Id.ToLowerInvariant() @(activeView == col.Id ? "active" : "")"
                      @onclick="() => ShowView(col.Id)">
-                    <div class="stat-content"><div class="stat-label">@col.Value</div><div class="stat-value">@Count(col.Id)</div></div>
-                </div>
-                @if (col.Id == "H")
-                {
-                    <div class="stat-card stat-workload @(activeView == WorkloadView ? "active" : "")"
-                         @onclick="() => ShowView(WorkloadView)">
-                        <div class="stat-content"><div class="stat-label">Work Load</div><div class="stat-value">@Workload</div></div>
+                    <div class="stat-content">
+                        <div class="stat-label"><span class="stat-dot" aria-hidden="true"></span>@col.Value</div>
+                        <div class="stat-value">@Count(col.Id)</div>
                     </div>
-                }
+                </div>
             }
         </div>
     </div>
@@ -96,7 +110,19 @@ else
             <div class="board-col col-@col.Id.ToLowerInvariant() @(SingleView ? "flow" : "")">
                 @if (!SingleView)
                 {
-                    <div class="col-head"><span class="dot"></span> @col.Value <span class="cnt">@Count(col.Id)</span></div>
+                    <div class="col-head">
+                        <div class="col-status-pill">
+                            <span class="col-status-icon" aria-hidden="true"></span>
+                            <span>@col.Value</span>
+                            <span class="cnt">@Count(col.Id)</span>
+                        </div>
+                        @if (CanEdit && col.Id == "S")
+                        {
+                            <button type="button" class="col-add" aria-label="Add scheduled task" @onclick="OpenAdd">
+                                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                            </button>
+                        }
+                    </div>
                 }
                 @if (loading)
                 {
@@ -137,7 +163,11 @@ else
                             }
                             <div class="tcard-meta">
                                 <span>@card.StageName</span>
-                                @if (!string.IsNullOrWhiteSpace(card.OrderNo)) { <span>· PO @card.OrderNo</span> }
+                                @if (!string.IsNullOrWhiteSpace(card.OrderNos ?? card.OrderNo))
+                                {
+                                    <span>· PO @(card.OrderNos ?? card.OrderNo)</span>
+                                    @if (card.OrderCount > 1) { <span class="chip">@card.OrderCount orders</span> }
+                                }
                                 @if (card.DueDate is not null) { <span>· due @card.DueDate.Value.ToString("dd MMM")</span> }
                             </div>
                             <div class="tcard-foot">
@@ -343,7 +373,10 @@ else
             </div>
             <div class="modal-body">
                 <div class="detail-meta">
-                    @if (!string.IsNullOrWhiteSpace(detail.Task.OrderNo)) { <span class="chip">PO @detail.Task.OrderNo</span> }
+                    @if (!string.IsNullOrWhiteSpace(detail.Task.OrderNos ?? detail.Task.OrderNo))
+                    {
+                        <span class="chip">PO @(detail.Task.OrderNos ?? detail.Task.OrderNo)</span>
+                    }
                     <span class="chip">@detail.Task.StatusName</span>
                     @if (detail.Task.PriorityName is not null) { <span class="chip">@detail.Task.PriorityName</span> }
                     @if (detail.Task.DueDate is not null) { <span class="chip">Due @detail.Task.DueDate.Value.ToString("yyyy-MM-dd")</span> }

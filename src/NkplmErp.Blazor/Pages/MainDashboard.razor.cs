@@ -283,7 +283,12 @@ public partial class MainDashboard : ComponentBase
             if (!PermSvc.CanView("Dashboard") && !PermSvc.LandingApplied)
             {
                 PermSvc.LandingApplied = true; // one-shot — never loop back to the dashboard
-                var landing = await RoleApi.GetMyLandingAsync();
+
+                // Non-admin landing = the Tasks board, whenever the user may view it.
+                // (Admins can view the Dashboard, never reach this block, and keep their
+                // current behavior.) Users without PoTask.View fall through to the old
+                // first-viewable-page landing below.
+                var landing = PermSvc.CanView("PoTask") ? "/tasks" : await RoleApi.GetMyLandingAsync();
                 // Never redirect to a dashboard route from the dashboard (avoids loops),
                 // and never redirect to the page we're already on.
                 static string Norm(string? p) => "/" + (p ?? "").Trim().TrimStart('/').TrimEnd('/').ToLowerInvariant();
