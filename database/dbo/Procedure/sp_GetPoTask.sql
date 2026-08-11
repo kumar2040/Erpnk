@@ -187,6 +187,7 @@ BEGIN
             WHEN 2  THEN CASE WHEN q.[OrderNo] IS NOT NULL
                               THEN N'/bom?orderNo=' + q.[OrderNo]
                                    + N'&poTaskId=' + CONVERT(nvarchar(20), t.[PoTaskId])
+                                   + N'&orderNos=' + COALESCE(ord.[OrderNos], q.[OrderNo])
                                    + ISNULL(om.[MonthParam], N'') END
 
             -- Planning (3) -> opens by order (+ gauge when present). A task raised FROM a
