@@ -29,6 +29,11 @@ CREATE PROCEDURE [dbo].[sp_ManagePoTask]
     @SizeBytes        INT            = NULL,
     @Content          VARBINARY(MAX) = NULL,
     @ParamJson        NVARCHAR(MAX)  = NULL,   -- SNAPSHOT / ALERTCHECK: canonical production params
+    @ReviewId         INT            = NULL,
+    @NotifyAfterDays  INT            = NULL,
+    @MaxOrders        INT            = NULL,
+    @SourcePoTaskId   INT            = NULL,
+    @TargetPoTaskId   INT            = NULL,
     @UserId           NVARCHAR(450)  = NULL    -- the ACTING user (whose own row MYUPDATE touches)
 AS
 BEGIN
@@ -337,6 +342,48 @@ BEGIN
         END
 
         SELECT @changed AS [Changed];
+        RETURN;
+    END
+
+    /* ------------------------------------------------------------- BOMATTACH
+       Public PoTask write entry point for reviewed-order BOM batching. The
+       helper owns locking/membership; this dispatcher owns date conversion. */
+    IF (@op = 'BOMATTACH')
+    BEGIN
+        DECLARE @bomNotifyDate DATETIME = DATEADD(DAY, ISNULL(@NotifyAfterDays, 2), GETDATE());
+        EXEC [dbo].[sp_PoTask_AttachOrCreateBom]
+             @OrderNo = @OrderNo,
+             @ReviewId = @ReviewId,
+             @FactoryType = @FactoryType,
+             @Detail = @Detail,
+             @NotificationDate = @bomNotifyDate,
+             @DueDate = @bomNotifyDate,
+             @AssigneeUserIds = @AssigneeUserIds,
+             @GroupId = @GroupId,
+             @UserId = @UserId,
+             @MaxOrders = @MaxOrders;
+        RETURN;
+    END
+
+    /* ----------------------------------------------------------- BOMCOMPLETE */
+    IF (@op = 'BOMCOMPLETE')
+    BEGIN
+        EXEC [dbo].[sp_PoTask_CompleteBomOrder]
+             @PoTaskId = @PoTaskId,
+             @OrderNo = @OrderNo,
+             @Note = @Note,
+             @UserId = @UserId;
+        RETURN;
+    END
+
+    /* -------------------------------------------------------------- BOMMERGE */
+    IF (@op = 'BOMMERGE')
+    BEGIN
+        EXEC [dbo].[sp_PoTask_MergeBomTask]
+             @SourcePoTaskId = @SourcePoTaskId,
+             @TargetPoTaskId = @TargetPoTaskId,
+             @UserId = @UserId,
+             @MaxOrders = @MaxOrders;
         RETURN;
     END
 

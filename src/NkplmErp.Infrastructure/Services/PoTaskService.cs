@@ -1,7 +1,10 @@
 using System.Data;
+using Microsoft.Extensions.Logging;
 using NkplmErp.Application.Interfaces;
 using NkplmErp.Shared.DTOs;
 using NkplmErp.Shared.Repositories.Interface;
+using NkplmErp.Shared.DataAccess.GenericRepository;
+using NkplmErp.Shared.Wrapper;
 
 namespace NkplmErp.Infrastructure.Services;
 
@@ -18,12 +21,20 @@ public class PoTaskService : IPoTaskService
     private const int MaxAttachmentBytes = 1024 * 1024;   // 1 MB
 
     private readonly IDapperRepository _repo;
+    private readonly IGenericRepository _genericRepository;
     private readonly INotificationPublisher _publisher;
+    private readonly ILogger<PoTaskService> _logger;
 
-    public PoTaskService(IDapperRepository repo, INotificationPublisher publisher)
+    public PoTaskService(
+        IDapperRepository repo,
+        IGenericRepository genericRepository,
+        INotificationPublisher publisher,
+        ILogger<PoTaskService> logger)
     {
         _repo = repo;
+        _genericRepository = genericRepository;
         _publisher = publisher;
+        _logger = logger;
     }
 
     // ----------------------------------------------------------------- reads ----
@@ -171,6 +182,22 @@ public class PoTaskService : IPoTaskService
     public Task<List<PoTaskStaffDto>> GetStaffAsync() =>
         _repo.GetQueryResultAsync<PoTaskStaffDto>("sp_PoTask_Staff", new { }, CommandType.StoredProcedure);
 
+    public Task<List<PoOrderReviewRankDto>> GetReviewRanksAsync() =>
+        _repo.GetQueryResultAsync<PoOrderReviewRankDto>("sp_PoTask_ReviewRanks", new { }, CommandType.StoredProcedure);
+
+    public async Task<PoTaskAgingReportResult> GetAgingReportAsync(DateTime? startDate, DateTime? endDate)
+    {
+        // Two result sets: per-stage aggregates, then the slowest open tasks.
+        var sets = await _repo.GetFromMultipleQuery<PoTaskAgingStageDto, PoTaskAgingOpenDto>(
+            "sp_PoTask_AgingReport", new { StartDate = startDate, EndDate = endDate }, CommandType.StoredProcedure);
+
+        return new PoTaskAgingReportResult
+        {
+            Stages      = (List<PoTaskAgingStageDto>)sets[0],
+            SlowestOpen = (List<PoTaskAgingOpenDto>)sets[1]
+        };
+    }
+
     public Task MyUpdateAsync(MyUpdatePoTaskRequest req, string userId) =>
         _repo.ExecuteAsync(WriteSp, new
         {
@@ -275,27 +302,29 @@ public class PoTaskService : IPoTaskService
             UserIds = assigneeUserIds?.Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList() ?? new()
         }, userId);
 
-    public Task<int> EnsureBomTaskAsync(string orderNo, string? factoryType, IEnumerable<string> assigneeUserIds, int notifyAfterDays, string userId, string? detail = null)
+    public async Task<int> EnsureBomTaskAsync(string orderNo, string? factoryType, IEnumerable<string> assigneeUserIds, int notifyAfterDays, string userId, string? detail = null, int? reviewId = null)
     {
-        var notify = DateTime.Today.AddDays(notifyAfterDays);
-        return CreateAsync(new CreatePoTaskRequest
+        var result = await _genericRepository.GetQueryFirstOrDefaultResultAsync<PoTaskBomAttachResultDto>(
+            WriteSp, new
         {
+            Flag = "BOMATTACH",
             OrderNo = orderNo,
-            Stage = 2,                               // BomTask
             FactoryType = factoryType,
-            Title = $"BOM — {orderNo}",
-            Detail = detail ?? "Auto-created when a yarn order / BOM was placed.",
-            NotificationDate = notify,
-            DueDate = notify,                        // first reminder + due date land together
-            CompletionRule = 1,
-            StartDate = DateTime.Today,
-            UserIds = assigneeUserIds?.Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList() ?? new()
-        }, userId);
+            Detail = detail,
+            AssigneeUserIds = string.Join("|", assigneeUserIds?.Where(s => !string.IsNullOrWhiteSpace(s)).Distinct() ?? Enumerable.Empty<string>()),
+            UserId = userId,
+            ReviewId = reviewId,
+            NotifyAfterDays = notifyAfterDays
+        }, CommandType.StoredProcedure);
+        if (result is null || result.PoTaskId <= 0)
+            throw new InvalidOperationException($"BOM task attach/create returned no task id for order {orderNo}.");
+
+        return result.PoTaskId;
     }
 
     public Task<List<PoOrderReviewDto>> GetPendingReviewOrdersAsync() =>
-        _repo.GetQueryResultAsync<PoOrderReviewDto>("sp_PoTask_PendingReviews",
-            new { Top = 50 }, CommandType.StoredProcedure);
+        _genericRepository.GetQueryResultAsync<PoOrderReviewDto>(ReadSp,
+            new { Flag = "PENDINGREVIEWS", Top = 50 }, CommandType.StoredProcedure);
 
     public Task<int> EnsurePoEntryTaskAsync(string orderNo, string? detail, IEnumerable<string> assigneeUserIds, int dueDays, string userId) =>
         CreateAsync(new CreatePoTaskRequest
@@ -314,6 +343,22 @@ public class PoTaskService : IPoTaskService
         _repo.GetQueryFirstOrDefaultResultAsync<int>("sp_PoTask_CompleteStage",
             new { OrderNo = orderNo, Stage = stage, Note = note, UserId = userId },
             CommandType.StoredProcedure);
+
+    public async Task<IResponse<PoTaskBomCompleteResultDto>> CompleteBomOrderAsync(int poTaskId, string orderNo, string? note, string userId)
+    {
+        try
+        {
+            var result = await _genericRepository.GetQueryFirstOrDefaultResultAsync<PoTaskBomCompleteResultDto>(WriteSp,
+                new { Flag = "BOMCOMPLETE", PoTaskId = poTaskId, OrderNo = orderNo, Note = note, UserId = userId },
+                CommandType.StoredProcedure);
+            return Response<PoTaskBomCompleteResultDto>.Success(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Completing BOM order {OrderNo} on task {PoTaskId} failed.", orderNo, poTaskId);
+            return Response<PoTaskBomCompleteResultDto>.Fail(ex.Message);
+        }
+    }
 
     // -------------------------------------------------------- notifications ----
 

@@ -53,13 +53,13 @@ public class BomController(
 
     /// <summary>Yarn requirement / import decision for an order.</summary>
     [HttpGet("yarn-requirement")]
-    public async Task<IActionResult> GetYarnRequirement([FromQuery] string orderNo, [FromQuery] int flag = 1)
+    public async Task<IActionResult> GetYarnRequirement([FromQuery] string? orderNo, [FromQuery] int flag = 1, [FromQuery] int? poTaskId = null)
     {
         if (!await CanViewAsync()) return Forbid();
-        if (string.IsNullOrWhiteSpace(orderNo))
-            return BadRequest("orderNo is required.");
+        if (string.IsNullOrWhiteSpace(orderNo) && poTaskId is null)
+            return BadRequest("orderNo or poTaskId is required.");
 
-        return Ok(await _bomService.GetYarnRequirementAsync(orderNo, flag));
+        return Ok(await _bomService.GetYarnRequirementAsync(orderNo, flag, poTaskId));
     }
 
     /// <summary>Place a yarn order (header + per-order detail). Returns the generated yo_no.</summary>
@@ -89,15 +89,9 @@ public class BomController(
         try
         {
             var userId = GetCurrentUserId();
-            var pmRole = _configuration["TaskAutomation:ProductionManagerRoleName"] ?? "Production Manager";
             var yarnRole = _configuration["TaskAutomation:YarnRoleName"] ?? "Yarn";
 
             var users = (await _roleService.GetAllUsersWithRolesAsync()).ToList();
-            var members = users
-                .Where(u => string.Equals(u.RoleName, pmRole, StringComparison.OrdinalIgnoreCase))
-                .Select(u => u.UserId)
-                .Distinct()
-                .ToList();
             var yarnUsers = users
                 .Where(u => string.Equals(u.RoleName, yarnRole, StringComparison.OrdinalIgnoreCase))
                 .Select(u => u.UserId)
@@ -112,15 +106,11 @@ public class BomController(
             foreach (var orderNo in orders)
             {
                 // Ensure returns the task id (idempotent per order — creates or reuses).
-                var taskId = await _poTaskService.EnsureBomTaskAsync(orderNo, null, members, BomNotifyAfterDays, userId);
+                var taskId = await _poTaskService.EnsureBomTaskAsync(orderNo, null, yarnUsers, BomNotifyAfterDays, userId);
                 if (taskId > 0)
                 {
-                    await _poTaskService.TransitionAsync(new TransitionPoTaskRequest
-                    {
-                        PoTaskId = taskId,
-                        ToStatus = "C",
-                        Note = $"Yarn order {yoNo} created — BOM done."
-                    }, userId);
+                    await _poTaskService.CompleteBomOrderAsync(
+                        taskId, orderNo, $"Yarn order {yoNo} created - BOM done.", userId);
                 }
 
                 // Follow-up: the Yarn role now places the actual vendor order(s).

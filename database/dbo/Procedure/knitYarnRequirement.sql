@@ -25,14 +25,40 @@
    @Flag = 2  -> full #Guage_color_stock (includes backlog-only rows)
    @Flag = 3  -> raw #FinalResults rows for THIS order
    ===================================================================== */
-CREATE   PROCEDURE [dbo].[knitYarnRequirement]
-    @OrderNo VARCHAR(50),
-    @Flag    INT = 1
+CREATE OR ALTER PROCEDURE [dbo].[knitYarnRequirement]
+    @OrderNo VARCHAR(50) = NULL,
+    @Flag    INT = 1,
+    @PoTaskId INT = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    SET @OrderNo = LTRIM(RTRIM(@OrderNo));
+    SET @OrderNo = NULLIF(LTRIM(RTRIM(@OrderNo)), '');
+
+    CREATE TABLE #SelectedOrders
+    (
+        order_no VARCHAR(50) NOT NULL PRIMARY KEY
+    );
+
+    IF @PoTaskId IS NOT NULL
+        INSERT INTO #SelectedOrders (order_no)
+        SELECT DISTINCT LTRIM(RTRIM(o.[OrderNo]))
+        FROM [dbo].[PoTaskOrder] o
+        WHERE o.[PoTaskId] = @PoTaskId AND o.[IsActive] = 1;
+
+    -- Backward compatibility for legacy single-order tasks. Always retain the
+    -- task/card's original order even after newer orders have membership rows.
+    -- The previous fallback added it only when #SelectedOrders was empty, which
+    -- could silently drop BAM-078 as soon as another order joined its BOM task.
+    IF @OrderNo IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM #SelectedOrders WHERE order_no = @OrderNo)
+        INSERT INTO #SelectedOrders (order_no) VALUES (@OrderNo);
+
+    IF NOT EXISTS (SELECT 1 FROM #SelectedOrders)
+    BEGIN
+        RAISERROR('Order number or BOM task id is required.', 16, 1);
+        RETURN;
+    END;
 
     IF OBJECT_ID('tempdb..#FinalResults')     IS NOT NULL DROP TABLE #FinalResults;
     IF OBJECT_ID('tempdb..#Guage_color_stock') IS NOT NULL DROP TABLE #Guage_color_stock;
@@ -123,7 +149,7 @@ BEGIN
             MAX(fr.style_guage) AS style_guage,
             MAX(fr.style_ply)   AS style_ply,
             -- Compounded Calculation: (wt * (1 + wastage%)) * 1.10 (working wt buffer)
-            SUM(CASE WHEN LTRIM(RTRIM(fr.order_no)) = @OrderNo
+            SUM(CASE WHEN selected.order_no IS NOT NULL
                      THEN (fr.rempc * (
                             CASE WHEN ISNULL(p.wastage, 0) > 0
                                  THEN (fr.wt * (1.0 + (p.wastage / 100.0))) * 1.10
@@ -131,7 +157,7 @@ BEGIN
                             END) / 1000.0)
                      ELSE 0
                 END) AS selfwt,
-            SUM(CASE WHEN LTRIM(RTRIM(fr.order_no)) <> @OrderNo
+            SUM(CASE WHEN selected.order_no IS NULL
                      THEN (fr.rempc * (
                             CASE WHEN ISNULL(p.wastage, 0) > 0
                                  THEN (fr.wt * (1.0 + (p.wastage / 100.0))) * 1.10
@@ -139,9 +165,11 @@ BEGIN
                             END) / 1000.0)
                      ELSE 0
                 END) AS othWt,
-            COUNT(DISTINCT CASE WHEN LTRIM(RTRIM(fr.order_no)) = @OrderNo THEN fr.style_no END) AS StyleCount,
-            SUM(CASE WHEN LTRIM(RTRIM(fr.order_no)) = @OrderNo THEN fr.rempc ELSE 0 END)         AS qty
+            COUNT(DISTINCT CASE WHEN selected.order_no IS NOT NULL THEN fr.style_no END) AS StyleCount,
+            SUM(CASE WHEN selected.order_no IS NOT NULL THEN fr.rempc ELSE 0 END)         AS qty
         FROM #FinalResults fr
+        LEFT JOIN #SelectedOrders selected
+               ON selected.order_no = LTRIM(RTRIM(fr.order_no))
         LEFT JOIN tblproduct AS p ON fr.product_id = CAST(p.product_id AS VARCHAR(100))
         WHERE fr.product_id IS NOT NULL
           AND LTRIM(RTRIM(fr.product_id)) NOT IN ('', '0')
@@ -250,14 +278,14 @@ BEGIN
     BEGIN
         -- Import decision for the yarn required by THIS order
         SELECT
-            product_id,
+            product_id AS ProductId,
             YarnName,
-            order_color,
-            style_guage,
-            style_ply,
-            qty AS item_qty,
-            CAST(selfwt    AS DECIMAL(18,3)) AS selfwt,
-            CAST(othWt     AS DECIMAL(18,3)) AS othWt,
+            order_color AS OrderColor,
+            style_guage AS StyleGuage,
+            style_ply AS StylePly,
+            qty AS ItemQty,
+            CAST(selfwt    AS DECIMAL(18,3)) AS SelfWt,
+            CAST(othWt     AS DECIMAL(18,3)) AS OthWt,
             MainQty,
             PlmQty,
             KnitterQty,
@@ -272,9 +300,10 @@ BEGIN
     BEGIN
         -- Full picture incl. backlog-only yarns (qty = 0)
         SELECT
-            product_id, YarnName, order_color, style_guage, style_ply,
-            CAST(selfwt   AS DECIMAL(18,3)) AS selfwt,
-            CAST(othWt    AS DECIMAL(18,3)) AS othWt,
+            product_id AS ProductId, YarnName, order_color AS OrderColor,
+            style_guage AS StyleGuage, style_ply AS StylePly,
+            CAST(selfwt   AS DECIMAL(18,3)) AS SelfWt,
+            CAST(othWt    AS DECIMAL(18,3)) AS OthWt,
             StyleCount, qty,
             MainQty, PlmQty, KnitterQty,
             CAST(StockQty AS DECIMAL(18,3)) AS StockQty,
@@ -284,7 +313,9 @@ BEGIN
     END
     ELSE
     BEGIN
-        SELECT * FROM #FinalResults WHERE LTRIM(RTRIM(order_no)) = @OrderNo;
+        SELECT fr.*
+        FROM #FinalResults fr
+        WHERE EXISTS (SELECT 1 FROM #SelectedOrders s WHERE s.order_no = LTRIM(RTRIM(fr.order_no)));
     END
 
     IF OBJECT_ID('tempdb..#FinalResults')      IS NOT NULL DROP TABLE #FinalResults;

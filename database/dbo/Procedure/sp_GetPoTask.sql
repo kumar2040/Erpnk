@@ -39,7 +39,9 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_GetPoTask]
     @OrderNo     NVARCHAR(50)  = NULL,
     @FactoryType NVARCHAR(100) = NULL,
     @PoTaskId    INT           = NULL,
-    @UserId      NVARCHAR(450) = NULL
+    @UserId      NVARCHAR(450) = NULL,
+    @Top         INT           = NULL,
+    @CutoffDate  DATETIME      = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -62,6 +64,18 @@ BEGIN
     DECLARE @SearchOrderNo NVARCHAR(50) = NULLIF(LTRIM(RTRIM(@OrderNo)), '');
     DECLARE @WindowStart DATE = CAST(@StartDate AS DATE);
     DECLARE @WindowEnd   DATE = CAST(@EndDate   AS DATE);
+
+    /* ---------------------------------------------------- PENDINGREVIEWS
+       Keep every PoTask read behind this feature's shared read procedure. */
+    IF (@op = 'PENDINGREVIEWS')
+    BEGIN
+        DECLARE @pendingTop INT = ISNULL(@Top, 50);
+        DECLARE @pendingCutoff DATETIME = ISNULL(@CutoffDate, '2026-07-21');
+        EXEC [dbo].[sp_PoTask_PendingReviews]
+             @Top = @pendingTop,
+             @CutoffDate = @pendingCutoff;
+        RETURN;
+    END
 
     -- Shared display-name helpers reused by BOARD / MYTASKS / DETAIL.
     -- (Stage / Status / Priority -> friendly text.)
@@ -95,7 +109,16 @@ BEGIN
        Four result sets: the task, its assignees, its checklist, its attachments. */
     IF (@op = 'DETAIL')
     BEGIN
-        SELECT t.[PoTaskId], t.[OrderNo], t.[Stage],
+        SELECT t.[PoTaskId], t.[OrderNo],
+               COALESCE((SELECT STRING_AGG(CONVERT(nvarchar(max), o.[OrderNo]), N', ')
+                         FROM [dbo].[PoTaskOrder] o
+                         WHERE o.[PoTaskId] = t.[PoTaskId] AND o.[IsActive] = 1), t.[OrderNo]) AS [OrderNos],
+               CASE WHEN EXISTS (SELECT 1 FROM [dbo].[PoTaskOrder] o
+                                 WHERE o.[PoTaskId] = t.[PoTaskId] AND o.[IsActive] = 1)
+                    THEN (SELECT COUNT(*) FROM [dbo].[PoTaskOrder] o
+                          WHERE o.[PoTaskId] = t.[PoTaskId] AND o.[IsActive] = 1)
+                    WHEN t.[OrderNo] IS NULL THEN 0 ELSE 1 END AS [OrderCount],
+               t.[Stage],
                CASE t.[Stage] WHEN 1 THEN 'PO entry' WHEN 2 THEN 'BOM task' WHEN 3 THEN 'Planning'
                               WHEN 10 THEN 'Yarn issue' WHEN 11 THEN 'Product return' WHEN 12 THEN 'Yarn order'
                               WHEN 20 THEN 'Manual' ELSE 'Task' END AS [StageName],
@@ -142,6 +165,9 @@ BEGIN
     SELECT
         t.[PoTaskId]                                   AS [TaskId],
         t.[OrderNo],
+        COALESCE(ord.[OrderNos], t.[OrderNo])           AS [OrderNos],
+        CASE WHEN ord.[OrderNos] IS NULL THEN CASE WHEN t.[OrderNo] IS NULL THEN 0 ELSE 1 END
+             ELSE ord.[OrderCount] END                    AS [OrderCount],
         t.[Stage],
         -- The URL this card's title opens, built per stage. Derived per read, so it covers
         -- tasks raised before this existed and follows the data if it moves. NULL = not
@@ -160,6 +186,7 @@ BEGIN
             -- BOM (2) -> the bill of materials for its production order, keyed by order no.
             WHEN 2  THEN CASE WHEN q.[OrderNo] IS NOT NULL
                               THEN N'/bom?orderNo=' + q.[OrderNo]
+                                   + N'&poTaskId=' + CONVERT(nvarchar(20), t.[PoTaskId])
                                    + ISNULL(om.[MonthParam], N'') END
 
             -- Planning (3) -> opens by order (+ gauge when present). A task raised FROM a
@@ -223,6 +250,14 @@ BEGIN
         END                                            AS [DisplayFlag]
     INTO #cards
     FROM [dbo].[PoTask] t
+    OUTER APPLY
+    (
+        SELECT STRING_AGG(CONVERT(nvarchar(max), o.[OrderNo]), N', ')
+                   WITHIN GROUP (ORDER BY o.[OrderNo]) AS [OrderNos],
+               COUNT(*) AS [OrderCount]
+        FROM [dbo].[PoTaskOrder] o WITH (NOLOCK)
+        WHERE o.[PoTaskId] = t.[PoTaskId] AND o.[IsActive] = 1
+    ) ord
     -- The order's ship month -- first of the month of the earliest order_ldate across its
     -- lines -- pre-formatted as the &month value /order-planning and /bom read. Both pages
     -- load one month at a time, so a link without it lands on today's month and the order
@@ -254,7 +289,11 @@ BEGIN
       AND t.[Status] <> 'X'
       AND (@Stage IS NULL OR t.[Stage] = @Stage)
       -- order-no search (contains)
-      AND (@SearchOrderNo IS NULL OR t.[OrderNo] LIKE '%' + @SearchOrderNo + '%')
+      AND (@SearchOrderNo IS NULL
+           OR t.[OrderNo] LIKE '%' + @SearchOrderNo + '%'
+           OR EXISTS (SELECT 1 FROM [dbo].[PoTaskOrder] so WITH (NOLOCK)
+                      WHERE so.[PoTaskId] = t.[PoTaskId] AND so.[IsActive] = 1
+                        AND so.[OrderNo] LIKE '%' + @SearchOrderNo + '%'))
       -- facility: NULL = all facilities; a restricted user is already pinned above
       AND (@EffFactory IS NULL OR LOWER(t.[FactoryType]) = LOWER(@EffFactory))
       -- date window: overlap on [StartDate, DueDate]; NULL dates skip the filter

@@ -178,6 +178,30 @@ public class PoTaskController(
         return Ok(await _poTaskService.GetStaffAsync());
     }
 
+    // GET api/v1/PoTask/aging-report?startDate=&endDate=  (View) — cycle times per stage
+    [HttpGet("aging-report")]
+    public async Task<IActionResult> GetAgingReport(
+        [FromQuery] DateTime? startDate = null,
+        [FromQuery] DateTime? endDate = null)
+    {
+        var userId = GetCurrentUserId();
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+        if (!await CanViewAsync(userId)) return Forbid();
+
+        return Ok(await _poTaskService.GetAgingReportAsync(startDate, endDate));
+    }
+
+    // GET api/v1/PoTask/review-ranks  (View) — order_no -> latest review id, the board's sort key
+    [HttpGet("review-ranks")]
+    public async Task<IActionResult> GetReviewRanks()
+    {
+        var userId = GetCurrentUserId();
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+        if (!await CanViewAsync(userId)) return Forbid();
+
+        return Ok(await _poTaskService.GetReviewRanksAsync());
+    }
+
     // GET api/v1/PoTask/attachments/counts  (View) — file count per task, for the board badge
     [HttpGet("attachments/counts")]
     public async Task<IActionResult> GetAttachmentCounts()

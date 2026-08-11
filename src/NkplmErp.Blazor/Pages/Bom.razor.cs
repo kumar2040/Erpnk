@@ -19,6 +19,7 @@ public partial class Bom
     // Deep link from a BOM task card on /tasks: /bom?orderNo=GT-26011A opens that order's
     // yarn requirement straight away.
     [Parameter, SupplyParameterFromQuery(Name = "orderNo")] public string? FromOrderNo { get; set; }
+    [Parameter, SupplyParameterFromQuery(Name = "poTaskId")] public int? FromPoTaskId { get; set; }
 
     // The month that order ships in, sent alongside orderNo by sp_GetPoTask. Without it the
     // list below defaults to today, so an order shipping in another month opens a list it
@@ -46,6 +47,7 @@ public partial class Bom
     private string? SelectedOrderNo;
     private List<BomYarnLineDto> YarnLines = new();
     private bool IsCalculating = false;
+    private string? CalculationError;
 
     // Column 3 — yarn order basket (temporary, this session).
     // One line per yarn × color; import kg summed across orders, with each
@@ -153,10 +155,17 @@ public partial class Bom
     {
         SelectedOrderNo = orderNo;
         IsCalculating = true;
+        CalculationError = null;
         YarnLines = new();
         StateHasChanged();
 
-        YarnLines = await BomApi.GetYarnRequirementAsync(orderNo, flag: 1);
+        var response = await BomApi.GetYarnRequirementAsync(orderNo, flag: 1, poTaskId: FromPoTaskId);
+        if (response.Succeeded)
+            YarnLines = response.Data ?? new();
+        else
+            CalculationError = string.IsNullOrWhiteSpace(response.Messages)
+                ? "The BOM calculation failed without an error message."
+                : response.Messages;
 
         IsCalculating = false;
         StateHasChanged();

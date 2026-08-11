@@ -12,6 +12,8 @@ public class PoTaskCardDto
 {
     public int TaskId { get; set; }
     public string? OrderNo { get; set; }
+    public string? OrderNos { get; set; }
+    public int OrderCount { get; set; }
     public byte Stage { get; set; }
     public string? LinkUrl { get; set; }          // ready-to-navigate relative URL, built by sp_GetPoTask; null = not clickable
     public string? StageName { get; set; }
@@ -36,6 +38,8 @@ public class PoTaskDetailDto
 {
     public int PoTaskId { get; set; }
     public string? OrderNo { get; set; }
+    public string? OrderNos { get; set; }
+    public int OrderCount { get; set; }
     public byte Stage { get; set; }
     public string? StageName { get; set; }
     public string? Status { get; set; }
@@ -125,6 +129,39 @@ public class PoTaskAttachmentContentDto
     public byte[]? Content { get; set; }
 }
 
+// ---- Task aging report (sp_PoTask_AgingReport) ----
+
+// One row per stage: completed cycle-time averages + open-task counts.
+public class PoTaskAgingStageDto
+{
+    public byte Stage { get; set; }
+    public string StageName { get; set; } = string.Empty;
+    public int CompletedCount { get; set; }
+    public decimal? AvgDaysToStart { get; set; }   // created -> first In-progress
+    public decimal? AvgWorkDays { get; set; }      // first In-progress -> completed
+    public decimal? AvgCycleDays { get; set; }     // created -> completed
+    public int OpenCount { get; set; }
+    public int OpenOver7 { get; set; }
+}
+
+// One slow open task (top-10 by age).
+public class PoTaskAgingOpenDto
+{
+    public int PoTaskId { get; set; }
+    public string? Title { get; set; }
+    public string? OrderNo { get; set; }
+    public string StageName { get; set; } = string.Empty;
+    public string? StatusName { get; set; }
+    public decimal AgeDays { get; set; }
+    public DateTime? DueDate { get; set; }
+}
+
+public class PoTaskAgingReportResult
+{
+    public List<PoTaskAgingStageDto> Stages { get; set; } = new();
+    public List<PoTaskAgingOpenDto> SlowestOpen { get; set; } = new();
+}
+
 // One assignable user (sp_PoTask_Staff) — feeds the Add Task / drawer staff pickers.
 // PoTask-gated, so task editors don't need RoleManagement permission to see it.
 public class PoTaskStaffDto
@@ -141,12 +178,36 @@ public class PoTaskAttachmentCountDto
     public int FileCount { get; set; }
 }
 
+// order_no -> latest tbl_order_review.id (sp_PoTask_ReviewRanks) — board sort key.
+public class PoOrderReviewRankDto
+{
+    public string OrderNo { get; set; } = string.Empty;
+    public int ReviewId { get; set; }
+}
+
 // One reviewed order not yet seeded into the lifecycle (sp_PoTask_PendingReviews).
 public class PoOrderReviewDto
 {
+    public int ReviewId { get; set; }
     public string OrderNo { get; set; } = string.Empty;
     public string? Remark { get; set; }
     public DateTime? ReviewDate { get; set; }
+}
+
+public class PoTaskBomAttachResultDto
+{
+    public int PoTaskId { get; set; }
+    public bool WasCreated { get; set; }
+    public bool WasAttached { get; set; }
+    public int OrderCount { get; set; }
+    public string Message { get; set; } = string.Empty;
+}
+
+public class PoTaskBomCompleteResultDto
+{
+    public int PoTaskId { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
 }
 
 // Bundled result of the DETAIL read (task + assignees + checklist + attachments).
