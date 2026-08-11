@@ -17,3 +17,5 @@
 !/database/identity/
 !/database/NkplmErp.Migrations/
 !/database/NkplmErp.Database.sqlproj
+/docs
+/.worktrees/
