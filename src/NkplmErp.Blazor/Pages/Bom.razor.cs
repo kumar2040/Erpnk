@@ -20,6 +20,7 @@ public partial class Bom
     // yarn requirement straight away.
     [Parameter, SupplyParameterFromQuery(Name = "orderNo")] public string? FromOrderNo { get; set; }
     [Parameter, SupplyParameterFromQuery(Name = "poTaskId")] public int? FromPoTaskId { get; set; }
+    [Parameter, SupplyParameterFromQuery(Name = "orderNos")] public string? FromOrderNos { get; set; }
 
     // The month that order ships in, sent alongside orderNo by sp_GetPoTask. Without it the
     // list below defaults to today, so an order shipping in another month opens a list it
@@ -45,6 +46,8 @@ public partial class Bom
 
     // Column 2 — the selected order's yarn requirement.
     private string? SelectedOrderNo;
+    private string? CalculationOrderNos;
+    private int? CalculationPoTaskId;
     private List<BomYarnLineDto> YarnLines = new();
     private bool IsCalculating = false;
     private string? CalculationError;
@@ -117,7 +120,7 @@ public partial class Bom
         // placed order is normally filtered out of the left-hand list.
         if (!string.IsNullOrWhiteSpace(FromOrderNo))
         {
-            await SelectOrderAsync(FromOrderNo.Trim());
+            await SelectOrderAsync(FromOrderNo.Trim(), FromPoTaskId, FromOrderNos);
             // Deep link only. A row the user clicked is already on screen; the linked one can
             // be anywhere in a 38-order list. The scroll itself waits for OnAfterRenderAsync,
             // because the row doesn't exist in the DOM until this render lands.
@@ -151,15 +154,17 @@ public partial class Bom
     }
 
     // ===== Column 2 — calculate =====
-    private async Task SelectOrderAsync(string orderNo)
+    private async Task SelectOrderAsync(string orderNo, int? poTaskId = null, string? orderNos = null)
     {
         SelectedOrderNo = orderNo;
+        CalculationPoTaskId = poTaskId;
+        CalculationOrderNos = string.IsNullOrWhiteSpace(orderNos) ? orderNo : orderNos.Trim();
         IsCalculating = true;
         CalculationError = null;
         YarnLines = new();
         StateHasChanged();
 
-        var response = await BomApi.GetYarnRequirementAsync(orderNo, flag: 1, poTaskId: FromPoTaskId);
+        var response = await BomApi.GetYarnRequirementAsync(orderNo, flag: 1, poTaskId: CalculationPoTaskId);
         if (response.Succeeded)
             YarnLines = response.Data ?? new();
         else
@@ -172,7 +177,9 @@ public partial class Bom
     }
 
     private Task RecalculateAsync() =>
-        string.IsNullOrEmpty(SelectedOrderNo) ? Task.CompletedTask : SelectOrderAsync(SelectedOrderNo);
+        string.IsNullOrEmpty(SelectedOrderNo)
+            ? Task.CompletedTask
+            : SelectOrderAsync(SelectedOrderNo, CalculationPoTaskId, CalculationOrderNos);
 
     // ===== Column 3 — basket =====
     private static string LineKey(string productId, string color) => $"{productId}|{color}".ToLowerInvariant();
