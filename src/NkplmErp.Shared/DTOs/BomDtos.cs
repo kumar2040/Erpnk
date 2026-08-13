@@ -89,8 +89,12 @@ public class PlaceYarnOrderResult
     public string? YoNo { get; set; }
     public int YoId { get; set; }
     public decimal TotalKg { get; set; }
+    public int PoTaskId { get; set; }
+    public bool WasAppended { get; set; }
+    public int OrderCount { get; set; }
+    public int LineCount { get; set; }
     public string Message { get; set; } = string.Empty;
-    public bool IsSuccess => YoId > 0 && !string.IsNullOrEmpty(YoNo);
+    public bool IsSuccess => YoId > 0 && PoTaskId > 0 && !string.IsNullOrWhiteSpace(YoNo);
 }
 
 /// <summary>A saved yarn order header (list row).</summary>
