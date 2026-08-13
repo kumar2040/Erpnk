@@ -21,7 +21,9 @@ public interface IBomService
     /// Save a yarn order (one header + per-order detail rows) and return the
     /// generated reference, e.g. "Natureknit Yarn-001".
     /// </summary>
-    Task<PlaceYarnOrderResult> PlaceYarnOrderAsync(PlaceYarnOrderRequest request, string? createdBy);
+    Task<IResponse<PlaceYarnOrderResult>> PlaceYarnOrderAsync(
+        PlaceYarnOrderRequest request,
+        string? createdBy);
 
     /// <summary>All saved yarn orders (headers), newest first.</summary>
     Task<List<YarnOrderHeaderDto>> GetYarnOrdersAsync(string? status = null);

@@ -17,17 +17,22 @@ namespace NkplmErp.Infrastructure.Services;
 public class BomService : IBomService
 {
     private readonly string _connectionString;
+    private readonly IConfiguration _configuration;
     private readonly IGenericRepository _genericRepository;
+    private readonly IRoleManagementService _roleManagementService;
     private readonly ILogger<BomService> _logger;
 
     public BomService(
         IConfiguration configuration,
         IGenericRepository genericRepository,
+        IRoleManagementService roleManagementService,
         ILogger<BomService> logger)
     {
+        _configuration = configuration;
         _connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
         _genericRepository = genericRepository;
+        _roleManagementService = roleManagementService;
         _logger = logger;
     }
 
@@ -48,41 +53,53 @@ public class BomService : IBomService
         }
     }
 
-    public async Task<PlaceYarnOrderResult> PlaceYarnOrderAsync(PlaceYarnOrderRequest request, string? createdBy)
+    public async Task<IResponse<PlaceYarnOrderResult>> PlaceYarnOrderAsync(
+        PlaceYarnOrderRequest request,
+        string? createdBy)
     {
         if (request?.Lines == null || request.Lines.Count == 0)
-            return new PlaceYarnOrderResult { YoId = -1, Message = "No lines to place." };
+            return Response<PlaceYarnOrderResult>.Fail("No lines to place.");
 
-        // Project to the exact JSON shape the proc reads (camelCase keys).
-        var payload = request.Lines.Select(l => new
+        try
         {
-            productId = l.ProductId,
-            yarnName = l.YarnName,
-            color = l.Color,
-            ply = l.Ply,
-            orderNo = l.OrderNo,
-            importKg = l.ImportKg
-        });
-        var json = JsonSerializer.Serialize(payload);
+            var yarnRole = _configuration["TaskAutomation:YarnRoleName"] ?? "Yarn";
+            var assigneeUserIds = (await _roleManagementService.GetAllUsersWithRolesAsync())
+                .Where(u => string.Equals(u.RoleName, yarnRole, StringComparison.OrdinalIgnoreCase))
+                .Select(u => u.UserId)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(id => id, StringComparer.Ordinal)
+                .ToList();
 
-        using var connection = new SqlConnection(_connectionString);
-        await connection.OpenAsync();
-        using var cmd = new SqlCommand("sp_SaveYarnOrder", connection) { CommandType = CommandType.StoredProcedure, CommandTimeout = 120 };
-        cmd.Parameters.AddWithValue("@CreatedBy", (object?)createdBy ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@LinesJson", json);
-
-        using var reader = await cmd.ExecuteReaderAsync();
-        if (await reader.ReadAsync())
-        {
-            return new PlaceYarnOrderResult
+            var payload = request.Lines.Select(l => new
             {
-                YoNo = reader["yo_no"] != DBNull.Value ? reader["yo_no"].ToString() : null,
-                YoId = reader["yo_id"] != DBNull.Value ? Convert.ToInt32(reader["yo_id"]) : -1,
-                TotalKg = reader["total_kg"] != DBNull.Value ? Convert.ToDecimal(reader["total_kg"]) : 0m,
-                Message = reader["message"]?.ToString() ?? string.Empty
-            };
+                productId = l.ProductId,
+                yarnName = l.YarnName,
+                color = l.Color,
+                ply = l.Ply,
+                orderNo = l.OrderNo,
+                importKg = l.ImportKg
+            });
+
+            var result = await _genericRepository.GetQueryFirstOrDefaultResultAsync<PlaceYarnOrderResult>(
+                "sp_SaveYarnOrder",
+                new
+                {
+                    CreatedBy = createdBy,
+                    LinesJson = JsonSerializer.Serialize(payload),
+                    AssigneeUserIds = string.Join('|', assigneeUserIds)
+                },
+                CommandType.StoredProcedure);
+
+            return result is { IsSuccess: true }
+                ? Response<PlaceYarnOrderResult>.Success(result, result.Message)
+                : Response<PlaceYarnOrderResult>.Fail(result?.Message ?? "No response from procedure.");
         }
-        return new PlaceYarnOrderResult { YoId = -1, Message = "No response from procedure." };
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Yarn order request failed.");
+            return Response<PlaceYarnOrderResult>.Fail(ex.Message);
+        }
     }
 
     public async Task<List<YarnOrderHeaderDto>> GetYarnOrdersAsync(string? status = null)
