@@ -65,10 +65,14 @@ public class BomServiceTests
     }
 
     [Fact]
-    public async Task PlaceYarnOrderAsync_WithNoLines_ReturnsFailureWithoutDatabaseCall()
+    public async Task PlaceYarnOrderAsync_WithNoLines_UsesProcedureAuthoredFailure()
     {
         var repo = new Mock<IGenericRepository>();
         var roles = new Mock<IRoleManagementService>();
+        roles.Setup(x => x.GetAllUsersWithRolesAsync()).ReturnsAsync(Array.Empty<UserWithRolesDto>());
+        repo.Setup(x => x.GetQueryFirstOrDefaultResultAsync<PlaceYarnOrderResult>(
+                "sp_SaveYarnOrder", It.IsAny<object>(), CommandType.StoredProcedure))
+            .ReturnsAsync(new PlaceYarnOrderResult { Message = "No lines supplied by procedure." });
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["ConnectionStrings:DefaultConnection"] = "Server=unused;Database=unused;"
@@ -78,7 +82,32 @@ public class BomServiceTests
         var response = await sut.PlaceYarnOrderAsync(new PlaceYarnOrderRequest(), "creator");
 
         response.Succeeded.Should().BeFalse();
+        response.Messages.Should().Be("No lines supplied by procedure.");
         repo.Verify(x => x.GetQueryFirstOrDefaultResultAsync<PlaceYarnOrderResult>(
-            It.IsAny<string>(), It.IsAny<object>(), It.IsAny<CommandType>()), Times.Never);
+            "sp_SaveYarnOrder", It.IsAny<object>(), CommandType.StoredProcedure), Times.Once);
+    }
+
+    [Fact]
+    public async Task PlaceYarnOrderAsync_WhenRepositoryThrows_ReturnsGenericFailure()
+    {
+        var repo = new Mock<IGenericRepository>();
+        var roles = new Mock<IRoleManagementService>();
+        roles.Setup(x => x.GetAllUsersWithRolesAsync()).ReturnsAsync(Array.Empty<UserWithRolesDto>());
+        repo.Setup(x => x.GetQueryFirstOrDefaultResultAsync<PlaceYarnOrderResult>(
+                "sp_SaveYarnOrder", It.IsAny<object>(), CommandType.StoredProcedure))
+            .ThrowsAsync(new InvalidOperationException("connection details"));
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:DefaultConnection"] = "Server=unused;Database=unused;"
+        }).Build();
+        var sut = new BomService(config, repo.Object, roles.Object, NullLogger<BomService>.Instance);
+
+        var response = await sut.PlaceYarnOrderAsync(new PlaceYarnOrderRequest
+        {
+            Lines = { new YarnOrderLineDto { ProductId = "P1", ImportKg = 1m } }
+        }, "creator");
+
+        response.Succeeded.Should().BeFalse();
+        response.Messages.Should().Be("Unable to save yarn order.");
     }
 }

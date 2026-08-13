@@ -57,9 +57,6 @@ public class BomService : IBomService
         PlaceYarnOrderRequest request,
         string? createdBy)
     {
-        if (request?.Lines == null || request.Lines.Count == 0)
-            return Response<PlaceYarnOrderResult>.Fail("No lines to place.");
-
         try
         {
             var yarnRole = _configuration["TaskAutomation:YarnRoleName"] ?? "Yarn";
@@ -71,7 +68,7 @@ public class BomService : IBomService
                 .OrderBy(id => id, StringComparer.Ordinal)
                 .ToList();
 
-            var payload = request.Lines.Select(l => new
+            var payload = (request?.Lines ?? []).Select(l => new
             {
                 productId = l.ProductId,
                 yarnName = l.YarnName,
@@ -98,7 +95,7 @@ public class BomService : IBomService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Yarn order request failed.");
-            return Response<PlaceYarnOrderResult>.Fail(ex.Message);
+            return Response<PlaceYarnOrderResult>.Fail("Unable to save yarn order.");
         }
     }
 
