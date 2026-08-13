@@ -17,12 +17,12 @@ BEGIN
 
     DECLARE @Raw TABLE
     (
-        [product_id]    VARCHAR(100),
-        [yarn_name]     VARCHAR(200),
-        [color]         VARCHAR(100),
-        [ply]           VARCHAR(20),
-        [order_no]      VARCHAR(50),
-        [import_kg_text] NVARCHAR(50)
+        [product_id] NVARCHAR(MAX),
+        [yarn_name] NVARCHAR(MAX),
+        [color] NVARCHAR(MAX),
+        [ply] NVARCHAR(MAX),
+        [order_no] NVARCHAR(MAX),
+        [import_kg_text] NVARCHAR(MAX)
     );
 
     DECLARE @Incoming TABLE
@@ -38,6 +38,19 @@ BEGIN
     DECLARE @AssigneeIds TABLE
     (
         [UserId] NVARCHAR(450) NOT NULL PRIMARY KEY
+    );
+
+    DECLARE @CandidateTasks TABLE
+    (
+        [PoTaskId] INT NOT NULL PRIMARY KEY
+    );
+
+    DECLARE @LockedAssignees TABLE
+    (
+        [AssigneeId] INT NOT NULL PRIMARY KEY,
+        [Status] CHAR(1) NOT NULL,
+        [StartDate] DATETIME NULL,
+        [IsActive] BIT NOT NULL
     );
 
     IF @LinesJson IS NULL OR ISJSON(@LinesJson) <> 1
@@ -65,12 +78,12 @@ BEGIN
     FROM OPENJSON(@LinesJson)
     WITH
     (
-        [productId] VARCHAR(100) '$.productId',
-        [yarnName]  VARCHAR(200) '$.yarnName',
-        [color]     VARCHAR(100) '$.color',
-        [ply]       VARCHAR(20)  '$.ply',
-        [orderNo]   VARCHAR(50)  '$.orderNo',
-        [importKg]  NVARCHAR(50) '$.importKg'
+        [productId] NVARCHAR(MAX) '$.productId',
+        [yarnName] NVARCHAR(MAX) '$.yarnName',
+        [color] NVARCHAR(MAX) '$.color',
+        [ply] NVARCHAR(MAX) '$.ply',
+        [orderNo] NVARCHAR(MAX) '$.orderNo',
+        [importKg] NVARCHAR(MAX) '$.importKg'
     );
 
     INSERT INTO @AssigneeIds ([UserId])
@@ -93,6 +106,11 @@ BEGIN
               WHERE [product_id] IS NULL
                  OR [color] IS NULL
                  OR [order_no] IS NULL
+                 OR LEN([product_id]) > 100
+                 OR LEN([yarn_name]) > 200
+                 OR LEN([color]) > 100
+                 OR LEN([ply]) > 20
+                 OR LEN([order_no]) > 50
                  OR TRY_CONVERT(DECIMAL(18,3), [import_kg_text]) IS NULL
                  OR TRY_CONVERT(DECIMAL(18,3), [import_kg_text]) <= 0
           )
@@ -112,14 +130,17 @@ BEGIN
 
     INSERT INTO @Incoming
         ([product_id], [yarn_name], [color], [ply], [order_no], [import_kg])
-    SELECT [product_id],
-           MAX([yarn_name]),
-           [color],
-           [ply],
-           [order_no],
+    SELECT CONVERT(VARCHAR(100), [product_id]),
+           MAX(CONVERT(VARCHAR(200), [yarn_name])),
+           CONVERT(VARCHAR(100), [color]),
+           CONVERT(VARCHAR(20), [ply]),
+           CONVERT(VARCHAR(50), [order_no]),
            SUM(TRY_CONVERT(DECIMAL(18,3), [import_kg_text]))
     FROM @Raw
-    GROUP BY [product_id], [color], [ply], [order_no];
+    GROUP BY CONVERT(VARCHAR(100), [product_id]),
+             CONVERT(VARCHAR(100), [color]),
+             CONVERT(VARCHAR(20), [ply]),
+             CONVERT(VARCHAR(50), [order_no]);
 
     DECLARE @lockResult INT,
             @yoId INT,
@@ -148,32 +169,89 @@ BEGIN
     IF @lockResult < 0
         THROW 50001, 'Could not acquire the Yarn Order request lock.', 1;
 
-    SELECT TOP (1)
-        @poTaskId = t.[PoTaskId],
-        @yoId = t.[RefId],
-        @yoNo = y.[yo_no]
-    FROM dbo.[PoTask] t WITH (UPDLOCK, HOLDLOCK)
-    INNER JOIN dbo.[tbl_yarn_order] y WITH (UPDLOCK, HOLDLOCK)
-        ON y.[yo_id] = t.[RefId]
+    /* Candidate discovery is advisory and deliberately uses a statement-scoped
+       READ COMMITTED parent read. The retained eligibility lock order is:
+       (1) every child assignee row/key range, (2) the parent task row, then
+       (3) the linked Yarn Order header. sp_ManagePoTask MYUPDATE changes the
+       child before sp_PoTask_Recompute reaches the parent, so matching that order
+       avoids a parent/child deadlock. If this save wins the child lock, append is
+       linearized before the start; if MYUPDATE wins, the locked recheck observes
+       its StartDate/status and this save creates a new task. The application lock
+       above continues to serialize save against save. */
+    INSERT INTO @CandidateTasks ([PoTaskId])
+    SELECT t.[PoTaskId]
+    FROM dbo.[PoTask] AS t WITH (READCOMMITTED)
     WHERE t.[Stage] = 12
       AND t.[Status] = 'S'
       AND t.[IsActive] = 1
+      AND t.[RefId] IS NOT NULL
       AND EXISTS
           (
               SELECT 1
-              FROM dbo.[PoTaskAssignee] a
+              FROM dbo.[PoTaskAssignee] AS a
               WHERE a.[PoTaskId] = t.[PoTaskId]
                 AND a.[IsActive] = 1
           )
       AND NOT EXISTS
           (
               SELECT 1
-              FROM dbo.[PoTaskAssignee] a
+              FROM dbo.[PoTaskAssignee] AS a
               WHERE a.[PoTaskId] = t.[PoTaskId]
                 AND a.[IsActive] = 1
                 AND (a.[StartDate] IS NOT NULL OR a.[Status] <> 'S')
-          )
-    ORDER BY t.[PoTaskId] DESC;
+          );
+
+    DECLARE @candidatePoTaskId INT;
+
+    WHILE EXISTS (SELECT 1 FROM @CandidateTasks)
+    BEGIN
+        SELECT @candidatePoTaskId = MAX([PoTaskId])
+        FROM @CandidateTasks;
+
+        DELETE FROM @CandidateTasks
+        WHERE [PoTaskId] = @candidatePoTaskId;
+
+        DELETE FROM @LockedAssignees;
+
+        INSERT INTO @LockedAssignees ([AssigneeId], [Status], [StartDate], [IsActive])
+        SELECT a.[AssigneeId], a.[Status], a.[StartDate], a.[IsActive]
+        FROM dbo.[PoTaskAssignee] AS a WITH (UPDLOCK, HOLDLOCK, INDEX([IX_PoTaskAssignee_Task]))
+        WHERE a.[PoTaskId] = @candidatePoTaskId;
+
+        SET @poTaskId = NULL;
+        SET @yoId = NULL;
+        SET @yoNo = NULL;
+
+        SELECT @poTaskId = t.[PoTaskId],
+               @yoId = t.[RefId]
+        FROM dbo.[PoTask] AS t WITH (UPDLOCK, HOLDLOCK)
+        WHERE t.[PoTaskId] = @candidatePoTaskId
+          AND t.[Stage] = 12
+          AND t.[Status] = 'S'
+          AND t.[IsActive] = 1
+          AND t.[RefId] IS NOT NULL
+          AND EXISTS (SELECT 1 FROM @LockedAssignees WHERE [IsActive] = 1)
+          AND NOT EXISTS
+              (
+                  SELECT 1
+                  FROM @LockedAssignees
+                  WHERE [IsActive] = 1
+                    AND ([StartDate] IS NOT NULL OR [Status] <> 'S')
+              );
+
+        IF @poTaskId IS NOT NULL
+        BEGIN
+            SELECT @yoNo = y.[yo_no]
+            FROM dbo.[tbl_yarn_order] AS y WITH (UPDLOCK, HOLDLOCK)
+            WHERE y.[yo_id] = @yoId;
+
+            IF @yoNo IS NOT NULL
+                BREAK;
+
+            SET @poTaskId = NULL;
+            SET @yoId = NULL;
+        END;
+    END;
 
     IF @poTaskId IS NOT NULL
         SET @wasAppended = 1;
@@ -214,7 +292,11 @@ BEGIN
 
     UPDATE d
        SET d.[yarn_name] = i.[yarn_name],
-           d.[import_kg] = i.[import_kg]
+           d.[import_kg] = i.[import_kg],
+           d.[is_dropped] = 0,
+           d.[drop_date] = NULL,
+           d.[drop_by] = NULL,
+           d.[drop_note] = NULL
     FROM dbo.[tbl_yarn_order_detail] d
     INNER JOIN @Incoming i
         ON i.[product_id] = d.[product_id]
@@ -252,7 +334,8 @@ BEGIN
            @orderCnt = COUNT(DISTINCT [order_no]),
            @lineCnt = COUNT(*)
     FROM dbo.[tbl_yarn_order_detail]
-    WHERE [yo_id] = @yoId;
+    WHERE [yo_id] = @yoId
+      AND [is_dropped] = 0;
 
     UPDATE dbo.[tbl_yarn_order]
        SET [total_kg] = @total,
@@ -263,19 +346,22 @@ BEGIN
     IF @wasAppended = 0
     BEGIN
         DECLARE @CreatedTask TABLE ([PoTaskId] INT);
+        DECLARE @newTaskTitle NVARCHAR(200) = N'Make yarn order - ' + @yoNo;
+        DECLARE @newTaskDetail NVARCHAR(MAX) = N'Place the vendor yarn order for ' + @yoNo
+                                              + N'. Production orders: ' + @incomingOrders;
+        DECLARE @newTaskStartDate DATETIME = GETDATE();
 
         INSERT INTO @CreatedTask ([PoTaskId])
         EXEC dbo.[sp_ManagePoTask]
             @Flag = 'CREATE',
             @OrderNo = @firstOrder,
             @Stage = 12,
-            @Title = N'Make yarn order - ' + @yoNo,
-            @Detail = N'Place the vendor yarn order for ' + @yoNo
-                    + N'. Production orders: ' + @incomingOrders,
+            @Title = @newTaskTitle,
+            @Detail = @newTaskDetail,
             @RefId = @yoId,
             @PriorityId = 2,
             @CompletionRule = 2,
-            @StartDate = GETDATE(),
+            @StartDate = @newTaskStartDate,
             @AssigneeUserIds = @normalizedAssigneeUserIds,
             @UserId = @CreatedBy;
 

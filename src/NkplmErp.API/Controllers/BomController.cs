@@ -67,8 +67,6 @@ public class BomController(
     public async Task<IActionResult> PlaceYarnOrder([FromBody] PlaceYarnOrderRequest request)
     {
         if (!await CanEditAsync()) return Forbid();
-        if (request?.Lines == null || request.Lines.Count == 0)
-            return BadRequest("No lines to place.");
 
         var response = await _bomService.PlaceYarnOrderAsync(request, GetCurrentUserId());
 

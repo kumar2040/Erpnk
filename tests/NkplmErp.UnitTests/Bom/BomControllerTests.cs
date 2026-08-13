@@ -15,6 +15,47 @@ namespace NkplmErp.UnitTests.Bom;
 public class BomControllerTests
 {
     [Fact]
+    public async Task PlaceYarnOrder_WithNoLines_ReturnsProcedureAuthoredFailureEnvelope()
+    {
+        var bom = new Mock<IBomService>();
+        var roles = new Mock<IRoleManagementService>();
+        var tasks = new Mock<IPoTaskService>();
+        var request = new PlaceYarnOrderRequest();
+        var procedureFailure = Response<PlaceYarnOrderResult>.Fail("No lines supplied by procedure.");
+
+        roles.Setup(x => x.GetUserPermissionsAsync("creator")).ReturnsAsync(new UserPermissionsResponse
+        {
+            Permissions = { new UserPermissionDto { PageKey = "yarn-orders", CanEdit = true } }
+        });
+        bom.Setup(x => x.PlaceYarnOrderAsync(request, "creator"))
+            .ReturnsAsync(procedureFailure);
+
+        var controller = new BomController(
+            bom.Object,
+            roles.Object,
+            tasks.Object,
+            new ConfigurationBuilder().AddInMemoryCollection().Build(),
+            NullLogger<BomController>.Instance)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        new[] { new Claim(ClaimTypes.NameIdentifier, "creator") }, "test"))
+                }
+            }
+        };
+
+        var action = await controller.PlaceYarnOrder(request);
+
+        var badRequest = action.Should().BeOfType<BadRequestObjectResult>().Subject;
+        badRequest.Value.Should().BeSameAs(procedureFailure);
+        bom.Verify(x => x.PlaceYarnOrderAsync(request, "creator"), Times.Once);
+        tasks.VerifyNoOtherCalls();
+    }
+
+    [Fact]
     public async Task PlaceYarnOrder_CompletesBomTaskWithoutCreatingManualYarnTask()
     {
         var bom = new Mock<IBomService>();
