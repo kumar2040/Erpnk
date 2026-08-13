@@ -229,7 +229,7 @@ BEGIN
             -- created before Stage 12 tasks began carrying the yarn-order reference.
             WHEN 12 THEN CASE WHEN yarnRef.[yo_id] IS NOT NULL
                               THEN N'/yarn-orders/' + CAST(yarnRef.[yo_id] AS nvarchar(20))
-                              WHEN yo.[yo_id] IS NOT NULL
+                              WHEN t.[RefId] IS NULL AND yo.[yo_id] IS NOT NULL
                               THEN N'/yarn-orders/' + CAST(yo.[yo_id] AS nvarchar(20)) END
 
             -- Manual (20) -> the yarn-orders list, EXCEPT when the order behind it has a yarn

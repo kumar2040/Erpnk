@@ -104,7 +104,9 @@ public class YarnOrderSqlContractTests
         sql.Should().Contain("WHERE y.[yo_id] = t.[RefId]");
         sql.Should().Contain("yarnRef.[yo_id]");
         sql.Should().Contain("N'/yarn-orders/' + CAST(yarnRef.[yo_id] AS nvarchar(20))");
-        sql.Should().Contain("WHEN yo.[yo_id] IS NOT NULL");
+        sql.Should().Contain("WHEN t.[RefId] IS NULL AND yo.[yo_id] IS NOT NULL");
+        sql.Should().NotContain("WHEN yo.[yo_id] IS NOT NULL",
+            "a non-null stale Stage 12 RefId must not navigate through the legacy OrderNo lookup");
         sql.Should().Contain("WHEN 20 THEN COALESCE(N'/yarn-orders/' + CAST(yo.[yo_id] AS nvarchar(20)), N'/yarn-orders')");
 
         sql.Should().Contain("t.[Stage] = 12 AND EXISTS");
