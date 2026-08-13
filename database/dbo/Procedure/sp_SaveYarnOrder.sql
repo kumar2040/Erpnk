@@ -35,6 +35,11 @@ BEGIN
         [import_kg]  DECIMAL(18,3) NOT NULL
     );
 
+    DECLARE @AssigneeIds TABLE
+    (
+        [UserId] NVARCHAR(450) NOT NULL PRIMARY KEY
+    );
+
     IF @LinesJson IS NULL OR ISJSON(@LinesJson) <> 1
     BEGIN
         SELECT CAST(NULL AS VARCHAR(30)) AS [YoNo],
@@ -68,6 +73,18 @@ BEGIN
         [importKg]  NVARCHAR(50) '$.importKg'
     );
 
+    INSERT INTO @AssigneeIds ([UserId])
+    SELECT DISTINCT CONVERT(NVARCHAR(450), LTRIM(RTRIM([value])))
+    FROM STRING_SPLIT(ISNULL(@AssigneeUserIds, N''), N'|')
+    WHERE LEN(LTRIM(RTRIM([value]))) BETWEEN 1 AND 450;
+
+    DECLARE @normalizedAssigneeUserIds NVARCHAR(MAX);
+
+    SELECT @normalizedAssigneeUserIds =
+        STRING_AGG(CONVERT(NVARCHAR(MAX), [UserId]), N'|')
+        WITHIN GROUP (ORDER BY [UserId])
+    FROM @AssigneeIds;
+
     IF NOT EXISTS (SELECT 1 FROM @Raw)
        OR EXISTS
           (
@@ -79,7 +96,7 @@ BEGIN
                  OR TRY_CONVERT(DECIMAL(18,3), [import_kg_text]) IS NULL
                  OR TRY_CONVERT(DECIMAL(18,3), [import_kg_text]) <= 0
           )
-       OR NULLIF(LTRIM(RTRIM(@AssigneeUserIds)), '') IS NULL
+       OR NOT EXISTS (SELECT 1 FROM @AssigneeIds)
     BEGIN
         SELECT CAST(NULL AS VARCHAR(30)) AS [YoNo],
                -1 AS [YoId],
@@ -166,14 +183,26 @@ BEGIN
             ISNULL
             (
                 (
-                    SELECT MAX(TRY_CONVERT(INT, RIGHT([yo_no], 3)))
+                    SELECT MAX
+                    (
+                        TRY_CONVERT
+                        (
+                            INT,
+                            SUBSTRING([yo_no], LEN('Natureknit Yarn-') + 1, 30)
+                        )
+                    )
                     FROM dbo.[tbl_yarn_order] WITH (UPDLOCK, HOLDLOCK)
                     WHERE [yo_no] LIKE 'Natureknit Yarn-%'
                 ),
                 0
             ) + 1;
 
-        SET @yoNo = 'Natureknit Yarn-' + RIGHT('000' + CAST(@nextNo AS VARCHAR(10)), 3);
+        SET @yoNo = 'Natureknit Yarn-'
+                  + CASE
+                        WHEN @nextNo < 1000
+                            THEN RIGHT('000' + CAST(@nextNo AS VARCHAR(10)), 3)
+                        ELSE CAST(@nextNo AS VARCHAR(10))
+                    END;
 
         INSERT INTO dbo.[tbl_yarn_order]
             ([yo_no], [created_by], [total_kg], [order_count], [line_count], [status])
@@ -247,7 +276,7 @@ BEGIN
             @PriorityId = 2,
             @CompletionRule = 2,
             @StartDate = GETDATE(),
-            @AssigneeUserIds = @AssigneeUserIds,
+            @AssigneeUserIds = @normalizedAssigneeUserIds,
             @UserId = @CreatedBy;
 
         SELECT @poTaskId = [PoTaskId]
