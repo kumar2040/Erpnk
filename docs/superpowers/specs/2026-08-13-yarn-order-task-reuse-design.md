@@ -99,7 +99,7 @@ Task creation uses the existing task-management procedure and these values:
 - Stage: `12`
 - RefId: Yarn Order ID
 - Priority: `2`
-- Completion rule: `A` (any assignee)
+- Completion rule: `2` (any assignee)
 - Assignees: configured Yarn-role users
 
 The task's primary `OrderNo` remains a display-compatible value, but task-to-Yarn-Order navigation and order aggregation use `RefId` as the authoritative link.
