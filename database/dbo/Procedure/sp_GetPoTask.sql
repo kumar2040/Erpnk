@@ -110,10 +110,15 @@ BEGIN
     IF (@op = 'DETAIL')
     BEGIN
         SELECT t.[PoTaskId], t.[OrderNo],
-               COALESCE((SELECT STRING_AGG(CONVERT(nvarchar(max), o.[OrderNo]), N', ')
-                         FROM [dbo].[PoTaskOrder] o
-                         WHERE o.[PoTaskId] = t.[PoTaskId] AND o.[IsActive] = 1), t.[OrderNo]) AS [OrderNos],
-               CASE WHEN EXISTS (SELECT 1 FROM [dbo].[PoTaskOrder] o
+               CASE WHEN t.[Stage] = 12 AND yarnOrders.[OrderNos] IS NOT NULL
+                    THEN yarnOrders.[OrderNos]
+                    ELSE COALESCE((SELECT STRING_AGG(CONVERT(nvarchar(max), o.[OrderNo]), N', ')
+                                   FROM [dbo].[PoTaskOrder] o
+                                   WHERE o.[PoTaskId] = t.[PoTaskId] AND o.[IsActive] = 1), t.[OrderNo])
+               END AS [OrderNos],
+               CASE WHEN t.[Stage] = 12 AND yarnOrders.[OrderNos] IS NOT NULL
+                    THEN yarnOrders.[OrderCount]
+                    WHEN EXISTS (SELECT 1 FROM [dbo].[PoTaskOrder] o
                                  WHERE o.[PoTaskId] = t.[PoTaskId] AND o.[IsActive] = 1)
                     THEN (SELECT COUNT(*) FROM [dbo].[PoTaskOrder] o
                           WHERE o.[PoTaskId] = t.[PoTaskId] AND o.[IsActive] = 1)
@@ -133,6 +138,19 @@ BEGIN
                t.[CompletionRule], t.[QuorumCount], t.[BlockedReason],
                t.[StartDate], t.[DueDate], t.[CompletedDate], t.[CreatedBy], t.[CreatedDate]
         FROM [dbo].[PoTask] t
+        OUTER APPLY
+        (
+            SELECT STRING_AGG(CONVERT(nvarchar(max), yd.[order_no]), N', ')
+                       WITHIN GROUP (ORDER BY yd.[order_no]) AS [OrderNos],
+                   COUNT(*) AS [OrderCount]
+            FROM
+            (
+                SELECT DISTINCT LTRIM(RTRIM(d.[order_no])) AS [order_no]
+                FROM [dbo].[tbl_yarn_order_detail] d
+                WHERE d.[yo_id] = t.[RefId]
+                  AND NULLIF(LTRIM(RTRIM(d.[order_no])), '') IS NOT NULL
+            ) yd
+        ) yarnOrders
         WHERE t.[PoTaskId] = @PoTaskId AND t.[IsActive] = 1;
 
         SELECT a.[AssigneeId], a.[UserId], u.[UserName] AS [UserName], a.[Status],
@@ -165,8 +183,12 @@ BEGIN
     SELECT
         t.[PoTaskId]                                   AS [TaskId],
         t.[OrderNo],
-        COALESCE(ord.[OrderNos], t.[OrderNo])           AS [OrderNos],
-        CASE WHEN ord.[OrderNos] IS NULL THEN CASE WHEN t.[OrderNo] IS NULL THEN 0 ELSE 1 END
+        CASE WHEN t.[Stage] = 12 AND yarnOrders.[OrderNos] IS NOT NULL
+             THEN yarnOrders.[OrderNos]
+             ELSE COALESCE(ord.[OrderNos], t.[OrderNo]) END AS [OrderNos],
+        CASE WHEN t.[Stage] = 12 AND yarnOrders.[OrderNos] IS NOT NULL
+             THEN yarnOrders.[OrderCount]
+             WHEN ord.[OrderNos] IS NULL THEN CASE WHEN t.[OrderNo] IS NULL THEN 0 ELSE 1 END
              ELSE ord.[OrderCount] END                    AS [OrderCount],
         t.[Stage],
         -- The URL this card's title opens, built per stage. Derived per read, so it covers
@@ -203,8 +225,11 @@ BEGIN
                                    + ISNULL(om.[MonthParam], N'') END
 
             -- Yarn order lifecycle (12: placed / departure / arrival) -> the placed order on
-            -- /yarn-orders, keyed by yo_id. No match -> NULL (not clickable).
-            WHEN 12 THEN CASE WHEN yo.[yo_id] IS NOT NULL
+            -- /yarn-orders, keyed exactly by RefId. The OrderNo lookup remains only for tasks
+            -- created before Stage 12 tasks began carrying the yarn-order reference.
+            WHEN 12 THEN CASE WHEN yarnRef.[yo_id] IS NOT NULL
+                              THEN N'/yarn-orders/' + CAST(yarnRef.[yo_id] AS nvarchar(20))
+                              WHEN yo.[yo_id] IS NOT NULL
                               THEN N'/yarn-orders/' + CAST(yo.[yo_id] AS nvarchar(20)) END
 
             -- Manual (20) -> the yarn-orders list, EXCEPT when the order behind it has a yarn
@@ -259,6 +284,19 @@ BEGIN
         FROM [dbo].[PoTaskOrder] o WITH (NOLOCK)
         WHERE o.[PoTaskId] = t.[PoTaskId] AND o.[IsActive] = 1
     ) ord
+    OUTER APPLY
+    (
+        SELECT STRING_AGG(CONVERT(nvarchar(max), yd.[order_no]), N', ')
+                   WITHIN GROUP (ORDER BY yd.[order_no]) AS [OrderNos],
+               COUNT(*) AS [OrderCount]
+        FROM
+        (
+            SELECT DISTINCT LTRIM(RTRIM(d.[order_no])) AS [order_no]
+            FROM [dbo].[tbl_yarn_order_detail] d
+            WHERE d.[yo_id] = t.[RefId]
+              AND NULLIF(LTRIM(RTRIM(d.[order_no])), '') IS NOT NULL
+        ) yd
+    ) yarnOrders
     -- The order's ship month -- first of the month of the earliest order_ldate across its
     -- lines -- pre-formatted as the &month value /order-planning and /bom read. Both pages
     -- load one month at a time, so a link without it lands on today's month and the order
@@ -286,6 +324,15 @@ BEGIN
         WHERE  od.[order_no] = t.[OrderNo]
         ORDER BY od.[yo_id] DESC
     ) yo
+    -- Current Stage 12 tasks carry the exact yarn order key in RefId. Keep this
+    -- separate from the detail aggregation so an order with no detail rows can
+    -- still navigate to its own yarn-order page.
+    OUTER APPLY
+    (
+        SELECT y.[yo_id]
+        FROM [dbo].[tbl_yarn_order] y WITH (NOLOCK)
+        WHERE y.[yo_id] = t.[RefId]
+    ) yarnRef
     WHERE t.[IsActive] = 1
       AND t.[Status] <> 'X'
       AND (@Stage IS NULL OR t.[Stage] = @Stage)
@@ -294,7 +341,12 @@ BEGIN
            OR t.[OrderNo] LIKE '%' + @SearchOrderNo + '%'
            OR EXISTS (SELECT 1 FROM [dbo].[PoTaskOrder] so WITH (NOLOCK)
                       WHERE so.[PoTaskId] = t.[PoTaskId] AND so.[IsActive] = 1
-                        AND so.[OrderNo] LIKE '%' + @SearchOrderNo + '%'))
+                        AND so.[OrderNo] LIKE '%' + @SearchOrderNo + '%')
+           OR (t.[Stage] = 12 AND EXISTS
+               (SELECT 1
+                FROM [dbo].[tbl_yarn_order_detail] yd WITH (NOLOCK)
+                WHERE yd.[yo_id] = t.[RefId]
+                  AND yd.[order_no] LIKE '%' + @SearchOrderNo + '%')))
       -- facility: NULL = all facilities; a restricted user is already pinned above
       AND (@EffFactory IS NULL OR LOWER(t.[FactoryType]) = LOWER(@EffFactory))
       -- date window: overlap on [StartDate, DueDate]; NULL dates skip the filter

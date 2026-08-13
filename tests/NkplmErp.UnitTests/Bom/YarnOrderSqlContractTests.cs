@@ -83,4 +83,32 @@ public class YarnOrderSqlContractTests
         sql.Should().Contain("ELSE CAST(@nextNo AS VARCHAR(10))");
         sql.Should().NotContain("RIGHT([yo_no], 3)");
     }
+
+    [Fact]
+    public void GetPoTask_DerivesStage12OrdersAndLinkFromRefId()
+    {
+        var sql = ReadProcedure("sp_GetPoTask.sql");
+
+        sql.Split("WHERE d.[yo_id] = t.[RefId]", StringSplitOptions.None).Should().HaveCount(3,
+            "DETAIL and the shared BOARD/MYTASKS card query must aggregate through PoTask.RefId");
+        sql.Split(") yarnOrders", StringSplitOptions.None).Should().HaveCount(3,
+            "DETAIL and the shared BOARD/MYTASKS card query each need the RefId aggregation");
+        sql.Should().Contain("SELECT DISTINCT LTRIM(RTRIM(d.[order_no])) AS [order_no]");
+        sql.Should().Contain("STRING_AGG(CONVERT(nvarchar(max), yd.[order_no]), N', ')");
+        sql.Should().Contain("WITHIN GROUP (ORDER BY yd.[order_no]) AS [OrderNos]");
+        sql.Split("THEN yarnOrders.[OrderNos]", StringSplitOptions.None).Should().HaveCount(3,
+            "DETAIL and the shared card query must prefer the RefId order list for Stage 12");
+        sql.Split("THEN yarnOrders.[OrderCount]", StringSplitOptions.None).Should().HaveCount(3,
+            "DETAIL and the shared card query must prefer the matching distinct order count");
+
+        sql.Should().Contain("WHERE y.[yo_id] = t.[RefId]");
+        sql.Should().Contain("yarnRef.[yo_id]");
+        sql.Should().Contain("N'/yarn-orders/' + CAST(yarnRef.[yo_id] AS nvarchar(20))");
+        sql.Should().Contain("WHEN yo.[yo_id] IS NOT NULL");
+        sql.Should().Contain("WHEN 20 THEN COALESCE(N'/yarn-orders/' + CAST(yo.[yo_id] AS nvarchar(20)), N'/yarn-orders')");
+
+        sql.Should().Contain("t.[Stage] = 12 AND EXISTS");
+        sql.Should().Contain("WHERE yd.[yo_id] = t.[RefId]");
+        sql.Should().Contain("yd.[order_no] LIKE '%' + @SearchOrderNo + '%'");
+    }
 }
