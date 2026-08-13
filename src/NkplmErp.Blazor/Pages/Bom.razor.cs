@@ -206,9 +206,10 @@ public partial class Bom
                 Basket.Add(bl);
             }
             // Set (not add) this order's contribution so re-adding the same
-            // order updates rather than double-counts. Order qty = the
-            // (possibly edited) weight; need = the actual requirement.
-            bl.OrderQty[SelectedOrderNo] = line.OrderQtyKg;
+            // order updates rather than double-counts. The request quantity
+            // rounds the exact (possibly edited) shortage up to a whole kg;
+            // need keeps the actual decimal requirement for reference.
+            bl.OrderQty[SelectedOrderNo] = line.OrderKg;
             bl.NeedQty[SelectedOrderNo] = line.ImportKg;
             touched++;
         }

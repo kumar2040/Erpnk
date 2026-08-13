@@ -154,7 +154,7 @@ else
                                                 @if (l.IsImport)
                                                 {
                                                     <span class="qtyedit">
-                                                        <input type="number" step="0.5" min="0" class="qtyinput"
+                                                        <input type="number" step="0.01" min="0" class="qtyinput"
                                                                @bind="l.OrderQtyKg" @bind:event="oninput" /> kg
                                                     </span>
                                                     <div class="storebd">need @l.ImportKg.ToString("N2")</div>
@@ -177,7 +177,7 @@ else
                                     <td>@TotalSelf.ToString("N0")</td>
                                     <td>@YarnLines.Sum(l => l.OthWt).ToString("N0")</td>
                                     <td>@TotalStock.ToString("N0")</td>
-                                    <td class="@(YarnLines.Sum(l => l.ShortfallKg) < 0 ? "short-pos" : "short-neg")">@YarnLines.Sum(l => l.ShortfallKg).ToString("N0")</td>
+                                    <td class="@(YarnLines.Sum(l => l.ShortfallKg) < 0 ? "short-pos" : "short-neg")">@YarnLines.Sum(l => l.ShortfallKg).ToString("N2")</td>
                                     <td><span class="pill imp">@ImportLineCount</span></td>
                                 </tr>
                             </tfoot>
@@ -235,7 +235,7 @@ else
                     </div>
                     <div class="basket-actions">
                         <button class="bom-btn ghost" @onclick="ClearBasket" disabled="@(Basket.Count == 0 || IsPlacing)">Clear</button>
-                        <button class="bom-btn import" @onclick="PlaceYarnOrderAsync" disabled="@(Basket.Count == 0 || IsPlacing)">@(IsPlacing ? "Placing…" : "📦 Place Yarn Order")</button>
+                        <button class="bom-btn import" @onclick="PlaceYarnOrderAsync" disabled="@(Basket.Count == 0 || IsPlacing)">@(IsPlacing ? "Requesting…" : "📦 Request to Import")</button>
                     </div>
                 </div>
             </div>
