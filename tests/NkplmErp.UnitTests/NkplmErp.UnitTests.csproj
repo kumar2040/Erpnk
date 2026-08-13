@@ -22,6 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\NkplmErp.API\NkplmErp.API.csproj" />
     <ProjectReference Include="..\..\src\NkplmErp.Security\NkplmErp.Security.csproj" />
     <ProjectReference Include="..\..\src\NkplmErp.Application\NkplmErp.Application.csproj" />
     <ProjectReference Include="..\..\src\NkplmErp.Infrastructure\NkplmErp.Infrastructure.csproj" />

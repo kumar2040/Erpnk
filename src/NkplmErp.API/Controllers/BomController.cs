@@ -70,20 +70,21 @@ public class BomController(
         if (request?.Lines == null || request.Lines.Count == 0)
             return BadRequest("No lines to place.");
 
-        var result = await _bomService.PlaceYarnOrderAsync(request, GetCurrentUserId());
+        var response = await _bomService.PlaceYarnOrderAsync(request, GetCurrentUserId());
 
         // Automation hook: placing the BOM / yarn order fulfils that order's BOM task —
-        // mark it Completed (creating it first if it never existed).
-        if (result.IsSuccess)
+        // sp_SaveYarnOrder has already created or reused the Stage 12 Yarn task.
+        if (response.Succeeded && response.Data is { IsSuccess: true } result)
             await AdvanceBomTasksAsync(request, result.YoNo);
 
-        return result.IsSuccess ? Ok(result) : BadRequest(result);
+        return response.Succeeded ? Ok(response) : BadRequest(response);
     }
 
     // For each distinct order in the yarn order: ensure its BOM-stage task exists (assigned
     // to the Production Manager role — same owner as the review sweep's seeding), then
-    // transition it to Completed. Idempotent per order. Best-effort: a hook failure never
-    // breaks placing the yarn order.
+    // transition it to Completed. sp_SaveYarnOrder has already created or reused the Stage 12
+    // Yarn task. Idempotent per order. Best-effort: a hook failure never breaks placing the
+    // yarn order.
     private async Task AdvanceBomTasksAsync(PlaceYarnOrderRequest request, string? yoNo)
     {
         try
@@ -113,17 +114,6 @@ public class BomController(
                         taskId, orderNo, $"Yarn order {yoNo} created - BOM done.", userId);
                 }
 
-                // Follow-up: the Yarn role now places the actual vendor order(s).
-                await _poTaskService.CreateAsync(new CreatePoTaskRequest
-                {
-                    OrderNo = orderNo,
-                    Title = $"Make yarn order - {orderNo}",
-                    Detail = $"BOM {yoNo} placed for {orderNo}. Split by vendor on the Yarn Orders page and send the purchase order(s) to the supplier(s).",
-                    PriorityId = 2,
-                    CompletionRule = 2,        // any one completes
-                    StartDate = DateTime.Today,
-                    UserIds = yarnUsers
-                }, userId);
             }
         }
         catch (Exception ex)
