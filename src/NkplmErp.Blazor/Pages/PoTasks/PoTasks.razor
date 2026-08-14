@@ -3,6 +3,7 @@
 @using NkplmErp.Shared.DTOs
 @using NkplmErp.Blazor.Shared
 @using Microsoft.AspNetCore.Components.Forms
+@implements IDisposable
 
 @if (AccessDenied)
 {
@@ -136,7 +137,15 @@ else
                 {
                     @foreach (var card in Cards(col.Id))
                     {
-                        <div class="tcard" @onclick="() => OpenDetail(card.TaskId)">
+                        <div class="tcard @(IsHighlighted(card.TaskId) ? "tcard-highlight" : "")" @onclick="() => OpenDetail(card.TaskId)">
+                            @if (IsHighlighted(card.TaskId))
+                            {
+                                <div class="tcard-new-badge">
+                                    <span class="new-dot"></span>
+                                    <span>NEW</span>
+                                    <span class="new-time">· @HighlightTimeAgo(card.TaskId)</span>
+                                </div>
+                            }
                             @if (!string.IsNullOrWhiteSpace(card.LinkUrl))
                             {
                                 @* The procedure built a URL for this stage, so the name routes

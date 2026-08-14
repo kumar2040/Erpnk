@@ -7,6 +7,7 @@
 @inject IConfiguration Config
 @inject TokenProvider TokenProvider
 @inject NkplmErp.Blazor.Services.Toast.ToastService Toast
+@inject NkplmErp.Blazor.Services.Toast.TaskBoardNotifier BoardNotifier
 @implements IAsyncDisposable
 
 <div class="relative">
@@ -99,12 +100,18 @@
             // Real-time delivery: badge + toast the instant the server pushes.
             _hub.On<PoTaskNotificationDto>("ReceiveNotification", async n =>
             {
-                await InvokeAsync(() =>
+                await InvokeAsync(async () =>
                 {
                     _items.Insert(0, n);
                     if (_items.Count > 30) _items = _items.Take(30).ToList();
                     if (!n.IsRead) _unread++;
                     Toast.ShowInfo(string.IsNullOrWhiteSpace(n.Body) ? n.Title : $"{n.Title} — {n.Body}");
+
+                    // Relay to the task board page so it can auto-refresh + highlight.
+                    // Always fire (PoTaskId ?? 0): a 0 still triggers a board reload,
+                    // just without highlighting a specific card.
+                    await BoardNotifier.NotifyNewTaskAsync(n.PoTaskId ?? 0);
+
                     StateHasChanged();
                 });
             });
