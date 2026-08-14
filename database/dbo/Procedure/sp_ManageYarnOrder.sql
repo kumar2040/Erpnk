@@ -369,10 +369,19 @@ BEGIN
                 INSERT INTO @closing (PoTaskId)
                 SELECT DISTINCT t.[PoTaskId]
                 FROM dbo.[PoTask] AS t
-                INNER JOIN @orders AS o ON o.order_no = t.[OrderNo]
                 WHERE t.[Stage]    = 12          -- Yarn order lifecycle
                   AND t.[IsActive] = 1
-                  AND t.[Status] NOT IN ('C', 'X', 'H');
+                  AND t.[Status] NOT IN ('C', 'X', 'H')
+                  AND
+                      (
+                          t.[RefId] = @invYoId
+                          OR (t.[RefId] IS NULL AND EXISTS
+                              (
+                                  SELECT 1
+                                  FROM @orders AS o
+                                  WHERE o.[order_no] = t.[OrderNo]
+                              ))
+                      );
 
                 DECLARE @closeNote NVARCHAR(400) =
                     CONCAT('auto: yarn received, invoice ', @inv, ' on ', @invVyoNo);

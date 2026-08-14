@@ -42,15 +42,20 @@ public class BomApiClient
         }
     }
 
-    /// <summary>Place a yarn order; returns the generated reference (yo_no) or null on failure.</summary>
-    public async Task<PlaceYarnOrderResult?> PlaceYarnOrderAsync(PlaceYarnOrderRequest request)
+    /// <summary>Place a yarn order and return the API response envelope.</summary>
+    public async Task<Response<PlaceYarnOrderResult>> PlaceYarnOrderAsync(PlaceYarnOrderRequest request)
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync($"{Base}/yarn-order", request);
-            return await response.Content.ReadFromJsonAsync<PlaceYarnOrderResult>();
+            var httpResponse = await _httpClient.PostAsJsonAsync($"{Base}/yarn-order", request);
+            var response = await httpResponse.Content.ReadFromJsonAsync<Response<PlaceYarnOrderResult>>();
+            return response ?? Response<PlaceYarnOrderResult>.Fail("The Yarn Order API returned an empty response.");
         }
-        catch (Exception ex) { _logger.LogError(ex, "PlaceYarnOrderAsync failed"); return null; }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "PlaceYarnOrderAsync failed");
+            return Response<PlaceYarnOrderResult>.Fail(ex.Message);
+        }
     }
 
     /// <summary>All saved yarn orders (headers), newest first.</summary>

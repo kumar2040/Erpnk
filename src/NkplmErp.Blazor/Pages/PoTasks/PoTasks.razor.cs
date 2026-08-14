@@ -10,12 +10,13 @@ using NkplmErp.Blazor.Services.PoTask;
 using NkplmErp.Blazor.Services.RoleManagement;
 using NkplmErp.Blazor.Services.TaskManagement.Manager.Interface;
 using NkplmErp.Blazor.Services.TaskManagement.Model;
+using NkplmErp.Blazor.Services.Toast;
 using NkplmErp.Shared.DTOs;
 using NkplmErp.Shared.DTOs.Dropdown;
 
 namespace NkplmErp.Blazor.Pages.PoTasks
 {
-    public partial class PoTasks
+    public partial class PoTasks : IDisposable
     {
         [Inject] private PoTaskApiClient Api { get; set; } = default!;
         [Inject] private RoleManagementApiClient Roles { get; set; } = default!;
@@ -25,6 +26,7 @@ namespace NkplmErp.Blazor.Pages.PoTasks
         [Inject] private NavigationManager Nav { get; set; } = default!;
         [Inject] private Microsoft.JSInterop.IJSRuntime JS { get; set; } = default!;
         [Inject] private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
+        [Inject] private TaskBoardNotifier BoardNotifier { get; set; } = default!;
 
         private const string PageKey = "PoTask";
 
@@ -74,6 +76,13 @@ namespace NkplmErp.Blazor.Pages.PoTasks
         // Monotonic token so a slow in-flight board load can't overwrite a newer one.
         // Every LoadBoardAsync bumps it; results are applied only if still the latest.
         private int _loadSeq;
+
+        // ---- Real-time board refresh via event relay ----
+        // NotificationBell fires TaskBoardNotifier.OnNewTask when a SignalR push
+        // arrives with a PoTaskId. This page subscribes and reloads + highlights.
+        // Key = PoTaskId, Value = when the push arrived (for the "2 mins ago" label).
+        private Dictionary<int, DateTime> _highlightIds = new();
+        private System.Threading.Timer? _highlightTimer;
 
         // Board buckets, keyed by the status flags loaded from spDropdown (PoTaskBoardColumn).
         // Built in OnInitializedAsync once the columns are known. The keys are the exact
@@ -209,6 +218,12 @@ namespace NkplmErp.Blazor.Pages.PoTasks
                 selectedFactoryType = scope.AssignedGauge;
 
              LoadBoardAsync();
+
+            // Subscribe to the shared notifier so the board auto-refreshes when
+            // the NotificationBell receives a task push via SignalR.
+            // Unsubscribe first in case of re-navigation (prevents duplicate handlers).
+            BoardNotifier.OnNewTaskAsync -= OnNewTaskPushedAsync;
+            BoardNotifier.OnNewTaskAsync += OnNewTaskPushedAsync;
         }
 
         // -------------------------------------------------------------- board ----
@@ -668,5 +683,77 @@ namespace NkplmErp.Blazor.Pages.PoTasks
         // it reads inline ("rolls up: all must complete"). Unknown -> "".
         private string RuleName(byte rule) =>
             _ruleLabels.TryGetValue(rule.ToString(), out var v) ? v.ToLowerInvariant() : "";
+
+        // Whether the card should glow to draw the user's eye.
+        private bool IsHighlighted(int taskId) => _highlightIds.ContainsKey(taskId);
+
+        // Relative time label for highlighted cards ("just now", "2 mins ago", etc.).
+        private string HighlightTimeAgo(int taskId)
+        {
+            if (!_highlightIds.TryGetValue(taskId, out var pushed)) return "";
+            var elapsed = DateTime.Now - pushed;
+            if (elapsed.TotalSeconds < 30) return "just now";
+            if (elapsed.TotalMinutes < 1) return $"{(int)elapsed.TotalSeconds}s ago";
+            if (elapsed.TotalMinutes < 60) return $"{(int)elapsed.TotalMinutes} min ago";
+            return $"{(int)elapsed.TotalHours}h ago";
+        }
+
+        // ---- Event relay: live board refresh + highlight ----
+
+        private async Task OnNewTaskPushedAsync(int poTaskId)
+        {
+            try
+            {
+                await InvokeAsync(async () =>
+                {
+                    // Capture Task IDs currently visible on the board before reload
+                    var existingTaskIds = _buckets.Values
+                        .SelectMany(list => list)
+                        .Select(c => c.TaskId)
+                        .ToHashSet();
+
+                    if (poTaskId > 0)
+                    {
+                        _highlightIds[poTaskId] = DateTime.Now;
+                    }
+
+                    // Reload board from server
+                    await LoadBoardAsync();
+
+                    // Detect any new task cards appended to the board and highlight them
+                    var currentCards = _buckets.Values.SelectMany(list => list);
+                    foreach (var card in currentCards)
+                    {
+                        if (!existingTaskIds.Contains(card.TaskId))
+                        {
+                            _highlightIds[card.TaskId] = DateTime.Now;
+                        }
+                    }
+
+                    StateHasChanged();
+
+                    // Auto-clear highlights after 30 seconds
+                    if (_highlightIds.Count > 0)
+                    {
+                        _highlightTimer?.Dispose();
+                        _highlightTimer = new System.Threading.Timer(async _ =>
+                        {
+                            _highlightIds.Clear();
+                            await InvokeAsync(StateHasChanged);
+                        }, null, TimeSpan.FromSeconds(30), Timeout.InfiniteTimeSpan);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[PoTasks] OnNewTaskPushedAsync error: {ex.Message}");
+            }
+        }
+
+        public void Dispose()
+        {
+            BoardNotifier.OnNewTaskAsync -= OnNewTaskPushedAsync;
+            _highlightTimer?.Dispose();
+        }
     }
 }

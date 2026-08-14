@@ -102,7 +102,7 @@ public class PoTaskNotificationDto
     public int NotificationId { get; set; }
     public string? UserId { get; set; }     // recipient — populated only on the outbox (PENDING) read
     public int? PoTaskId { get; set; }
-    public string? Kind { get; set; }       // 'A' assigned, 'R' reminder
+    public string? Kind { get; set; }       // 'A' assigned, 'R' reminder, 'U' task updated
     public string Title { get; set; } = string.Empty;
     public string? Body { get; set; }
     public bool IsRead { get; set; }

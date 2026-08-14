@@ -44,18 +44,15 @@ public class BomYarnLineDto
     /// <summary>Positive kg to import when short (absolute shortage), else 0.</summary>
     public decimal ImportKg => ShortfallKg < 0 ? -ShortfallKg : 0m;
 
-    /// <summary>
-    /// Suggested order quantity in cones: yarn is bought whole-cone (~1 kg),
-    /// so a 0.1 kg need still means ordering 1 kg. Rounded UP to the next kg.
-    /// </summary>
-    public decimal OrderKg => ImportKg > 0 ? Math.Ceiling(ImportKg) : 0m;
+    /// <summary>Import-request quantity, rounded up to the next whole kg.</summary>
+    public decimal OrderKg => OrderQtyKg > 0 ? Math.Ceiling(OrderQtyKg) : 0m;
 
-    // User-editable order weight. Defaults to the cone suggestion (OrderKg);
-    // the buyer can override it, and the override is what gets ordered/saved.
+    // User-editable exact shortage. The BOM keeps this decimal value visible;
+    // OrderKg rounds it only when creating the import request.
     private decimal? _orderQtyKg;
     public decimal OrderQtyKg
     {
-        get => _orderQtyKg ?? OrderKg;
+        get => _orderQtyKg ?? ImportKg;
         set => _orderQtyKg = value < 0 ? 0 : value;
     }
 
@@ -92,8 +89,12 @@ public class PlaceYarnOrderResult
     public string? YoNo { get; set; }
     public int YoId { get; set; }
     public decimal TotalKg { get; set; }
+    public int PoTaskId { get; set; }
+    public bool WasAppended { get; set; }
+    public int OrderCount { get; set; }
+    public int LineCount { get; set; }
     public string Message { get; set; } = string.Empty;
-    public bool IsSuccess => YoId > 0 && !string.IsNullOrEmpty(YoNo);
+    public bool IsSuccess => YoId > 0 && PoTaskId > 0 && !string.IsNullOrWhiteSpace(YoNo);
 }
 
 /// <summary>A saved yarn order header (list row).</summary>

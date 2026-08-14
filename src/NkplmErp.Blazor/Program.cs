@@ -40,6 +40,7 @@ builder.Services.AddScoped<TokenProvider>();
 builder.Services.AddScoped<CustomAuthStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<CustomAuthStateProvider>());
 builder.Services.AddScoped<ToastService>();
+builder.Services.AddScoped<TaskBoardNotifier>();
 
 // App-wide loading veil, driven by _loading.Show()/Hide() from any page. Scoped, so each
 // user circuit gets its own: a Singleton would show one user's spinner to everyone.
