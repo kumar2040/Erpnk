@@ -242,14 +242,17 @@ public partial class Bom
         IsPlacing = true;
         StateHasChanged();
 
-        var result = await BomApi.PlaceYarnOrderAsync(new PlaceYarnOrderRequest { Lines = lines });
+        var response = await BomApi.PlaceYarnOrderAsync(new PlaceYarnOrderRequest { Lines = lines });
+        var result = response.Data;
 
         IsPlacing = false;
 
-        if (result is { IsSuccess: true })
+        if (response.Succeeded && result is { IsSuccess: true })
         {
             var placedNos = lines.Select(l => l.OrderNo.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-            ShowStatus($"{result.YoNo} placed — {lines.Count} line(s) from {placedNos.Count} order(s), {result.TotalKg:N2} kg.", false);
+            ShowStatus(string.IsNullOrWhiteSpace(result.Message)
+                ? $"{result.YoNo} saved — {result.TotalKg:N2} kg across {result.OrderCount} order(s)."
+                : result.Message, false);
             ClearBasket();
 
             // Drop the now-ordered production orders from the pending list.
@@ -262,7 +265,7 @@ public partial class Bom
         }
         else
         {
-            ShowStatus($"Could not place yarn order: {result?.Message ?? "no response"}", true);
+            ShowStatus($"Could not place yarn order: {response.Messages ?? result?.Message ?? "no response"}", true);
         }
     }
 
