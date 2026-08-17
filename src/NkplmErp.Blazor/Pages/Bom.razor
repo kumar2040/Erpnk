@@ -187,9 +187,16 @@ else
                 @if (ImportLineCount > 0)
                 {
                     <div class="bom-col-foot">
-                        <button class="bom-btn primary" @onclick="AddImportLinesToBasket">
-                            ＋ Add @ImportLineCount import line(s) to Yarn Order →
-                        </button>
+                        @if (IsImportAlreadyRequested)
+                        {
+                            <button class="bom-btn primary" disabled>✓ Import already requested</button>
+                        }
+                        else
+                        {
+                            <button class="bom-btn primary" @onclick="AddImportLinesToBasket">
+                                ＋ Add @ImportLineCount import line(s) to Yarn Order →
+                            </button>
+                        }
                     </div>
                 }
             </div>
@@ -235,7 +242,9 @@ else
                     </div>
                     <div class="basket-actions">
                         <button class="bom-btn ghost" @onclick="ClearBasket" disabled="@(Basket.Count == 0 || IsPlacing)">Clear</button>
-                        <button class="bom-btn import" @onclick="PlaceYarnOrderAsync" disabled="@(Basket.Count == 0 || IsPlacing)">@(IsPlacing ? "Requesting…" : "📦 Request to Import")</button>
+                        <button class="bom-btn import" @onclick="PlaceYarnOrderAsync" disabled="@(Basket.Count == 0 || IsPlacing)">
+                            @(IsPlacing ? "Requesting…" : "📦 Request to Import")
+                        </button>
                     </div>
                 </div>
             </div>

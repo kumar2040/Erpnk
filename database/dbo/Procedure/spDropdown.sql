@@ -58,9 +58,12 @@ BEGIN
     BEGIN
         SELECT [Id], [Value]
         FROM (VALUES
-            ('N', 'Not ordered', 1),
-            ('P', 'Ordered',     2),
-            ('C', 'Completed',   3)
+            ('S', 'Ready for Approval', 1),
+            ('A', 'Pending Approval',   2),
+            ('V', 'Approved',           3),
+            ('P', 'Ordered',            4),
+            ('C', 'Completed',          5),
+            ('R', 'Rejected',           6)
         ) AS v([Id], [Value], [SortOrder])
         ORDER BY [SortOrder];
         RETURN;

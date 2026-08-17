@@ -52,4 +52,7 @@ public interface IBomService
     /// mails in tblMailLog and writes in-app PoTaskNotification rows — all in one transaction.
     /// </summary>
     Task<DropColorResult> DropYarnColorsAsync(int vyoId, List<string> colors, string? note, string? droppedBy);
+
+    /// <summary>YarnControl role approval, rejection, or notification of a yarn order.</summary>
+    Task<YarnOrderApprovalResult> ApproveYarnOrderAsync(int yoId, bool approve, string? action, string? note, string? userId);
 }

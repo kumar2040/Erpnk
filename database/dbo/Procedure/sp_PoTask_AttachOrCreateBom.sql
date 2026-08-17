@@ -28,6 +28,16 @@ BEGIN
             @WasCreated bit = 0,
             @WasAttached bit = 0;
 
+    DECLARE @TargetAssignees TABLE
+    (
+        [UserId] nvarchar(450) NOT NULL PRIMARY KEY
+    );
+
+    INSERT INTO @TargetAssignees ([UserId])
+    SELECT DISTINCT CONVERT(nvarchar(450), LTRIM(RTRIM([value])))
+    FROM STRING_SPLIT(ISNULL(@AssigneeUserIds, N''), N'|')
+    WHERE LEN(LTRIM(RTRIM([value]))) BETWEEN 1 AND 450;
+
     BEGIN TRANSACTION;
 
     -- Serialize membership for this order. The filtered unique index remains the
@@ -63,6 +73,8 @@ BEGIN
         BEGIN
             DECLARE @created TABLE ([PoTaskId] int);
             DECLARE @TaskTitle nvarchar(200) = N'BOM - ' + @OrderNo;
+            DECLARE @startDateLocal datetime = GETDATE();
+
             INSERT INTO @created ([PoTaskId])
             EXEC [dbo].[sp_ManagePoTask]
                  @Flag = N'CREATE', @OrderNo = @OrderNo, @Stage = 2,
@@ -71,7 +83,7 @@ BEGIN
                  @Detail = @Detail,
                  @NotificationDate = @NotificationDate,
                  @DueDate = @DueDate,
-                 @StartDate = NULL,
+                 @StartDate = @startDateLocal,
                  @CompletionRule = 1,
                  @AssigneeUserIds = @AssigneeUserIds,
                  @GroupId = @GroupId,
@@ -105,7 +117,35 @@ BEGIN
         END;
         SET @WasAttached = 1;
 
-        -- Existing assignees need a distinct message when a new order joins their batch.
+        -- Re-sync BOM task assignees: ensure ONLY current Production Managers (@TargetAssignees)
+        -- remain active assignees on this BOM task, and deactivate legacy non-PM assignees (like Saksham).
+        IF EXISTS (SELECT 1 FROM @TargetAssignees)
+        BEGIN
+            UPDATE [dbo].[PoTaskAssignee]
+            SET [IsActive] = 0
+            WHERE [PoTaskId] = @PoTaskId
+              AND [IsActive] = 1
+              AND [UserId] NOT IN (SELECT [UserId] FROM @TargetAssignees);
+
+            UPDATE [dbo].[PoTaskAssignee]
+            SET [IsActive] = 1,
+                [Status] = 'S',
+                [AssignedBy] = ISNULL(@UserId, N'system'),
+                [AssignedDate] = GETDATE()
+            WHERE [PoTaskId] = @PoTaskId
+              AND [UserId] IN (SELECT [UserId] FROM @TargetAssignees);
+
+            INSERT INTO [dbo].[PoTaskAssignee]
+                ([PoTaskId], [UserId], [Status], [AssignedBy], [IsActive])
+            SELECT @PoTaskId, target.[UserId], 'S', ISNULL(@UserId, N'system'), 1
+            FROM @TargetAssignees target
+            WHERE NOT EXISTS
+                  (SELECT 1 FROM [dbo].[PoTaskAssignee] existing
+                   WHERE existing.[PoTaskId] = @PoTaskId
+                     AND existing.[UserId] = target.[UserId]);
+        END;
+
+        -- Notify ONLY the active Production Manager assignees (Bishnu)
         IF @WasCreated = 0
            AND OBJECT_ID(N'[dbo].[PoTaskNotification]', N'U') IS NOT NULL
         BEGIN

@@ -100,7 +100,7 @@ public interface IPoTaskService
 
     /// <summary>
     /// Auto-create the BOM-stage task for an order when a BOM / yarn order is created,
-    /// assigned to the given users (e.g. a yarn role's members), with the first reminder
+    /// assigned to the given users (the production-manager role's members), with the first reminder
     /// scheduled <paramref name="notifyAfterDays"/> days out. Idempotent per order.
     /// No RefId: the board derives the task's yarn order from its OrderNo (see sp_GetPoTask's
     /// LinkUrl), so nothing has to be stored here — and dedupe stays per (OrderNo, Stage).
