@@ -57,6 +57,24 @@ BEGIN
                CAST(JSON_VALUE(value, '$.importKg') AS DECIMAL(18,3))
         FROM OPENJSON(@LinesJson);
 
+        -- Maintain Stage 12 Yarn Task as In Progress ('P') when vendor order is placed
+        DECLARE @poTaskId INT = (SELECT TOP (1) [PoTaskId] FROM dbo.[PoTask] WHERE [Stage] = 12 AND [RefId] = @YoId AND [IsActive] = 1 ORDER BY [PoTaskId] DESC);
+        IF @poTaskId IS NOT NULL
+        BEGIN
+            UPDATE dbo.[PoTask]
+               SET [Status] = 'P',
+                   [ModifiedBy] = ISNULL(@CreatedBy, 'system'),
+                   [ModifiedDate] = GETDATE()
+             WHERE [PoTaskId] = @poTaskId AND [Status] NOT IN ('C', 'X');
+
+            UPDATE dbo.[PoTaskAssignee]
+               SET [Status] = 'P'
+             WHERE [PoTaskId] = @poTaskId AND [IsActive] = 1 AND [Status] NOT IN ('C', 'X');
+
+            INSERT INTO dbo.[PoTaskHistory] ([PoTaskId], [FromStatus], [ToStatus], [Note], [ChangedBy])
+            VALUES (@poTaskId, 'P', 'P', N'Vendor order ' + @vyoNo + N' placed.', ISNULL(@CreatedBy, 'system'));
+        END;
+
         COMMIT TRAN;
 
         SELECT @vyoNo AS vyo_no, @vyoId AS vyo_id, @total AS total_kg, 'OK' AS [message];

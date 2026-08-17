@@ -21,4 +21,14 @@
 /.worktrees/
 /.superpowers
 /tests
+!/tests/
+/tests/*
+!/tests/NkplmErp.UnitTests/
+/tests/NkplmErp.UnitTests/*
+!/tests/NkplmErp.UnitTests/PoTask/
+/tests/NkplmErp.UnitTests/PoTask/*
+!/tests/NkplmErp.UnitTests/PoTask/PoTaskControllerTests.cs
+!/tests/NkplmErp.UnitTests/PoTask/PoTaskReminderServiceTests.cs
 /scripts
+/tests
+/tests

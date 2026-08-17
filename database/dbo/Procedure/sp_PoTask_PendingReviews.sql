@@ -15,9 +15,16 @@ BEGIN
            l.[remark] AS [Remark], l.[date_] AS [ReviewDate]
     FROM latest l
     WHERE l.rn = 1
-      AND (NOT EXISTS (SELECT 1 FROM [dbo].[PoTask] t WITH (NOLOCK)
-                       WHERE t.[OrderNo] = l.[order_no] AND t.[Stage] = 1 AND t.[IsActive] = 1)
-           OR NOT EXISTS (SELECT 1 FROM [dbo].[PoTaskOrder] o WITH (NOLOCK)
-                          WHERE o.[OrderNo] = l.[order_no] AND o.[IsActive] = 1))
+      AND (
+            NOT EXISTS (SELECT 1 FROM [dbo].[PoTask] t WITH (NOLOCK)
+                        WHERE t.[OrderNo] = l.[order_no] AND t.[Stage] = 1 AND t.[IsActive] = 1)
+         OR (
+                NOT EXISTS (SELECT 1 FROM [dbo].[PoTaskOrder] o WITH (NOLOCK)
+                            INNER JOIN [dbo].[PoTask] t WITH (NOLOCK) ON t.[PoTaskId] = o.[PoTaskId]
+                            WHERE o.[OrderNo] = l.[order_no] AND t.[Stage] = 2 AND o.[IsActive] = 1 AND t.[IsActive] = 1)
+            AND NOT EXISTS (SELECT 1 FROM [dbo].[PoTask] t WITH (NOLOCK)
+                            WHERE t.[OrderNo] = l.[order_no] AND t.[Stage] = 2 AND t.[IsActive] = 1)
+            )
+          )
     ORDER BY l.[ReviewId] ASC;
 END;

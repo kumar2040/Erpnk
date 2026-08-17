@@ -285,7 +285,7 @@ BEGIN
         INSERT INTO dbo.[tbl_yarn_order]
             ([yo_no], [created_by], [total_kg], [order_count], [line_count], [status])
         VALUES
-            (@yoNo, @CreatedBy, 0, 0, 0, 'Placed');
+            (@yoNo, @CreatedBy, 0, 0, 0, 'Ready for Approval');
 
         SET @yoId = CAST(SCOPE_IDENTITY() AS INT);
     END;
@@ -346,9 +346,9 @@ BEGIN
     IF @wasAppended = 0
     BEGIN
         DECLARE @CreatedTask TABLE ([PoTaskId] INT);
-        DECLARE @newTaskTitle NVARCHAR(200) = N'Make yarn order - ' + @yoNo;
-        DECLARE @newTaskDetail NVARCHAR(MAX) = N'Place the vendor yarn order for ' + @yoNo
-                                              + N'. Production orders: ' + @incomingOrders;
+        DECLARE @newTaskTitle NVARCHAR(200) = N'Yarn import request ready - ' + @yoNo;
+        DECLARE @newTaskDetail NVARCHAR(MAX) = N'Review yarn import request ' + @yoNo
+                                              + N' and send it to YarnControl. Production orders: ' + @incomingOrders;
         DECLARE @newTaskStartDate DATETIME = GETDATE();
 
         INSERT INTO @CreatedTask ([PoTaskId])
@@ -370,11 +370,40 @@ BEGIN
     END
     ELSE
     BEGIN
+        UPDATE dbo.[PoTaskAssignee]
+        SET [IsActive] = 0
+        WHERE [PoTaskId] = @poTaskId
+          AND [IsActive] = 1;
+
+        UPDATE dbo.[PoTaskAssignee]
+        SET [Status] = 'S',
+            [StartDate] = NULL,
+            [CompletedDate] = NULL,
+            [Note] = NULL,
+            [AssignedBy] = @CreatedBy,
+            [AssignedDate] = GETDATE(),
+            [IsActive] = 1
+        WHERE [PoTaskId] = @poTaskId
+          AND [UserId] IN (SELECT [UserId] FROM @AssigneeIds);
+
+        INSERT INTO dbo.[PoTaskAssignee]
+            ([PoTaskId], [UserId], [Status], [AssignedBy])
+        SELECT @poTaskId, [UserId], 'S', @CreatedBy
+        FROM @AssigneeIds AS wanted
+        WHERE NOT EXISTS
+              (
+                  SELECT 1
+                  FROM dbo.[PoTaskAssignee] AS existing
+                  WHERE existing.[PoTaskId] = @poTaskId
+                    AND existing.[UserId] = wanted.[UserId]
+              );
+
         UPDATE dbo.[PoTask]
            SET [ModifiedBy] = @CreatedBy,
                [ModifiedDate] = GETDATE(),
-               [Detail] = N'Place the vendor yarn order for ' + @yoNo
-                        + N'. Production orders: '
+               [Title] = N'Yarn import request ready - ' + @yoNo,
+               [Detail] = N'Review yarn import request ' + @yoNo
+                        + N' and send it to YarnControl. Production orders: '
                         +
                           (
                               SELECT STRING_AGG(CONVERT(NVARCHAR(MAX), x.[order_no]), N', ')

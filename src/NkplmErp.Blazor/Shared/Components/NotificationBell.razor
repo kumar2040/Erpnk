@@ -2,10 +2,13 @@
 @using NkplmErp.Blazor.Services.PoTask
 @using NkplmErp.Blazor.Services.Auth
 @using Microsoft.AspNetCore.SignalR.Client
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
 @inject PoTaskApiClient Api
 @inject NavigationManager Nav
 @inject IConfiguration Config
 @inject TokenProvider TokenProvider
+@inject AuthenticationStateProvider AuthStateProvider
 @inject NkplmErp.Blazor.Services.Toast.ToastService Toast
 @inject NkplmErp.Blazor.Services.Toast.TaskBoardNotifier BoardNotifier
 @implements IAsyncDisposable
@@ -68,8 +71,13 @@
     private HubConnection? _hub;
     private System.Threading.Timer? _timer;
 
+    private string? _currentUserId;
+
     protected override async Task OnInitializedAsync()
     {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        _currentUserId = auth.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? auth.User.FindFirstValue("sub");
+
         // Initial state from the API.
         _items = await Api.GetNotificationsAsync();
         _unread = await Api.GetUnreadCountAsync();
@@ -102,14 +110,17 @@
             {
                 await InvokeAsync(async () =>
                 {
-                    _items.Insert(0, n);
-                    if (_items.Count > 30) _items = _items.Take(30).ToList();
-                    if (!n.IsRead) _unread++;
-                    Toast.ShowInfo(string.IsNullOrWhiteSpace(n.Body) ? n.Title : $"{n.Title} — {n.Body}");
+                    // Bell toast & dropdown item is personal — only show if intended for this user
+                    bool forMe = string.IsNullOrEmpty(n.UserId) || string.Equals(n.UserId, _currentUserId, StringComparison.OrdinalIgnoreCase);
+                    if (forMe)
+                    {
+                        _items.Insert(0, n);
+                        if (_items.Count > 30) _items = _items.Take(30).ToList();
+                        if (!n.IsRead) _unread++;
+                        Toast.ShowInfo(string.IsNullOrWhiteSpace(n.Body) ? n.Title : $"{n.Title} — {n.Body}");
+                    }
 
                     // Relay to the task board page so it can auto-refresh + highlight.
-                    // Always fire (PoTaskId ?? 0): a 0 still triggers a board reload,
-                    // just without highlighting a specific card.
                     await BoardNotifier.NotifyNewTaskAsync(n.PoTaskId ?? 0);
 
                     StateHasChanged();

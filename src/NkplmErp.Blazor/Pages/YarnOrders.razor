@@ -102,6 +102,98 @@ else
                         <div><div class="k">Status</div><div class="v">@Selected.Status</div></div>
                     </div>
                     <div class="yo-col-body">
+                        @if (Selected.Status == "Ready for Approval")
+                        {
+                            <div class="yo-status warn" style="background:#fffbe6; border:1px solid #ffe58f; color:#d48806; padding:10px 14px; border-radius:6px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <b>Ready to request approval</b>
+                                    <div style="font-size:0.85em; margin-top:2px;">Review this import list, then request approval from YarnControl.</div>
+                                </div>
+                                @if (IsYarn)
+                                {
+                                    <button class="dc-btn primary" style="background:#1890ff; border-color:#1890ff; padding:4px 12px; font-size:12px;"
+                                            disabled="@notifyingYarnControl" @onclick="NotifyYarnControlAsync">
+                                        @(notifyingYarnControl ? "Requesting…" : "📩 Request approval")
+                                    </button>
+                                }
+                            </div>
+                        }
+                        else if (Selected.Status == "Pending Approval")
+                        {
+                            <div class="yo-status warn" style="background:#fffbe6; border:1px solid #ffe58f; color:#d48806; padding:10px 14px; border-radius:6px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <b>⏳ Pending YarnControl approval</b>
+                                    <div style="font-size:0.85em; margin-top:2px;">This yarn order must be approved by the YarnControl role before vendor orders can be placed.</div>
+                                </div>
+                                <div style="display:flex; gap:8px;">
+                                    @if (IsYarnControl)
+                                    {
+                                        <button class="dc-btn primary" style="background:#52c41a; border-color:#52c41a; padding:4px 12px; font-size:12px;"
+                                                disabled="@approving" @onclick="() => OpenApprovalModal(true)">
+                                            ✓ Accept Approval
+                                        </button>
+                                        <button class="dc-btn danger" style="padding:4px 12px; font-size:12px;"
+                                                disabled="@approving" @onclick="() => OpenApprovalModal(false)">
+                                            ✕ Reject
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        else if (Selected.Status == "Approved" && !VendorOrders.Any())
+                        {
+                            <div class="yo-status ok" style="background:#f6ffed; border:1px solid #b7eb8f; color:#389e0d; padding:10px 14px; border-radius:6px; margin-bottom:12px; font-weight:600;">
+                                @if (IsYarnControl)
+                                {
+                                    <span>✓ Approved by YarnControl — Saksham can now place vendor orders.</span>
+                                }
+                                else
+                                {
+                                    <span>✓ Approved by YarnControl — Ready to place vendor orders below.</span>
+                                }
+                            </div>
+                        }
+                        else if (VendorOrders.Any(v => !v.IsInvoiced))
+                        {
+                            var firstVendor = VendorOrders.FirstOrDefault(v => !v.IsInvoiced) ?? VendorOrders.First();
+                            <div class="yo-status ok" style="background:#e6f7ff; border:1px solid #91d5ff; color:#0050b3; margin-bottom:12px; padding:10px 14px; border-radius:6px;">
+                                <div style="font-weight:600; display:flex; justify-content:space-between; align-items:center;">
+                                    <span>📦 Vendor Order Placed: <b>@firstVendor.VyoNo</b> @(string.IsNullOrWhiteSpace(firstVendor.Vendor) ? "" : $"({firstVendor.Vendor})")</span>
+                                    <span style="font-size:0.85em; background:#bae7ff; color:#003a8c; padding:2px 8px; border-radius:4px; font-weight:bold;">@firstVendor.TotalKg.ToString("N2") kg</span>
+                                </div>
+                                @if (firstVendor.DepartureDate.HasValue || firstVendor.ArrivalDate.HasValue)
+                                {
+                                    <div style="font-size:0.85em; margin-top:6px; display:flex; gap:16px;">
+                                        @if (firstVendor.DepartureDate.HasValue)
+                                        {
+                                            <span>✈ <b>Departure:</b> @firstVendor.DepartureDate.Value.ToString("dd MMM yyyy")</span>
+                                        }
+                                        @if (firstVendor.ArrivalDate.HasValue)
+                                        {
+                                            <span>📦 <b>ETA Arrival:</b> @firstVendor.ArrivalDate.Value.ToString("dd MMM yyyy")</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else if (Selected.Status == "Completed" || (VendorOrders.Any() && VendorOrders.All(v => v.IsInvoiced)))
+                        {
+                            var invVendor = VendorOrders.FirstOrDefault(v => v.IsInvoiced);
+                            <div class="yo-status ok" style="background:#f6ffed; border:1px solid #b7eb8f; color:#275a13; padding:10px 14px; border-radius:6px; margin-bottom:12px;">
+                                <div style="font-weight:600;">🎉 Yarn Arrived & Completed</div>
+                                @if (invVendor != null)
+                                {
+                                    <div style="font-size:0.85em; margin-top:2px;">Invoice #<b>@invVendor.InvoiceNo</b> · @(invVendor.Weight?.ToString("N2") ?? invVendor.TotalKg.ToString("N2")) kg · Ready for Knitting / Planning.</div>
+                                }
+                            </div>
+                        }
+                        else if (Selected.Status == "Rejected")
+                        {
+                            <div class="yo-status err" style="margin-bottom:12px;">
+                                ❌ Rejected by YarnControl
+                            </div>
+                        }
+
                         @if (!string.IsNullOrEmpty(StatusMessage))
                         {
                             <div class="yo-status @(IsError ? "err" : "ok")">@StatusMessage</div>
@@ -165,7 +257,10 @@ else
                                                     <button class="vlife-arrive" disabled="@(arrivedSaving)" @onclick="@(() => OpenArrivedModal(v))">📦 Arrived</button>
                                                 }
 
-                                                <button class="vlife-drop" title="Vendor dropped a color" @onclick="@(() => OpenDropModal(v))">⚠ Drop color</button>
+                                                @if (IsYarn)
+                                                {
+                                                    <button class="vlife-drop" title="Vendor dropped a color" @onclick="@(() => OpenDropModal(v))">⚠ Drop color</button>
+                                                }
                                             </div>
                                         </div>
                                     }
@@ -175,7 +270,9 @@ else
                             @foreach (var vg in VendorGroups)
                             {
                                 var placed = VendorPlaced(vg.Key);
-                                var canPlace = vg.Key != "— No vendor —" && !placed;
+                                var canPlace = vg.Key != "— No vendor —"
+                                            && !placed
+                                            && CanShowVendorOrdering(Selected.Status, IsYarn);
                                 <div class="vgroup">
                                     <div class="vhead">
                                         <div class="vh-left">
@@ -193,9 +290,17 @@ else
                                                 @(PlacingVendor == vg.Key ? "Placing…" : "📦 Place order")
                                             </button>
                                         }
-                                        else
+                                        else if (vg.Key == Unassigned)
                                         {
                                             <span class="vh-badge muted">no vendor</span>
+                                        }
+                                        else if (string.Equals(Selected.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            <span class="vh-badge done" style="color:#389e0d; background:#f6ffed; border:1px solid #b7eb8f; padding:2px 8px; border-radius:4px; font-size:11px;">✓ Approved</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="vh-badge wait" style="color:#d48806; background:#fffbe6; border:1px solid #ffe58f; padding:2px 8px; border-radius:4px; font-size:11px;">⏳ Awaiting YarnControl approval</span>
                                         }
                                     </div>
                                     <table class="yo-table">
@@ -358,6 +463,29 @@ else
                 Pragyapan <b>@ArrivedPragyapanEdit.GetValueOrDefault(arrivedVendor?.VyoId ?? 0)</b> ·
                 LC/TT <b>@ArrivedLcTtEdit.GetValueOrDefault(arrivedVendor?.VyoId ?? 0)</b>
             </div>
+        </ConfirmModal>
+
+        @* ---- Confirm step for YarnControl approval / rejection. ---- *@
+        <ConfirmModal IsVisible="showApprovalConfirm"
+                      Title="@(isApprovingAction ? "Accept Yarn Order Approval?" : "Reject Yarn Order?")"
+                      Icon="@(isApprovingAction ? "✓" : "✕")"
+                      Danger="@(!isApprovingAction)"
+                      ConfirmText="@(isApprovingAction ? "✓ Yes, Accept" : "✕ Yes, Reject")"
+                      BusyText="Processing…"
+                      Busy="approving"
+                      OnResult="OnApprovalConfirmResult">
+            <div class="dcf-sub">Yarn Order <b>@Selected?.YoNo</b></div>
+            @if (!isApprovingAction)
+            {
+                <div style="margin-top:10px;">
+                    <label style="display:block; font-size:12px; font-weight:600; margin-bottom:4px;">Rejection Note / Reason (optional):</label>
+                    <textarea class="dc-note" style="width:100%; font-size:12px;" @bind="approvalNote" placeholder="Enter reason for rejection..."></textarea>
+                </div>
+            }
+            else
+            {
+                <div class="dcf-note">Accepting will approve this yarn order and allow yarn users to place vendor sub-orders.</div>
+            }
         </ConfirmModal>
     </div>
 }

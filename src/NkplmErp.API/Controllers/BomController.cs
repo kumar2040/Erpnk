@@ -51,6 +51,11 @@ public class BomController(
         return perms.CanEdit(PageKey);
     }
 
+    private bool IsAdmin() => User.IsInRole("Admin");
+
+    private bool IsInConfiguredRole(string key, string fallback) =>
+        IsAdmin() || User.IsInRole(_configuration[key] ?? fallback);
+
     /// <summary>Yarn requirement / import decision for an order.</summary>
     [HttpGet("yarn-requirement")]
     public async Task<IActionResult> GetYarnRequirement([FromQuery] string? orderNo, [FromQuery] int flag = 1, [FromQuery] int? poTaskId = null)
@@ -67,32 +72,34 @@ public class BomController(
     public async Task<IActionResult> PlaceYarnOrder([FromBody] PlaceYarnOrderRequest request)
     {
         if (!await CanEditAsync()) return Forbid();
+        if (!IsInConfiguredRole("TaskAutomation:ProductionManagerRoleName", "Production Manager")) return Forbid();
 
         var response = await _bomService.PlaceYarnOrderAsync(request, GetCurrentUserId());
 
-        // Automation hook: placing the BOM / yarn order fulfils that order's BOM task —
+        // Automation hook: requesting yarn starts that order's BOM task.
         // sp_SaveYarnOrder has already created or reused the Stage 12 Yarn task.
         if (response.Succeeded && response.Data is { IsSuccess: true } result)
+        {
             await AdvanceBomTasksAsync(request, result.YoNo);
+            await _poTaskService.DispatchPendingPushesAsync();
+        }
 
         return response.Succeeded ? Ok(response) : BadRequest(response);
     }
 
-    // For each distinct order in the yarn order: ensure its BOM-stage task exists (assigned
-    // to the Production Manager role — same owner as the review sweep's seeding), then
-    // transition it to Completed. sp_SaveYarnOrder has already created or reused the Stage 12
-    // Yarn task. Idempotent per order. Best-effort: a hook failure never breaks placing the
-    // yarn order.
+    // For each distinct order in the yarn request: resolve its BOM-stage task, then move the
+    // requesting Production Manager's assignment to In Progress. The parent task rolls up
+    // from that assignee state. The Stage 12 Yarn task is left unchanged.
     private async Task AdvanceBomTasksAsync(PlaceYarnOrderRequest request, string? yoNo)
     {
         try
         {
             var userId = GetCurrentUserId();
-            var yarnRole = _configuration["TaskAutomation:YarnRoleName"] ?? "Yarn";
+            var productionManagerRole = _configuration["TaskAutomation:ProductionManagerRoleName"] ?? "Production Manager";
 
             var users = (await _roleService.GetAllUsersWithRolesAsync()).ToList();
-            var yarnUsers = users
-                .Where(u => string.Equals(u.RoleName, yarnRole, StringComparison.OrdinalIgnoreCase))
+            var productionManagers = users
+                .Where(u => string.Equals(u.RoleName, productionManagerRole, StringComparison.OrdinalIgnoreCase))
                 .Select(u => u.UserId)
                 .Distinct()
                 .ToList();
@@ -102,21 +109,26 @@ public class BomController(
                 .Where(o => !string.IsNullOrWhiteSpace(o))
                 .Distinct(StringComparer.OrdinalIgnoreCase);
 
+            var bomTaskIds = new HashSet<int>();
             foreach (var orderNo in orders)
             {
-                // Ensure returns the task id (idempotent per order — creates or reuses).
-                var taskId = await _poTaskService.EnsureBomTaskAsync(orderNo, null, yarnUsers, BomNotifyAfterDays, userId);
-                if (taskId > 0)
-                {
-                    await _poTaskService.CompleteBomOrderAsync(
-                        taskId, orderNo, $"Yarn order {yoNo} created - BOM done.", userId);
-                }
+                var taskId = await _poTaskService.EnsureBomTaskAsync(orderNo, null, productionManagers, BomNotifyAfterDays, userId);
+                if (taskId > 0) bomTaskIds.Add(taskId);
+            }
 
+            foreach (var taskId in bomTaskIds)
+            {
+                await _poTaskService.MyUpdateAsync(new MyUpdatePoTaskRequest
+                {
+                    PoTaskId = taskId,
+                    ToStatus = "P",
+                    Note = $"Yarn import requested through {yoNo}."
+                }, userId);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "BOM task-complete hook failed.");
+            _logger.LogWarning(ex, "BOM task-start hook failed.");
         }
     }
 
@@ -136,6 +148,33 @@ public class BomController(
     {
         if (!await CanViewAsync()) return Forbid();
         return Ok(await _bomService.GetYarnOrderDetailAsync(yoId));
+    }
+
+    /// <summary>Approve or Reject a yarn order (YarnControl role action).</summary>
+    [HttpPost("yarn-orders/{yoId:int}/approval")]
+    public async Task<IActionResult> ApproveYarnOrder(int yoId, [FromBody] YarnOrderApprovalRequest request)
+    {
+        if (!await CanEditAsync()) return Forbid();
+        var action = string.IsNullOrWhiteSpace(request.Action)
+            ? (request.Approve ? "APPROVE" : "REJECT")
+            : request.Action.Trim().ToUpperInvariant();
+        var permitted = action == "NOTIFY"
+            ? IsInConfiguredRole("TaskAutomation:YarnRoleName", "Yarn")
+            : IsInConfiguredRole("TaskAutomation:YarnControlRoleName", "YarnControl");
+        if (!permitted) return Forbid();
+        var userId = GetCurrentUserId();
+
+        // The action is authoritative. In particular, a request-for-approval must never
+        // reach a compatibility fallback as Approve=true and become an approval itself.
+        var approve = action == "APPROVE";
+        var result = await _bomService.ApproveYarnOrderAsync(yoId, approve, action, request.Note, userId);
+
+        if (result.IsSuccess)
+        {
+            await _poTaskService.DispatchPendingPushesAsync();
+            return Ok(result);
+        }
+        return BadRequest(result);
     }
 
     /// <summary>Production order numbers that already have a yarn order placed.</summary>
@@ -159,6 +198,7 @@ public class BomController(
     public async Task<IActionResult> PlaceYarnVendorOrder(int yoId, [FromBody] SaveYarnVendorOrderRequest request)
     {
         if (!await CanEditAsync()) return Forbid();
+        if (!IsInConfiguredRole("TaskAutomation:YarnRoleName", "Yarn")) return Forbid();
         if (request?.Lines == null || request.Lines.Count == 0)
             return BadRequest("No lines to place.");
 
@@ -221,6 +261,7 @@ public class BomController(
     public async Task<IActionResult> DropColor(int vyoId, [FromBody] DropColorRequest request)
     {
         if (!await CanEditAsync()) return Forbid();
+        if (!IsInConfiguredRole("TaskAutomation:YarnRoleName", "Yarn")) return Forbid();
 
         var colors = (request?.Colors ?? new List<string>())
             .Where(c => !string.IsNullOrWhiteSpace(c))
@@ -232,6 +273,9 @@ public class BomController(
             return BadRequest(new DropColorResult { Succeeded = false, Message = "Select at least one color to drop." });
 
         var result = await _bomService.DropYarnColorsAsync(vyoId, colors, request!.Note, GetCurrentUserId());
+        if (result.Succeeded)
+            await _poTaskService.DispatchPendingPushesAsync();
+
         return result.Succeeded ? Ok(result) : BadRequest(result);
     }
 

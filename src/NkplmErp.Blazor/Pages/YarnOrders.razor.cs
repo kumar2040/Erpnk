@@ -12,11 +12,32 @@ namespace NkplmErp.Blazor.Pages;
 
 public partial class YarnOrders
 {
+    public static bool CanShowVendorOrdering(string? status, bool isYarn) =>
+        isYarn && string.Equals(status, "Approved", StringComparison.OrdinalIgnoreCase);
+
+    public static string NormalizeOrderStatus(string? status, bool hasVendorOrders) =>
+        string.Equals(status, "Not ordered", StringComparison.OrdinalIgnoreCase)
+            ? (hasVendorOrders ? "Ordered" : "Ready for Approval")
+            : status?.Trim() ?? string.Empty;
+
+    public static YarnOrderApprovalRequest CreateRequestApprovalPayload() => new()
+    {
+        Approve = false,
+        Action = "NOTIFY"
+    };
+
+    public static string StatusAfterRequestApproval(
+        bool succeeded,
+        string? backendStatus,
+        bool hasVendorOrders) =>
+        succeeded ? "Pending Approval" : NormalizeOrderStatus(backendStatus, hasVendorOrders);
+
     [Inject] private BomApiClient BomApi { get; set; } = default!;
     [Inject] private PermissionService PermSvc { get; set; } = default!;
     [Inject] private IJSRuntime JS { get; set; } = default!;
     [Inject] private ToastService Toast { get; set; } = default!;
     [Inject] private IYarnOrderManager YarnApi { get; set; } = default!;
+    [Inject] private Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
 
     /// <summary>Route id from /yarn-orders/{YoId} — set when a BOM task card links here.</summary>
     [Parameter] public int? YoId { get; set; }
@@ -66,6 +87,14 @@ public partial class YarnOrders
         .GroupBy(d => $"{d.ProductId}|{d.Color}".ToLowerInvariant())
         .Sum(g => System.Math.Ceiling(g.Sum(x => x.ImportKg)));
 
+    private bool IsYarnControl = false;
+    private bool IsYarn = false;
+    private bool notifyingYarnControl;
+    private bool showApprovalConfirm;
+    private bool isApprovingAction;
+    private bool approving;
+    private string approvalNote = "";
+
     protected override async Task OnInitializedAsync()
     {
         if (!PermSvc.IsLoaded)
@@ -76,6 +105,10 @@ public partial class YarnOrders
             AccessDenied = true;
             return;
         }
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        IsYarnControl = CheckIsInRole(authState.User, "YarnControl") || CheckIsInRole(authState.User, "Admin");
+        IsYarn = CheckIsInRole(authState.User, "Yarn") || CheckIsInRole(authState.User, "Admin");
 
         await LoadOrdersAsync();
 
@@ -147,6 +180,10 @@ public partial class YarnOrders
 
         Detail = await BomApi.GetYarnOrderDetailAsync(o.YoId);
         VendorOrders = await BomApi.GetYarnVendorOrdersAsync(o.YoId);
+
+        // A legacy list procedure can still return "Not ordered". Absence of a vendor
+        // order never proves YarnControl approval, so keep that legacy state pre-approval.
+        Selected.Status = NormalizeOrderStatus(Selected.Status, VendorOrders.Any());
         SeedDateEdits();
 
         IsLoadingDetail = false;
@@ -467,5 +504,111 @@ public partial class YarnOrders
         }
         var base64 = Convert.ToBase64String(file.Value.bytes);
         await JS.InvokeVoidAsync("bomDownloadFile", file.Value.fileName, base64, XlsxContentType);
+    }
+
+    private void OpenApprovalModal(bool accept)
+    {
+        isApprovingAction = accept;
+        approvalNote = "";
+        showApprovalConfirm = true;
+    }
+
+    private async Task OnApprovalConfirmResult(bool confirmed)
+    {
+        if (confirmed)
+            await ConfirmApprovalAsync();
+        else
+            showApprovalConfirm = false;
+    }
+
+    private async Task ConfirmApprovalAsync()
+    {
+        if (Selected is null) return;
+        var selectedYoId = Selected.YoId;
+
+        approving = true;
+        StateHasChanged();
+
+        var result = await BomApi.ApproveYarnOrderAsync(selectedYoId, new YarnOrderApprovalRequest
+        {
+            Approve = isApprovingAction,
+            Note = string.IsNullOrWhiteSpace(approvalNote) ? null : approvalNote.Trim()
+        });
+
+        approving = false;
+
+        if (result is { IsSuccess: true })
+        {
+            Toast.ShowSuccess(result.Message);
+            showApprovalConfirm = false;
+            if (Selected != null)
+            {
+                Selected.Status = isApprovingAction ? "Approved" : "Rejected";
+            }
+            await LoadOrdersAsync();
+            var updated = Orders.FirstOrDefault(o => o.YoId == selectedYoId);
+            if (updated is not null)
+            {
+                if (isApprovingAction && (updated.Status == "Not ordered" || updated.Status == "Pending Approval"))
+                    updated.Status = "Approved";
+                else if (!isApprovingAction)
+                    updated.Status = "Rejected";
+
+                Selected = updated;
+            }
+            if (Selected != null)
+            {
+                Detail = await BomApi.GetYarnOrderDetailAsync(Selected.YoId);
+                VendorOrders = await BomApi.GetYarnVendorOrdersAsync(Selected.YoId);
+            }
+        }
+        else
+        {
+            Toast.ShowError(result?.Message ?? "Approval action failed.");
+            showApprovalConfirm = false;
+        }
+        StateHasChanged();
+    }
+
+    private async Task NotifyYarnControlAsync()
+    {
+        if (Selected is null) return;
+        notifyingYarnControl = true;
+        StateHasChanged();
+
+        var selectedYoId = Selected.YoId;
+        var result = await BomApi.ApproveYarnOrderAsync(
+            selectedYoId,
+            CreateRequestApprovalPayload());
+
+        notifyingYarnControl = false;
+
+        if (result is { IsSuccess: true })
+        {
+            Toast.ShowSuccess(result.Message);
+            Selected.Status = "Pending Approval";
+            await LoadOrdersAsync();
+            var updated = Orders.FirstOrDefault(o => o.YoId == selectedYoId);
+            if (updated is not null)
+            {
+                updated.Status = StatusAfterRequestApproval(true, updated.Status, VendorOrders.Any());
+                Selected = updated;
+            }
+        }
+        else
+        {
+            Toast.ShowError(result?.Message ?? "Could not send notification to YarnControl.");
+        }
+        StateHasChanged();
+    }
+
+    private static bool CheckIsInRole(System.Security.Claims.ClaimsPrincipal user, string roleName)
+    {
+        if (user?.Identity?.IsAuthenticated != true) return false;
+        return user.IsInRole(roleName)
+            || user.HasClaim(c => (string.Equals(c.Type, "role", StringComparison.OrdinalIgnoreCase)
+                                || string.Equals(c.Type, System.Security.Claims.ClaimTypes.Role, StringComparison.OrdinalIgnoreCase)
+                                || c.Type.EndsWith("/role", StringComparison.OrdinalIgnoreCase))
+                               && string.Equals(c.Value, roleName, StringComparison.OrdinalIgnoreCase));
     }
 }

@@ -60,13 +60,9 @@ public class BomService : IBomService
         try
         {
             var yarnRole = _configuration["TaskAutomation:YarnRoleName"] ?? "Yarn";
-            var assigneeUserIds = (await _roleManagementService.GetAllUsersWithRolesAsync())
-                .Where(u => string.Equals(u.RoleName, yarnRole, StringComparison.OrdinalIgnoreCase))
-                .Select(u => u.UserId)
-                .Where(id => !string.IsNullOrWhiteSpace(id))
-                .Distinct(StringComparer.Ordinal)
-                .OrderBy(id => id, StringComparer.Ordinal)
-                .ToList();
+            var yarnControlRole = _configuration["TaskAutomation:YarnControlRoleName"] ?? "YarnControl";
+            var allUsers = await _roleManagementService.GetAllUsersWithRolesAsync();
+            var assigneeUserIds = GetWorkflowAssigneeUserIds(allUsers, yarnRole, yarnControlRole);
 
             var payload = (request?.Lines ?? []).Select(l => new
             {
@@ -339,6 +335,82 @@ public class BomService : IBomService
 
         var affected = await cmd.ExecuteScalarAsync();
         return affected != null && affected != DBNull.Value && Convert.ToInt32(affected) > 0;
+    }
+
+    public async Task<YarnOrderApprovalResult> ApproveYarnOrderAsync(int yoId, bool approve, string? action, string? note, string? userId)
+    {
+        try
+        {
+            var effectiveAction = string.IsNullOrWhiteSpace(action)
+                ? (approve ? "APPROVE" : "REJECT")
+                : action.Trim().ToUpperInvariant();
+            var targetRole = effectiveAction switch
+            {
+                "NOTIFY" => _configuration["TaskAutomation:YarnControlRoleName"] ?? "YarnControl",
+                "APPROVE" => _configuration["TaskAutomation:YarnRoleName"] ?? "Yarn",
+                _ => null
+            };
+            var assigneeUserIds = new List<string>();
+            if (targetRole is not null)
+            {
+                var allUsers = await _roleManagementService.GetAllUsersWithRolesAsync();
+                var excludedRole = effectiveAction == "APPROVE"
+                    ? _configuration["TaskAutomation:YarnControlRoleName"] ?? "YarnControl"
+                    : null;
+                assigneeUserIds = GetWorkflowAssigneeUserIds(allUsers, targetRole, excludedRole);
+            }
+
+            var result = await _genericRepository.GetQueryFirstOrDefaultResultAsync<YarnOrderApprovalResult>(
+                "sp_ApproveYarnOrder",
+                new
+                {
+                    YoId = yoId,
+                    Approve = approve,
+                    Action = effectiveAction,
+                    Note = note,
+                    UserId = userId,
+                    AssigneeUserIds = string.Join('|', assigneeUserIds)
+                },
+                CommandType.StoredProcedure);
+
+            return result ?? new YarnOrderApprovalResult
+            {
+                IsSuccess = false,
+                Message = "No response from procedure."
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Yarn order approval action failed for {YoId}.", yoId);
+            return new YarnOrderApprovalResult
+            {
+                IsSuccess = false,
+                Message = "Unable to update yarn order approval."
+            };
+        }
+    }
+
+    private static List<string> GetWorkflowAssigneeUserIds(
+        IEnumerable<UserWithRolesDto> users,
+        string includedRole,
+        string? excludedRole = null)
+    {
+        var rows = users.ToList();
+        var excludedUserIds = string.IsNullOrWhiteSpace(excludedRole)
+            ? new HashSet<string>(StringComparer.Ordinal)
+            : rows
+                .Where(u => string.Equals(u.RoleName, excludedRole, StringComparison.OrdinalIgnoreCase))
+                .Select(u => u.UserId)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .ToHashSet(StringComparer.Ordinal);
+
+        return rows
+            .Where(u => string.Equals(u.RoleName, includedRole, StringComparison.OrdinalIgnoreCase))
+            .Select(u => u.UserId)
+            .Where(id => !string.IsNullOrWhiteSpace(id) && !excludedUserIds.Contains(id))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(id => id, StringComparer.Ordinal)
+            .ToList();
     }
 
     private static decimal ToDecimalSafe(object value)

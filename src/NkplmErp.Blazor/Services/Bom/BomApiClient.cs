@@ -174,4 +174,15 @@ public class BomApiClient
         }
         catch (Exception ex) { _logger.LogError(ex, "DropColorsAsync failed"); return null; }
     }
+
+    /// <summary>Approve or Reject a yarn order (YarnControl role action).</summary>
+    public async Task<YarnOrderApprovalResult?> ApproveYarnOrderAsync(int yoId, YarnOrderApprovalRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"{Base}/yarn-orders/{yoId}/approval", request);
+            return await response.Content.ReadFromJsonAsync<YarnOrderApprovalResult>();
+        }
+        catch (Exception ex) { _logger.LogError(ex, "ApproveYarnOrderAsync failed"); return null; }
+    }
 }

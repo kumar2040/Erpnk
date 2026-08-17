@@ -88,6 +88,23 @@ public partial class Bom
     private decimal TotalStock => YarnLines.Sum(l => l.StockQty);
     private decimal TotalImport => YarnLines.Where(l => l.IsImport).Sum(l => l.OrderQtyKg);
     private int ImportLineCount => YarnLines.Count(l => l.IsImport);
+    private bool IsImportAlreadyRequested =>
+        HasRequestedImport(CalculationOrderNos, SelectedOrderNo, PlacedOrders);
+
+    public static bool HasRequestedImport(
+        string? calculationOrderNos,
+        string? selectedOrderNo,
+        IReadOnlySet<string> requestedOrders)
+    {
+        var orderNos = string.IsNullOrWhiteSpace(calculationOrderNos)
+            ? selectedOrderNo
+            : calculationOrderNos;
+
+        return !string.IsNullOrWhiteSpace(orderNos)
+               && orderNos
+                   .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                   .Any(requestedOrders.Contains);
+    }
 
     // ===== Column 3 roll-ups =====
     private decimal BasketOrderedKg => Basket.Sum(l => l.OrderedKg);  // user-edited order qty
@@ -189,6 +206,19 @@ public partial class Bom
     private void AddImportLinesToBasket()
     {
         if (string.IsNullOrEmpty(SelectedOrderNo)) return;
+        if (IsImportAlreadyRequested)
+        {
+            ShowStatus($"Import already requested for {CalculationOrderNos ?? SelectedOrderNo}.", false);
+            return;
+        }
+
+        // All order numbers in this BOM calculation batch (e.g. OTO-5924, OTO-5925, OTO-5926, OTO-5927)
+        var ordersInBom = (CalculationOrderNos ?? SelectedOrderNo)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (ordersInBom.Count == 0) ordersInBom.Add(SelectedOrderNo);
 
         var touched = 0;
         foreach (var line in YarnLines.Where(l => l.IsImport))
@@ -205,16 +235,29 @@ public partial class Bom
                 };
                 Basket.Add(bl);
             }
-            // Set (not add) this order's contribution so re-adding the same
-            // order updates rather than double-counts. The request quantity
-            // rounds the exact (possibly edited) shortage up to a whole kg;
-            // need keeps the actual decimal requirement for reference.
-            bl.OrderQty[SelectedOrderNo] = line.OrderKg;
-            bl.NeedQty[SelectedOrderNo] = line.ImportKg;
+
+            // Distribute line requirement across all order numbers in this BOM batch
+            var perOrderQty = Math.Round(line.OrderKg / ordersInBom.Count, 2);
+            var perOrderNeed = Math.Round(line.ImportKg / ordersInBom.Count, 2);
+
+            foreach (var orderNo in ordersInBom)
+            {
+                bl.OrderQty[orderNo] = perOrderQty;
+                bl.NeedQty[orderNo] = perOrderNeed;
+            }
+
+            // Adjust rounding difference on the primary order so the sum matches line.OrderKg exactly
+            var firstOrder = ordersInBom[0];
+            var orderDiff = line.OrderKg - bl.OrderQty.Values.Sum();
+            if (orderDiff != 0) bl.OrderQty[firstOrder] += orderDiff;
+
+            var needDiff = line.ImportKg - bl.NeedQty.Values.Sum();
+            if (needDiff != 0) bl.NeedQty[firstOrder] += needDiff;
+
             touched++;
         }
         ShowStatus(touched > 0
-            ? $"Added/updated {touched} line(s) from {SelectedOrderNo}."
+            ? $"Added/updated {touched} line(s) for {string.Join(", ", ordersInBom)}."
             : "No import lines to add.", touched == 0);
     }
 
@@ -265,7 +308,7 @@ public partial class Bom
         }
         else
         {
-            ShowStatus($"Could not place yarn order: {response.Messages ?? result?.Message ?? "no response"}", true);
+            ShowStatus($"Could not request yarn import: {response.Messages ?? result?.Message ?? "no response"}", true);
         }
     }
 

@@ -20,7 +20,7 @@ public class SignalRNotificationPublisher : INotificationPublisher
     {
         try
         {
-            await _hub.Clients.Group(userId).SendAsync(NotificationHub.ReceiveMethod, payload);
+            await _hub.Clients.All.SendAsync(NotificationHub.ReceiveMethod, payload);
         }
         catch (Exception ex)
         {

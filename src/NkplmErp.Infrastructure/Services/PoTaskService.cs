@@ -319,6 +319,7 @@ public class PoTaskService : IPoTaskService
         if (result is null || result.PoTaskId <= 0)
             throw new InvalidOperationException($"BOM task attach/create returned no task id for order {orderNo}.");
 
+        await DispatchPendingPushesAsync();
         return result.PoTaskId;
     }
 

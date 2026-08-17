@@ -58,7 +58,7 @@ public class PoTaskReminderService : BackgroundService
                 }
 
                 // Seed the lifecycle for newly-reviewed orders (pulled into tbl_order_review):
-                // "Create plan" task -> Production Manager, "BOM" task -> Yarn role (+BOM calc).
+                // "Create plan" and "BOM" tasks -> Production Manager role (+BOM calc).
                 await ProcessOrderReviewsAsync(scope.ServiceProvider);
 
                 // Advance per-gauge Planning tasks from knitter records (started -> P, fully returned -> C).
@@ -95,7 +95,7 @@ public class PoTaskReminderService : BackgroundService
     // Order-review sweep: for every reviewed order (local tbl_order_review)
     // with no PO-Entry task yet, seed the front of the lifecycle:
     //   • "Create plan" task (Stage 1) -> Production Manager role, due +N days
-    //   • "BOM" task (Stage 2) -> Yarn role, reminder +2 days, with a yarn
+    //   • "BOM" task (Stage 2) -> Production Manager role, reminder +2 days, with a yarn
     //     requirement summary computed via IBomService (knitYarnRequirement)
     // Idempotent: "a Stage-1 task exists" is the processed marker (enforced by
     // sp_PoTask_PendingReviews + the CREATE dedupe). Per-order best-effort.
@@ -111,19 +111,14 @@ public class PoTaskReminderService : BackgroundService
         var bomSvc = sp.GetRequiredService<IBomService>();
 
         var pmRole = _configuration["TaskAutomation:ProductionManagerRoleName"] ?? "Production Manager";
-        var yarnRole = _configuration["TaskAutomation:YarnRoleName"] ?? "Yarn";
         var dueDays = _configuration.GetValue<int?>("TaskAutomation:PlanTaskDueDays") ?? 3;
 
-        // Planning goes to Production Manager; BOM work goes to Yarn.
+        // Planning and BOM work go to Production Manager members.
         var users = (await roleSvc.GetAllUsersWithRolesAsync()).ToList();
         var pms = users.Where(u => string.Equals(u.RoleName, pmRole, StringComparison.OrdinalIgnoreCase))
                        .Select(u => u.UserId).Distinct().ToList();
-        var yarnUsers = users.Where(u => string.Equals(u.RoleName, yarnRole, StringComparison.OrdinalIgnoreCase))
-                             .Select(u => u.UserId).Distinct().ToList();
         if (pms.Count == 0)
             _logger.LogWarning("Order-review sweep: role '{Role}' has no members; seeded tasks will be unassigned.", pmRole);
-        if (yarnUsers.Count == 0)
-            _logger.LogWarning("Order-review sweep: role '{Role}' has no members; BOM tasks will be unassigned.", yarnRole);
 
         foreach (var review in pending)
         {
@@ -155,8 +150,8 @@ public class PoTaskReminderService : BackgroundService
                     _logger.LogWarning(ex, "BOM calc failed for {OrderNo}; creating the BOM task without a summary.", review.OrderNo);
                 }
 
-                // ③ "BOM" -> Yarn role, +2-day reminder.
-                await svc.EnsureBomTaskAsync(review.OrderNo, null, yarnUsers, 2, "system", bomSummary, review.ReviewId);
+                // ③ "BOM" -> Production Manager role, +2-day reminder.
+                await svc.EnsureBomTaskAsync(review.OrderNo, null, pms, 2, "system", bomSummary, review.ReviewId);
 
                 _logger.LogInformation("Order-review sweep seeded tasks for {OrderNo}.", review.OrderNo);
             }
@@ -166,5 +161,7 @@ public class PoTaskReminderService : BackgroundService
                 _logger.LogWarning(ex, "Order-review sweep failed for {OrderNo}; will retry.", review.OrderNo);
             }
         }
+
+        await svc.DispatchPendingPushesAsync();
     }
 }

@@ -219,3 +219,16 @@ public class DropColorResult
     public int NotifyCount { get; set; }    // PoTaskNotification rows written
     public string Message { get; set; } = string.Empty;
 }
+
+public class YarnOrderApprovalRequest
+{
+    public bool Approve { get; set; }       // true = Accept; false = Reject or NOTIFY
+    public string? Action { get; set; }     // "APPROVE", "REJECT", "NOTIFY"
+    public string? Note { get; set; }
+}
+
+public class YarnOrderApprovalResult
+{
+    public bool IsSuccess { get; set; }
+    public string Message { get; set; } = string.Empty;
+}
