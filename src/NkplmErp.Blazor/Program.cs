@@ -149,6 +149,9 @@ builder.Services.AddScoped<IHttpServices, HttpServices>();
 builder.Services.AddScoped<IYarnOrderManager, YarnOrderManager>();
 builder.Services.AddScoped<IDropdownManager, DropdownManager>();
 
+// Third-party (PLM) API, reached through the API's ThirdPartyApi controller
+builder.Services.AddScoped<NkplmErp.Blazor.Services.ThirdPartyApi.Manager.Interface.IThirdPartyApiManager, NkplmErp.Blazor.Services.ThirdPartyApi.Manager.Implementation.ThirdPartyApiManager>();
+
 // Login task gate (blocking one-task-at-a-time popup)
 builder.Services.AddScoped<ITaskGateManager, TaskGateManager>();
 

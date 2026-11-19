@@ -15,6 +15,10 @@ public partial class OrderPlanning
     [Inject]
     private IProductionPlanningService PlanningService { get; set; } = null!;
 
+    // Third-party (PLM) API: dropdowns, planning quantities and yarn come from here.
+    [Inject]
+    private NkplmErp.Blazor.Services.ThirdPartyApi.Manager.Interface.IThirdPartyApiManager ThirdPartyApiManager { get; set; } = default!;
+
     [Inject]
     private IJSRuntime JS { get; set; } = null!;
 
@@ -1767,7 +1771,7 @@ public partial class OrderPlanning
                 }
                 else
                 {
-                    PlanningDetail = await PlanningService.GetOrderPlanningDetailAsync(orderNo, 0);
+                    await LoadPlanningDetailAsync(orderNo);
                 }
                 
                 Mode1Analysis = await PlanningService.GetOrderAnalysisAsync(orderNo, null, 1);
@@ -2903,10 +2907,17 @@ public partial class OrderPlanning
         try
         {
             var orderNo = SelectedOrders.LastOrDefault()?.OrderNo ?? "";
-            var result = await PlanningService.GetOrderPlanningDetailAsync(orderNo, 1, gauge, ply);
-            // Result 1 (YarnStatus) will contain the color-wise grouping when flag=1
-            // We filter by Yarn Name to show only colors for THAT yarn
-            YarnColorDetails = result.YarnStatus.Where(y => y.Yarn == yarnName).ToList();
+            // Colour-wise rows come live from PLM (same figures as the Yarn Stock table above).
+            var live = await ThirdPartyApiManager.GetYarnAsync(orderNo, gauge, ply);
+            if (live.Succeeded && live.Data is not null)
+            {
+                YarnColorDetails = live.Data.Where(y => y.Yarn == yarnName).ToList();
+            }
+            else
+            {
+                var result = await PlanningService.GetOrderPlanningDetailAsync(orderNo, 1, gauge, ply);
+                YarnColorDetails = result.YarnStatus.Where(y => y.Yarn == yarnName).ToList();
+            }
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
         {
@@ -3043,6 +3054,45 @@ public partial class OrderPlanning
         await OpenPlanningForGauge(FromGauge ?? string.Empty);
     }
 
+    // Planning Order panel: the SQL procedure supplies machines/capacity/timeline, but the pieces
+    // still to plan come live from PLM so already-knitted pieces are not planned again.
+    private async Task LoadPlanningDetailAsync(string orderNo)
+    {
+        var detail = await PlanningService.GetOrderPlanningDetailAsync(orderNo, 0);
+
+        var liveTask = ThirdPartyApiManager.GetRemainingAsync(orderNo);
+        var yarnTask = ThirdPartyApiManager.GetYarnAsync(orderNo);
+        await Task.WhenAll(liveTask, yarnTask);
+        var live = liveTask.Result;
+        var yarn = yarnTask.Result;
+
+        // Yarn panel: requirement / other running / stock come live from PLM as well.
+        if (yarn.Succeeded && yarn.Data is not null)
+            detail.YarnStatus = yarn.Data;
+
+        if (live.Succeeded && live.Data is not null)
+        {
+            var byGauge = new Dictionary<string, NkplmErp.Shared.DTOs.OrderPlanningApi.OrderPlanningRemainingModel>(StringComparer.OrdinalIgnoreCase);
+            foreach (var g in live.Data) byGauge.TryAdd(g.Gauge.Trim(), g);
+
+            var rows = new List<MachinePlanningStatusDto>();
+            foreach (var m in detail.MachineStatus)
+            {
+                if (!byGauge.TryGetValue((m.Gauge ?? string.Empty).Trim(), out var g)) continue; // nothing left on this gauge
+                m.BacklogQty = g.BacklogQty;
+                m.BacklogDays = g.BacklogDays;
+                m.NewOrderQty = g.NewOrderQty;
+                m.NewOrderDays = g.NewOrderDays;
+                if (m.NewOrderQty <= 0) m.SuggestedNewOrderMachines = 0;
+                if (m.BacklogQty <= 0) m.SuggestedBacklogMachines = 0;
+                rows.Add(m);
+            }
+            detail.MachineStatus = rows;
+        }
+
+        PlanningDetail = detail;
+    }
+
     private async Task LoadGaugeUtilization()
     {
         try
@@ -3079,8 +3129,13 @@ public partial class OrderPlanning
     {
         try
         {
-            var result = await PlanningService.GetMonthlySummaryAsync(DateTime.Now);
-            Months = result.ToList();
+            var api = await ThirdPartyApiManager.GetMonthsAsync(DateTime.Now);
+            if (!api.Succeeded || api.Data is null)
+            {
+                ToastService.ShowInfo("Order planning data is unavailable right now. Please try again shortly.");
+                return;
+            }
+            Months = api.Data;
 
             if (Months.Any())
             {
@@ -3108,7 +3163,10 @@ public partial class OrderPlanning
     {
         try
         {
-            var result = (await PlanningService.GetOrderCollectionTypesAsync()).ToList();
+            var api = await ThirdPartyApiManager.GetCollectionTypesAsync();
+            if (!api.Succeeded || api.Data is null)
+                throw new InvalidOperationException(api.Messages ?? "PLM API unavailable");
+            var result = api.Data;
             // Group case-insensitively and merge duplicate order numbers (OR the flags),
             // so two rows differing only by case/spacing can't collide in the dictionary.
             OrderTypeMap = result
@@ -3205,8 +3263,13 @@ public partial class OrderPlanning
     {
         try
         {
-            var result = await PlanningService.GetMonthlyOrderDetailsAsync(SelectedMonth);
-            AllOrders = result.ToList();
+            var api = await ThirdPartyApiManager.GetOrdersAsync(SelectedMonth);
+            if (!api.Succeeded || api.Data is null)
+            {
+                ToastService.ShowInfo("Orders could not be loaded right now. Please try again shortly.");
+                return;
+            }
+            AllOrders = api.Data;
             TagOrdersWithCollectionType();
             SelectedOrders.Clear(); // Reset selection when month changes
             StateHasChanged();
@@ -3389,7 +3452,7 @@ public partial class OrderPlanning
         try
         {
             OrderStatusData = await PlanningService.GetOrderProductionStatusAsync(orderNo, 0);
-            PlanningDetail = await PlanningService.GetOrderPlanningDetailAsync(orderNo, 0);
+            await LoadPlanningDetailAsync(orderNo);
 
             try
             {
@@ -3697,7 +3760,7 @@ public partial class OrderPlanning
                     GaugeInputs.Remove(plan.Gauge.Trim().ToUpper());
                 }
 
-                PlanningDetail = await PlanningService.GetOrderPlanningDetailAsync(orderNo, 0);
+                await LoadPlanningDetailAsync(orderNo);
                 Mode1Analysis = await PlanningService.GetOrderAnalysisAsync(orderNo, null, 1);
                 var dbPlans = await PlanningService.GetPlannedDataByOrderAsync(orderNo, plan.Gauge);
                 DbPlannedPlans = dbPlans.ToList();
@@ -3771,7 +3834,7 @@ public partial class OrderPlanning
                     GaugeInputs.Remove(plan.Gauge.Trim().ToUpper());
                 }
 
-                PlanningDetail = await PlanningService.GetOrderPlanningDetailAsync(orderNo, 0);
+                await LoadPlanningDetailAsync(orderNo);
                 Mode1Analysis = await PlanningService.GetOrderAnalysisAsync(orderNo, null, 1);
                 var dbPlans = await PlanningService.GetPlannedDataByOrderAsync(orderNo, plan.Gauge);
                 DbPlannedPlans = dbPlans.ToList();

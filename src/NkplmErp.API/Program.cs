@@ -174,6 +174,9 @@ builder.Services.AddScoped<ITaskManagementService, TaskManagementService>();
 builder.Services.AddScoped<ITaskGateService, TaskGateService>();
 builder.Services.AddScoped<IYarnOrderService, YarnOrderService>();
 builder.Services.AddScoped<IPoTaskService, PoTaskService>();
+// Third-party (PLM / PHP) API: one generic manager from the NkplmErp.ThirdPartyApi project.
+builder.Services.AddHttpClient<NkplmErp.ThirdPartyApi.Manager.Interface.IThirdPartyManager, NkplmErp.ThirdPartyApi.Manager.Implementation.ThirdPartyManager>(
+    client => client.Timeout = TimeSpan.FromSeconds(builder.Configuration.GetValue("ThirdPartyApi:TimeoutSeconds", 60)));
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IDropdownService, DropdownService>();
 builder.Services.AddScoped<IGenericRepository, GenericRepository>();
