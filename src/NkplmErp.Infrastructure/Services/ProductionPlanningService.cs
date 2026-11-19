@@ -1467,6 +1467,7 @@ public class ProductionPlanningService : IProductionPlanningService
                 using (var command = new SqlCommand("saveKnitterAssignment", connection))
                 {
                     command.CommandType = CommandType.StoredProcedure;
+                    command.CommandTimeout = 90;
                     command.Parameters.AddWithValue("@masterPlanDetailId", masterPlanDetailId);
                     command.Parameters.AddWithValue("@cardNo", (object?)cardNo ?? DBNull.Value);
                     command.Parameters.AddWithValue("@knitterName", (object?)knitterName ?? DBNull.Value);

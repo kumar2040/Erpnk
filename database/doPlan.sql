@@ -107,7 +107,7 @@ BEGIN
 
     /* ============================================================
        WEAVE ONLY: mirror this plan row to the linked MySQL server
-       (MYSQL_NatureKnit -> db_natureknit.tbl_weave_plandetail).
+       (SERVER2012 -> db_natureknit.tbl_weave_plandetail).
        Best-effort: a linked-server failure is swallowed so it never
        breaks the local save. Requires 'rpc out' on the linked server.
 
@@ -141,7 +141,7 @@ BEGIN
               + N'''' + @wEndDate + N''','
               + N'''Planed'');';
 
-            EXEC (@wIns) AT [MYSQL_NatureKnit];
+            EXEC (@wIns) AT [SERVER2012];
         END TRY
         BEGIN CATCH
             /* best-effort: ignore so the local plan still succeeds */
