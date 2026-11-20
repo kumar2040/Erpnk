@@ -1,0 +1,44 @@
+.progress-block {
+    border-top: 1px solid var(--border, #dbe4ee);
+    margin-top: 6px;
+    padding-top: 6px;
+}
+
+.progress-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--navy, #1a3353);
+}
+
+.progress-empty {
+    padding: 8px;
+    font-size: 11px;
+    color: var(--muted, #7a8fa6);
+}
+
+.made-cell {
+    color: #0f6e56;
+    font-weight: 700;
+}
+
+.remaining-cell {
+    color: #854f0b;
+    font-weight: 700;
+}
+
+.done-icon {
+    color: var(--green, #2eb872);
+    font-size: 11px;
+}
+
+.progress-total td {
+    font-weight: 700;
+    border-top: 1px solid var(--border, #dbe4ee);
+    color: var(--navy, #1a3353);
+}

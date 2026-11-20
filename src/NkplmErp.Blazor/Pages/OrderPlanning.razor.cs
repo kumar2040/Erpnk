@@ -118,6 +118,20 @@ public partial class OrderPlanning
     private List<OrderDetailByGuageDto> GaugeDetails { get; set; } = new();
     private string SelectedGauge { get; set; } = string.Empty;
     private bool IsPlanningDetailsModalOpen { get; set; } = false;
+    private bool IsReplanModalOpen { get; set; }
+    private bool IsLoadingReplan { get; set; }
+    private bool ReplanOnlyNoMachine { get; set; }
+    private bool IsReplanEditOpen { get; set; }
+    private bool IsSavingReplanEdit { get; set; }
+    private NkplmErp.Shared.DTOs.OrderPlanningApi.PlanRowModel? ReplanEditRow { get; set; }
+    private bool IsLoadingReplanMachines { get; set; }
+    private bool IsReplanMcOpen { get; set; }
+    private bool ReplanOvertime { get; set; }
+    private bool ReplanSaturday { get; set; }
+    private Dictionary<int, decimal>? ReplanAllocOverride { get; set; }
+    private List<MachinePlaningDto> ReplanMachineList { get; set; } = new();
+    private HashSet<int> ReplanSelectedMachineIds { get; set; } = new();
+    private List<NkplmErp.Shared.DTOs.OrderPlanningApi.PlanRowModel> ReplanRows { get; set; } = new();
 
     // Weave Modal state properties
     private bool IsWeavePlanningDetailsModalOpen { get; set; } = false;
@@ -1774,7 +1788,7 @@ public partial class OrderPlanning
                     await LoadPlanningDetailAsync(orderNo);
                 }
                 
-                Mode1Analysis = await PlanningService.GetOrderAnalysisAsync(orderNo, null, 1);
+                Mode1Analysis = await LoadOrderAnalysisAsync(orderNo, null, 1, withPlannedEnd: true);
                 var allPlans = await PlanningService.GetPlannedDataByOrderAsync(orderNo);
                 OrderAllPlannedPlans = allPlans.ToList();
 
@@ -2319,7 +2333,10 @@ public partial class OrderPlanning
             string stylesFlag = (SelectedKnitType == "Silk" || SelectedKnitType == "Other" || SelectedKnitType == "Linen")
                 ? SelectedKnitType
                 : "2";
-            var stylesTask = PlanningService.GetOrderDetailByGuageAsync(orderNo, gauge, stylesFlag);
+            // Knit lines (with their size breakdown) come live from PLM; Silk/Other/Linen still read SQL.
+            Task<IEnumerable<OrderDetailByGuageDto>> stylesTask = SelectedKnitType == "Knit"
+                ? LoadLiveKnitStylesAsync(orderNo, gauge)
+                : PlanningService.GetOrderDetailByGuageAsync(orderNo, gauge, stylesFlag);
             var plansTask = PlanningService.GetPlannedDataByOrderAsync(orderNo, gauge);
             
             Task<List<MachinePlaningDto>>? machineTask = null;
@@ -2510,6 +2527,188 @@ public partial class OrderPlanning
             .Replace("G", "", StringComparison.OrdinalIgnoreCase)
             .Replace(" ", "");
         return double.TryParse(normalized, out value);
+    }
+
+    // Machine-allocation popup (Knit): this order's lines of the gauge with pieces still to plan, plus the
+    // style/color/size breakdown, from PLM.
+    private async Task<IEnumerable<OrderDetailByGuageDto>> LoadLiveKnitStylesAsync(string orderNo, string gauge)
+    {
+        var live = await ThirdPartyApiManager.GetGaugeDetailsAsync(orderNo, gauge, "1", "Knit");
+        if (live.Succeeded && live.Data is not null) return live.Data;
+
+        ToastService.ShowInfo("Styles could not be loaded right now. Please try again shortly.");
+        return new List<OrderDetailByGuageDto>();
+    }
+
+    // Replan > Edit: assign machines to one PLM-only plan row. Same machine technique as the planning popup
+    // (machines of the row's gauge, FREE ones only, qty shared over the selection) - but saved in PLM's table
+    // only, nothing goes to MSSQL.
+    private async Task OpenReplanEdit(NkplmErp.Shared.DTOs.OrderPlanningApi.PlanRowModel row)
+    {
+        ReplanEditRow = row;
+        ReplanMachineList = new();
+        ReplanSelectedMachineIds = new();
+        IsReplanMcOpen = false;
+        ReplanAllocOverride = null;
+        ReplanOvertime = false;
+        ReplanSaturday = false;
+        IsLoadingReplanMachines = true;
+        IsReplanEditOpen = true;
+        StateHasChanged();
+
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(row.Gauge))
+            {
+                ReplanMachineList = await PlanningService.GetMachinePlaningAsync(row.Gauge);
+                if (!string.IsNullOrEmpty(row.Machine))
+                {
+                    var current = ReplanMachineList.FirstOrDefault(m => string.Equals(m.MachineNo, row.Machine, StringComparison.OrdinalIgnoreCase));
+                    if (current is not null) ReplanSelectedMachineIds.Add(current.Machine_ID);
+                }
+            }
+        }
+        catch (Exception)
+        {
+            ToastService.ShowInfo("Machines could not be loaded right now.");
+        }
+        IsLoadingReplanMachines = false;
+    }
+
+    // Row qty over the selected machines: what the user typed, else an even split (remainder one piece each
+    // from the first machine).
+    private Dictionary<int, decimal> ReplanAllocations()
+    {
+        var result = new Dictionary<int, decimal>();
+        if (ReplanEditRow is null || ReplanSelectedMachineIds.Count == 0) return result;
+
+        var picked = ReplanMachineList.Where(m => ReplanSelectedMachineIds.Contains(m.Machine_ID)).ToList();
+        if (ReplanAllocOverride is not null && picked.All(m => ReplanAllocOverride.ContainsKey(m.Machine_ID)))
+        {
+            foreach (var m in picked) result[m.Machine_ID] = ReplanAllocOverride[m.Machine_ID];
+            return result;
+        }
+
+        int total = (int)ReplanEditRow.Qty;
+        int each = total / picked.Count, extra = total % picked.Count;
+        for (int i = 0; i < picked.Count; i++) result[picked[i].Machine_ID] = each + (i < extra ? 1 : 0);
+        return result;
+    }
+
+    private void ReplanSetAlloc(int machineId, string? value)
+    {
+        var current = ReplanAllocations();
+        current[machineId] = decimal.TryParse(value, out var q) && q >= 0 ? Math.Floor(q) : 0;
+        ReplanAllocOverride = current;
+    }
+
+    // Start = machine free date + 1 day, pushed off Saturday unless Saturday working is ticked.
+    private DateTime ReplanStart(DateTime freeDate)
+    {
+        var start = freeDate.AddDays(1);
+        return !ReplanSaturday && start.DayOfWeek == DayOfWeek.Saturday ? start.AddDays(1) : start;
+    }
+
+    // When one machine finishes its share: start + qty / (style target x overtime factor), in working days.
+    private DateTime ReplanMachineEnd(MachinePlaningDto mc, decimal qty)
+    {
+        var start = ReplanStart(mc.FreeDate);
+        var factor = ReplanOvertime && OvertimeHoursPerDay > 0 ? (double)((StandardHoursPerDay + OvertimeHoursPerDay) / StandardHoursPerDay) : 1d;
+        var days = ReplanEditRow is { StyleTarget: > 0 } ? (double)qty / (ReplanEditRow.StyleTarget * factor) : 0;
+
+        var end = start;
+        int whole = (int)Math.Floor(days);
+        for (int added = 0; added < whole;)
+        {
+            end = end.AddDays(1);
+            if (ReplanSaturday || end.DayOfWeek != DayOfWeek.Saturday) added++;
+        }
+        if (days - whole > 0) end = end.AddDays(days - whole);
+        return !ReplanSaturday && end.DayOfWeek == DayOfWeek.Saturday ? end.AddDays(1) : end;
+    }
+
+    // Whole row done = the latest machine to finish.
+    private DateTime? ReplanEndDate(Dictionary<int, decimal> alloc) =>
+        alloc.Count == 0
+            ? null
+            : ReplanMachineList.Where(m => alloc.ContainsKey(m.Machine_ID)).Max(m => ReplanMachineEnd(m, alloc[m.Machine_ID]));
+    private void ReplanToggleMachine(MachinePlaningDto mc, bool on)
+    {
+        if (on)
+        {
+            // never more machines than pieces: every machine must get at least one piece
+            if (ReplanEditRow is not null && ReplanSelectedMachineIds.Count >= (int)ReplanEditRow.Qty)
+            {
+                ToastService.ShowInfo("Not enough pieces to give every machine at least one.");
+                return;
+            }
+            ReplanSelectedMachineIds.Add(mc.Machine_ID);
+        }
+        else ReplanSelectedMachineIds.Remove(mc.Machine_ID);
+        ReplanAllocOverride = null;
+    }
+
+    private void ReplanSelectAllMachines()
+    {
+        var limit = ReplanEditRow is null ? 0 : (int)ReplanEditRow.Qty;
+        ReplanSelectedMachineIds = ReplanMachineList
+            .Where(m => string.Equals(m.Status, "FREE", StringComparison.OrdinalIgnoreCase))
+            .Take(limit).Select(m => m.Machine_ID).ToHashSet();
+        ReplanAllocOverride = null;
+    }
+
+    private void ReplanDeselectAllMachines()
+    {
+        ReplanSelectedMachineIds = new();
+        ReplanAllocOverride = null;
+    }
+
+    private async Task SaveReplanEdit()
+    {
+        if (ReplanEditRow is null) return;
+
+        var alloc = ReplanAllocations();
+        if (alloc.Count > 0 && (alloc.Values.Sum() != ReplanEditRow.Qty || alloc.Values.Any(q => q <= 0)))
+        {
+            ToastService.ShowInfo($"Machine quantities must add up to {ReplanEditRow.Qty:N0}, each above 0.");
+            return;
+        }
+
+        var machines = ReplanMachineList
+            .Where(m => alloc.ContainsKey(m.Machine_ID))
+            .Select(m => new NkplmErp.Shared.DTOs.OrderPlanningApi.PlanRowMachineQtyModel { MachineNo = m.MachineNo, Qty = alloc[m.Machine_ID] })
+            .ToList();
+
+        IsSavingReplanEdit = true;
+        var result = await ThirdPartyApiManager.UpdatePlanRowMachineAsync(ReplanEditRow.Id, machines);
+        IsSavingReplanEdit = false;
+
+        if (!result.Succeeded)
+        {
+            ToastService.ShowInfo("The machine could not be saved. Please try again.");
+            return;
+        }
+
+        IsReplanEditOpen = false;
+        ToastService.ShowSuccess("Machine saved in PLM.");
+
+        // splitting adds rows, so reload the list
+        var rows = await ThirdPartyApiManager.GetPlanRowsAsync();
+        if (rows.Succeeded && rows.Data is not null) ReplanRows = rows.Data;
+    }
+    // Replan: every plan still open in PLM (tbl_production_plan_detail, status_ 0), whatever order is selected; rows without a machine are highlighted.
+    private async Task OpenReplanModal()
+    {
+        ReplanRows = new();
+        IsReplanModalOpen = true;
+        IsLoadingReplan = true;
+        StateHasChanged();
+
+        var rows = await ThirdPartyApiManager.GetPlanRowsAsync();
+        if (rows.Succeeded && rows.Data is not null) ReplanRows = rows.Data;
+        else ToastService.ShowInfo("Plan rows could not be loaded right now. Please try again shortly.");
+
+        IsLoadingReplan = false;
     }
 
     private async Task OpenPlanningDetailsModal()
@@ -2909,15 +3108,9 @@ public partial class OrderPlanning
             var orderNo = SelectedOrders.LastOrDefault()?.OrderNo ?? "";
             // Colour-wise rows come live from PLM (same figures as the Yarn Stock table above).
             var live = await ThirdPartyApiManager.GetYarnAsync(orderNo, gauge, ply);
-            if (live.Succeeded && live.Data is not null)
-            {
-                YarnColorDetails = live.Data.Where(y => y.Yarn == yarnName).ToList();
-            }
-            else
-            {
-                var result = await PlanningService.GetOrderPlanningDetailAsync(orderNo, 1, gauge, ply);
-                YarnColorDetails = result.YarnStatus.Where(y => y.Yarn == yarnName).ToList();
-            }
+            YarnColorDetails = live.Succeeded && live.Data is not null
+                ? live.Data.Where(y => y.Yarn == yarnName).ToList()
+                : new();
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
         {
@@ -2954,8 +3147,9 @@ public partial class OrderPlanning
             string stylesFlag = (SelectedKnitType == "Silk" || SelectedKnitType == "Other" || SelectedKnitType == "Linen")
                 ? SelectedKnitType
                 : flag;
-            var result = await PlanningService.GetOrderDetailByGuageAsync(orderNo, gauge, stylesFlag);
-            GaugeDetails = result.ToList();
+            // Lines still to knit come live from PLM, so the total always equals the Planning Order Qty.
+            var live = await ThirdPartyApiManager.GetGaugeDetailsAsync(orderNo, gauge, stylesFlag, WizardProductType);
+            GaugeDetails = live.Succeeded && live.Data is not null ? live.Data : new();
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
         {
@@ -3066,11 +3260,15 @@ public partial class OrderPlanning
         var live = liveTask.Result;
         var yarn = yarnTask.Result;
 
-        // Yarn panel: requirement / other running / stock come live from PLM as well.
-        if (yarn.Succeeded && yarn.Data is not null)
-            detail.YarnStatus = yarn.Data;
+        // Yarn panel and pieces-to-plan come only from PLM; if the API fails they are left empty
+        // rather than showing the stale SQL copy.
+        detail.YarnStatus = yarn.Succeeded && yarn.Data is not null ? yarn.Data : new List<YarnPlanningStatusDto>();
 
-        if (live.Succeeded && live.Data is not null)
+        if (!live.Succeeded || live.Data is null)
+        {
+            detail.MachineStatus = new List<MachinePlanningStatusDto>();
+        }
+        else
         {
             var byGauge = new Dictionary<string, NkplmErp.Shared.DTOs.OrderPlanningApi.OrderPlanningRemainingModel>(StringComparer.OrdinalIgnoreCase);
             foreach (var g in live.Data) byGauge.TryAdd(g.Gauge.Trim(), g);
@@ -3087,6 +3285,26 @@ public partial class OrderPlanning
                 if (m.BacklogQty <= 0) m.SuggestedBacklogMachines = 0;
                 rows.Add(m);
             }
+
+            // Gauges with pieces to plan that the SQL machine list doesn't know (e.g. a style whose gauge is
+            // "Woven", with no machines or target on record) still have to show, so the panel total equals the
+            // dropdown's remaining. No capacity data exists for them: one machine, no extra-days estimate.
+            var shown = rows.Select(r => (r.Gauge ?? string.Empty).Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var g in live.Data.Where(x => (x.NewOrderQty > 0 || x.BacklogQty > 0) && !shown.Contains(x.Gauge.Trim())))
+            {
+                rows.Add(new MachinePlanningStatusDto
+                {
+                    Gauge = g.Gauge.Trim(),
+                    NewOrderQty = g.NewOrderQty,
+                    NewOrderDays = g.NewOrderDays,
+                    BacklogQty = g.BacklogQty,
+                    BacklogDays = g.BacklogDays,
+                    SuggestedNewOrderMachines = 1,
+                    SuggestedBacklogMachines = g.BacklogQty > 0 ? 1 : 0,
+                    FreeDate = DateTime.Today
+                });
+            }
+
             detail.MachineStatus = rows;
         }
 
@@ -3227,7 +3445,7 @@ public partial class OrderPlanning
     }
 
     // Classify each order in the month by the product types it contains, so the order
-    // list can be filtered by the chosen Product Type. Cached per month load; throttled.
+    // list can be filtered by the chosen Product Type. One API call for the whole month.
     private async Task ScanOrderProductTypes()
     {
         OrderProductTypeMap = new(StringComparer.OrdinalIgnoreCase);
@@ -3236,34 +3454,98 @@ public partial class OrderPlanning
         IsScanningOrderTypes = true;
         StateHasChanged();
 
-        using var gate = new SemaphoreSlim(6);
-        var tasks = AllOrders.Select(async o =>
+        var live = await ThirdPartyApiManager.GetOrderTypesAsync(SelectedMonth);
+        if (live.Succeeded && live.Data is not null)
         {
-            await gate.WaitAsync();
-            try
-            {
-                var analysis = await PlanningService.GetOrderAnalysisAsync(o.OrderNo, null, 1);
-                var types = analysis.DetailedAnalysis?
-                    .Where(d => d.TotalQty > 0 && !string.IsNullOrWhiteSpace(d.KnitType))
-                    .Select(d => d.KnitType.Trim())
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase)
-                    ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                lock (OrderProductTypeMap) { OrderProductTypeMap[o.OrderNo.Trim()] = types; }
-            }
-            catch { /* leave unclassified - it just won't be hidden */ }
-            finally { gate.Release(); }
-        });
-        await Task.WhenAll(tasks);
+            foreach (var o in live.Data)
+                OrderProductTypeMap[o.OrderNo.Trim()] = o.KnitTypes.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+        // On failure orders stay unclassified, so none are hidden.
 
         IsScanningOrderTypes = false;
         StateHasChanged();
+    }
+
+    // Weave Factory Assignment: the pieces per factory come from PLM with nothing hidden, so the factories add
+    // up to the order's Weave quantity. The SQL result only lends what PLM doesn't have (machine load, free
+    // date, yarn status) for factories it also knows.
+    private async Task ApplyLiveWeaveFactoriesAsync(string orderNo)
+    {
+        var live = await ThirdPartyApiManager.GetWeaveFactoriesAsync(orderNo);
+        if (!live.Succeeded || live.Data is null)
+        {
+            ToastService.ShowInfo("Weave quantities could not be loaded right now. Please try again shortly.");
+            WeaveAnalysisData.FactorySummaries = new();
+            return;
+        }
+
+        var sqlByFactory = new Dictionary<string, WeaveFactorySummaryDto>(StringComparer.OrdinalIgnoreCase);
+        foreach (var f in WeaveAnalysisData.FactorySummaries) sqlByFactory.TryAdd((f.WeaveFactory ?? string.Empty).Trim(), f);
+
+        WeaveAnalysisData.FactorySummaries = live.Data.Select(f =>
+        {
+            sqlByFactory.TryGetValue((f.WeaveFactory ?? string.Empty).Trim(), out var sql);
+            return new WeaveFactorySummaryDto
+            {
+                WeaveFactory = f.WeaveFactory,
+                Qty = f.Qty,
+                TotalReceived = f.TotalReceived,
+                ReqMachineDays = f.ReqMachineDays,
+                TotalMachineLoadQty = sql?.TotalMachineLoadQty ?? 0,
+                TotalMachinesAllocated = sql?.TotalMachinesAllocated ?? 0,
+                FreeDate = sql?.FreeDate,
+                YarnStatus = sql?.YarnStatus ?? "Available"
+            };
+        }).ToList();
+    }
+
+    // Per-style made / remaining pieces of the chosen non-Knit product type (Weave, Silk, Linen, Other), from PLM.
+    private List<NkplmErp.Shared.DTOs.OrderPlanningApi.ProductionProgressModel> NonKnitProgress { get; set; } = new();
+    // Master name -> pieces still to make (Silk/Linen/Other Master Assignment panel).
+    private Dictionary<string, decimal> MasterRemaining { get; set; } = new();
+
+    // Yarn product id -> display name ("product_name: count1") from PLM, for tables that only carry the id.
+    private Dictionary<string, string> YarnNames { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    private async Task LoadYarnNamesAsync(IEnumerable<string> productIds)
+    {
+        var ids = productIds.Where(i => !string.IsNullOrWhiteSpace(i)).Select(i => i.Trim()).Distinct().ToList();
+        if (ids.Count == 0) return;
+
+        var live = await ThirdPartyApiManager.GetYarnNamesAsync(ids);
+        if (live.Succeeded && live.Data is not null)
+            foreach (var y in live.Data) YarnNames[y.ProductId] = y.Name;
+    }
+
+    // The name when PLM knows the product, otherwise the id itself.
+    private string YarnName(string? productId) =>
+        productId is not null && YarnNames.TryGetValue(productId.Trim(), out var name) ? name : productId ?? string.Empty;
+
+    // Order analysis (product types / print-emb styles / print-emb totals) from the API.
+    // withPlannedEnd: also stamp the Knit row with the ERP's own planned end date (MasterPlan is ERP data).
+    private async Task<OrderAnalysisResultDto> LoadOrderAnalysisAsync(string orderNo, string? knitType, int mode, bool withPlannedEnd = false)
+    {
+        var live = await ThirdPartyApiManager.GetOrderAnalysisAsync(orderNo, knitType, mode);
+        var result = live.Succeeded && live.Data is not null ? live.Data : new OrderAnalysisResultDto();
+
+        if (withPlannedEnd && result.DetailedAnalysis is { Count: > 0 })
+        {
+            var plans = (await PlanningService.GetPlannedDataByOrderAsync(orderNo)).ToList();
+            DateTime? plannedEnd = plans.Count > 0 ? plans.Max(p => p.EstEndDate) : null;
+            foreach (var row in result.DetailedAnalysis.Where(d => string.Equals(d.KnitType?.Trim(), "Knit", StringComparison.OrdinalIgnoreCase)))
+                row.EstEndDate = plannedEnd;
+        }
+
+        return result;
     }
 
     private async Task LoadOrders()
     {
         try
         {
-            var api = await ThirdPartyApiManager.GetOrdersAsync(SelectedMonth);
+            // Only the chosen Product Type's lines count, so an order whose Knit is fully planned
+            // doesn't show for Knit just because its Weave or Silk lines are still open.
+            var api = await ThirdPartyApiManager.GetOrdersAsync(SelectedMonth, WizardProductType);
             if (!api.Succeeded || api.Data is null)
             {
                 ToastService.ShowInfo("Orders could not be loaded right now. Please try again shortly.");
@@ -3286,12 +3568,14 @@ public partial class OrderPlanning
     }
 
     // Product Type / Sample-Production changed: reset any in-progress selection so the
-    // newly chosen context starts clean (order list re-filters via FilteredOrders).
-    private void OnWizardProductTypeChanged()
+    // newly chosen context starts clean, and reload the orders for that product type
+    // (planned / remaining pieces are counted per product type).
+    private async Task OnWizardProductTypeChanged()
     {
         SelectedKnitType = WizardProductType; // picking an order auto-opens this analysis
         WizardOrderType = string.Empty;       // progressive: re-pick Sample/Production next
         ResetPlanningContext();
+        await LoadOrders();
     }
 
     private void OnWizardOrderTypeChanged()
@@ -3341,8 +3625,8 @@ public partial class OrderPlanning
             try
             {
                 var lastOrder = SelectedOrders.Last().OrderNo;
-                Mode1Analysis = await PlanningService.GetOrderAnalysisAsync(lastOrder, null, 1);
-                Mode3Analysis = await PlanningService.GetOrderAnalysisAsync(lastOrder, null, 3);
+                Mode1Analysis = await LoadOrderAnalysisAsync(lastOrder, null, 1, withPlannedEnd: true);
+                Mode3Analysis = await LoadOrderAnalysisAsync(lastOrder, null, 3);
             }
             catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
             {
@@ -3379,8 +3663,14 @@ public partial class OrderPlanning
     private FabricAnalysisPlanDto FabricAnalysisData { get; set; } = new();
     private WeaveAnalysisPlanDto WeaveAnalysisData { get; set; } = new();
 
+    // Only the Product Type chosen in the wizard can be planned; other types in the order are view-only.
+    private bool IsPlannableKnitType(string? knitType) =>
+        string.IsNullOrEmpty(WizardProductType)
+        || string.Equals(knitType?.Trim(), WizardProductType.Trim(), StringComparison.OrdinalIgnoreCase);
+
     private async Task OnOrderSummaryRowClick(string knitType)
     {
+        if (!IsPlannableKnitType(knitType)) return;
         SelectedKnitType = knitType;
         if (!SelectedOrders.Any()) 
         {
@@ -3393,10 +3683,12 @@ public partial class OrderPlanning
         // Reset data containers to avoid showing stale data
         FabricAnalysisData = new();
         WeaveAnalysisData = new();
+        NonKnitProgress = new();
+        MasterRemaining = new();
         PlanningDetail = new();
-        
+
         StateHasChanged();
-        
+
         // Force Blazor to render the loading spinner
         await Task.Yield();
         await Task.Delay(200);
@@ -3413,14 +3705,49 @@ public partial class OrderPlanning
             else if (knitType == "Weave")
             {
                 WeaveAnalysisData = await PlanningService.GetWeaveAnalysisPlanAsync(order.OrderNo, null, 1);
+                await ApplyLiveWeaveFactoriesAsync(order.OrderNo);
+                await LoadYarnNamesAsync(WeaveAnalysisData.YarnStatuses.Select(y => y.ProductId));
             }
             else
             {
                 FabricAnalysisData = await PlanningService.GetFabricAnalysisPlanAsync(order.OrderNo, knitType, 1);
+                var masters = await ThirdPartyApiManager.GetMasterProgressAsync(order.OrderNo, knitType);
+                MasterRemaining = masters.Succeeded && masters.Data is not null
+                    ? masters.Data.ToDictionary(m => m.Style, m => m.Remaining)
+                    : new();
             }
             
+            // Every type except Knit also shows what has been made / what is left, per style.
+            if (knitType != "Knit")
+            {
+                var progress = await ThirdPartyApiManager.GetProductionProgressAsync(order.OrderNo, knitType);
+                NonKnitProgress = progress.Succeeded && progress.Data is not null ? progress.Data : new();
+
+                // Weave "Extra Work Details": quantities come from PLM too, so they add up to the factory total.
+                if (knitType == "Weave" && NonKnitProgress.Count > 0)
+                {
+                    var sqlByStyle = WeaveAnalysisData.PrintEmbroiderySummaries
+                        .GroupBy(s => s.StyleNo.Trim(), StringComparer.OrdinalIgnoreCase)
+                        .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+                    WeaveAnalysisData.PrintEmbroiderySummaries = NonKnitProgress.Select(p =>
+                    {
+                        sqlByStyle.TryGetValue(p.Style.Trim(), out var sql);
+                        return new WeavePrintEmbroiderySummaryDto
+                        {
+                            StyleNo = p.Style,
+                            Qty = (int)p.OrderQty,
+                            TotalReceived = (int)p.Made,
+                            StyleTarget = sql?.StyleTarget ?? 0,
+                            StylePrintStatus = sql?.StylePrintStatus ?? string.Empty,
+                            StyleEmbdStatus = sql?.StyleEmbdStatus ?? string.Empty,
+                            StyleReqMachineDays = sql?.StyleReqMachineDays ?? 0
+                        };
+                    }).ToList();
+                }
+            }
+
             // Mode 2 Analysis for Style Print/Emb counts
-            Mode2Analysis = await PlanningService.GetOrderAnalysisAsync(order.OrderNo, knitType, 2);
+            Mode2Analysis = await LoadOrderAnalysisAsync(order.OrderNo, knitType, 2);
             
             DataHasLoaded = true;
             await JS.InvokeVoidAsync("console.log", $"Analysis complete for {knitType}");
@@ -3451,7 +3778,6 @@ public partial class OrderPlanning
     {
         try
         {
-            OrderStatusData = await PlanningService.GetOrderProductionStatusAsync(orderNo, 0);
             await LoadPlanningDetailAsync(orderNo);
 
             try
@@ -3465,8 +3791,9 @@ public partial class OrderPlanning
                 OrderAllPlannedPlans = new();
             }
 
-            // Fetch Knit Completion Date from API
-            var completionData = await PlanningService.GetOrderDeptCompletionDateAsync(orderNo, "KNIT");
+            // Knit completion date from the third-party (PLM) API
+            var completion = await ThirdPartyApiManager.GetDeptCompletionDateAsync(orderNo, "KNIT");
+            var completionData = completion.Succeeded ? completion.Data?.FirstOrDefault() : null;
             if (completionData != null)
             {
                 KnitCompleteDate = completionData.DeptCompletionDate;
@@ -3761,7 +4088,7 @@ public partial class OrderPlanning
                 }
 
                 await LoadPlanningDetailAsync(orderNo);
-                Mode1Analysis = await PlanningService.GetOrderAnalysisAsync(orderNo, null, 1);
+                Mode1Analysis = await LoadOrderAnalysisAsync(orderNo, null, 1, withPlannedEnd: true);
                 var dbPlans = await PlanningService.GetPlannedDataByOrderAsync(orderNo, plan.Gauge);
                 DbPlannedPlans = dbPlans.ToList();
 
@@ -3835,7 +4162,7 @@ public partial class OrderPlanning
                 }
 
                 await LoadPlanningDetailAsync(orderNo);
-                Mode1Analysis = await PlanningService.GetOrderAnalysisAsync(orderNo, null, 1);
+                Mode1Analysis = await LoadOrderAnalysisAsync(orderNo, null, 1, withPlannedEnd: true);
                 var dbPlans = await PlanningService.GetPlannedDataByOrderAsync(orderNo, plan.Gauge);
                 DbPlannedPlans = dbPlans.ToList();
 

@@ -13,6 +13,9 @@ public class MonthlyOrderDetailDto
 {
     public string OrderNo { get; set; } = string.Empty;
     public decimal TotalPieces { get; set; }
+    // From the PLM API: pieces already planned and still to plan (TotalPieces - PlannedPieces).
+    public decimal PlannedPieces { get; set; }
+    public decimal RemainingPieces { get; set; }
     public string MonthName { get; set; } = string.Empty;
     public int Year { get; set; }
     public DateTime MonthStartDate { get; set; }
@@ -148,6 +151,8 @@ public class OrderDetailByGuageDto
     public string OrderColor { get; set; } = string.Empty;
     public decimal OrderPics { get; set; }
     public decimal TotalReceived { get; set; }
+    // From the PLM API (gauge popup): pieces already planned for this line; BalanceQty = OrderPics - PlannedQty.
+    public decimal PlannedQty { get; set; }
     public double StyleTarget { get; set; }
     public decimal BalanceQty { get; set; }
     public double RequireDays { get; set; }

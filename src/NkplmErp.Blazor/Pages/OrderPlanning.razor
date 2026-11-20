@@ -203,7 +203,7 @@
         cursor: pointer; transition: background 0.1s;
     }
     .order-checkbox-item:hover { background: var(--sky); }
-    .order-checkbox-item.selected { background: var(--teal-lt); }
+    .order-checkbox-item.selected { background: #dceafa; }
     .selected-gauge-row { background-color: #fef08a !important; color: #000000 !important; }
     .selected-gauge-row td,
     .selected-gauge-row td span { color: #000000 !important; }
@@ -356,7 +356,7 @@
                                 <span class="truncate">
                                     @if (SelectedOrders.Any())
                                     {
-                                        @(string.Join(", ", SelectedOrders.Take(1).Select(o => $"{o.OrderNo} (Qty: {o.TotalPieces})")))
+                                        @(string.Join(", ", SelectedOrders.Take(1).Select(o => o.OrderNo)))
                                     }
                                     else if (IsScanningOrderTypes)
                                     {
@@ -387,7 +387,19 @@
                                         <div class="order-checkbox-item @(isSelected ? "selected" : "")" @onclick="() => ToggleOrderSelection(o)" @onclick:stopPropagation>
                                             <input type="checkbox" class="accent-teal w-4 h-4 rounded cursor-pointer" checked="@isSelected" @onclick:stopPropagation @onchange="() => ToggleOrderSelection(o)" />
                                             <span class="text-[12px] font-bold text-navy ml-1">@o.OrderNo</span>
-                                            <span class="ml-auto text-[10px] text-muted">@o.TotalPieces pcs</span>
+                                            <span class="order-qty-bar ml-auto">
+                                                <span class="qty-segments">
+                                                    @if (o.PlannedPieces > 0)
+                                                    {
+                                                        <span class="seg-planned" style="flex-grow: @((int)o.PlannedPieces)" title="Already planned"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i>@o.PlannedPieces.ToString("N0")</span>
+                                                    }
+                                                    @if (o.RemainingPieces > 0)
+                                                    {
+                                                        <span class="seg-remaining" style="flex-grow: @((int)o.RemainingPieces)" title="Still to plan">@o.RemainingPieces.ToString("N0")<i class="fa-solid fa-hourglass-half" aria-hidden="true"></i></span>
+                                                    }
+                                                </span>
+                                                <span class="qty-total" title="Total pieces">@o.TotalPieces.ToString("N0")</span>
+                                            </span>
                                         </div>
                                     }
                                 </div>
@@ -419,9 +431,11 @@
                                         <tbody>
                                             @foreach (var item in Mode1Analysis.DetailedAnalysis.OrderBy(x => KnitTypeRank(x.KnitType)))
                                             {
-                                                <tr class="cursor-pointer hover:bg-sky-50"
-                                                    style="@(item.EstEndDate.HasValue ? "background:#f0faf4;" : "")"
-                                                    title="@(item.EstEndDate.HasValue ? "Planning in progress / planned" : "Not planned yet")"
+                                                // Only the product type chosen above can be planned; the other types are shown for information.
+                                                var selectable = IsPlannableKnitType(item.KnitType);
+                                                <tr class="@(selectable ? "cursor-pointer hover:bg-sky-50" : "summary-row-disabled")"
+                                                    style="@(selectable && item.EstEndDate.HasValue ? "background:#f0faf4;" : "")"
+                                                    title="@(!selectable ? $"Only {WizardProductType} can be planned here" : item.EstEndDate.HasValue ? "Planning in progress / planned" : "Not planned yet")"
                                                     @onclick="() => OnOrderSummaryRowClick(item.KnitType)">
                                                     <td class="font-bold text-navy">@item.KnitType</td>
                                                     <td class="text-center font-bold">@item.TotalQty.ToString("N0")</td>
@@ -851,6 +865,7 @@
                                                  }
                                             </tbody>
                                         </table>
+                                        <ProductionProgressTable Items="NonKnitProgress" Title="@($"{SelectedKnitType} production progress")" />
                                     </div>
                                 </div>
 
@@ -974,7 +989,7 @@
                                                     <tr>
                                                             <td class="text-center">@(ywSn++)</td>
 
-                                                        <td class="font-bold text-navy">@item.ProductId</td>
+                                                        <td class="font-bold text-navy">@YarnName(item.ProductId)</td>
                                                         <td>
                                                             <span class="px-2 py-0.5 rounded-full bg-[#f8fafc] text-muted text-[8px] border border-border font-bold">@item.OrderColor</span>
                                                         </td>
@@ -1021,6 +1036,7 @@
                                                 <tr>
                                                     <th>Master</th>
                                                     <th class="text-center pr-4">Qty</th>
+                                                    <th class="text-center pr-4">Remaining</th>
                                                     <th class="text-center">Est. Days</th>
                                                 </tr>
                                             </thead>
@@ -1030,6 +1046,7 @@
                                                     <tr>
                                                         <td class="font-bold text-navy">@item.MasterName</td>
                                                         <td class="text-center font-bold pr-4">@item.NewOrderQty.ToString("N0")</td>
+                                                        <td class="text-center font-bold pr-4">@(MasterRemaining.TryGetValue(item.MasterName, out var rem) ? rem.ToString("N0") : "-")</td>
                                                         <td class="text-center text-muted">@item.NewOrderDaysByCapacity?.ToString("N1")d</td>
                                                     </tr>
                                                 }
@@ -1175,6 +1192,9 @@
         
             <!-- Column 4: Man Power -->
             <div class="col-span-1 lg:col-span-2 flex flex-col gap-2 min-h-[300px] lg:min-h-0 overflow-y-auto custom-scroll">
+                <button type="button" class="replan-btn replan-btn-block" title="All plans in PLM that are not completed yet" @onclick="OpenReplanModal">
+                    <i class="fa-solid fa-arrows-rotate"></i> Replan
+                </button>
                 @if (SelectedKnitType != "Knit" && SelectedKnitType != "Weave" && !string.IsNullOrEmpty(SelectedKnitType))
                 {
                     <!-- Backlog Workload -->
@@ -1362,7 +1382,7 @@
                             <th>Style No</th>
                             <th class="text-center">Color</th>
                             <th class="text-right">Order Qty</th>
-                            <th class="text-right">Knitted Qty</th>
+                            <th class="text-right">Planned Qty</th>
                             <th class="text-right">Balance</th>
                             <th class="text-center">Pnt</th>
                             <th class="text-center">Emb</th>
@@ -1384,7 +1404,7 @@
                                         <span class="px-2 py-0.5 rounded-full bg-white text-navy text-[10px] border border-border font-bold">@detail.OrderColor</span>
                                     </td>
                                     <td class="text-right font-bold">@detail.OrderPics.ToString("N0")</td>
-                                    <td class="text-right font-bold text-green">@detail.TotalReceived.ToString("N0")</td>
+                                    <td class="text-right font-bold text-green">@detail.PlannedQty.ToString("N0")</td>
                                     <td class="text-right font-bold text-red">@detail.BalanceQty.ToString("N0")</td>
                                     <td class="text-center">
                                         <div class="flex items-center justify-center gap-1">
@@ -1537,6 +1557,248 @@
         </div>
     </DataModal>
 
+    <DataModal @bind-IsVisible="IsReplanModalOpen"
+               Title="Replan: plans not completed yet"
+               BadgeText="@(ReplanRows.Count(r => string.IsNullOrEmpty(r.Machine)) + " without machine")"
+               IsLoading="IsLoadingReplan"
+               MaxWidth="1100px">
+        @if (ReplanRows.Count == 0 && !IsLoadingReplan)
+        {
+            <div class="replan-empty">No open plans in PLM</div>
+        }
+        else
+        {
+            var shownReplan = ReplanRows.Where(r => !ReplanOnlyNoMachine || string.IsNullOrEmpty(r.Machine)).ToList();
+            <label class="replan-filter">
+                <input type="checkbox" @bind="ReplanOnlyNoMachine" /> Only without machine
+                <span class="replan-count">@shownReplan.Count rows</span>
+            </label>
+            <div class="replan-scroll">
+                <table class="replan-table">
+                    <colgroup>
+                        <col style="width:44px" />
+                        <col style="width:130px" />
+                        <col style="width:170px" />
+                        <col />
+                        <col style="width:64px" />
+                        <col style="width:56px" />
+                        <col style="width:190px" />
+                        <col style="width:130px" />
+                        <col style="width:80px" />
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th class="c">S.N</th>
+                            <th>Order</th>
+                            <th>Style</th>
+                            <th>Color</th>
+                            <th class="c">Size</th>
+                            <th class="c">Qty</th>
+                            <th>Knitter</th>
+                            <th class="c">Machine</th>
+                            <th class="c">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{ int rSn = 1; }
+                        @foreach (var row in shownReplan)
+                        {
+                            bool noMachine = string.IsNullOrEmpty(row.Machine);
+                            <tr class="@(noMachine ? "replan-row-warn" : "")">
+                                <td class="c">@(rSn++)</td>
+                                <td class="strong">@row.OrderNo</td>
+                                <td>@row.StyleNo</td>
+                                <td>@row.Color</td>
+                                <td class="c upper">@row.Size</td>
+                                <td class="c strong">@row.Qty.ToString("N0")</td>
+                                <td>@(string.IsNullOrEmpty(row.KnitterName) ? row.Knitter : row.KnitterName)</td>
+                                <td class="c">
+                                    @if (noMachine)
+                                    {
+                                        <span class="replan-chip replan-chip-warn">&#9888; Not assigned</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="replan-chip">@row.Machine</span>
+                                    }
+                                </td>
+                                <td class="c">
+                                    @if (row.KnitType == "Knit")
+                                    {
+                                        <button type="button" class="replan-edit" title="Assign machines to this plan row" @onclick="() => OpenReplanEdit(row)">&#9998; Edit</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="5">Total</td>
+                            <td class="c">@shownReplan.Sum(r => r.Qty).ToString("N0")</td>
+                            <td colspan="3"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        }
+    </DataModal>
+
+    <DataModal @bind-IsVisible="IsReplanEditOpen"
+               Title="@($"Machine Allocation For Gauge :: {ReplanEditRow?.Gauge}")"
+               BadgeText=""
+               IsLoading="IsLoadingReplanMachines"
+               MaxWidth="1300px">
+        @if (ReplanEditRow is not null)
+        {
+            var alloc = ReplanAllocations();
+            var pickedMachines = ReplanMachineList.Where(m => ReplanSelectedMachineIds.Contains(m.Machine_ID)).ToList();
+            var pickedEnd = ReplanEndDate(alloc);
+            var allocTotal = alloc.Values.Sum();
+            <div class="rp-form">
+                <div class="rp-bar">
+                    <div class="rp-field">
+                        <label>Machine (Mc)</label>
+                        <div class="rp-select">
+                            <button type="button" class="rp-trigger" @onclick="() => IsReplanMcOpen = !IsReplanMcOpen">
+                                <span>@(ReplanSelectedMachineIds.Count > 0 ? $"{ReplanSelectedMachineIds.Count} MC Selected" : "Select Mc...")</span>
+                                <span class="rp-caret">&#8964;</span>
+                            </button>
+
+                            @if (IsReplanMcOpen)
+                            {
+                                <div class="rp-underlay" @onclick="() => IsReplanMcOpen = false"></div>
+                                <div class="rp-panel">
+                                    <div class="rp-panel-head">
+                                        <span>Machine List</span>
+                                        <span class="rp-links">
+                                            <button type="button" @onclick="ReplanSelectAllMachines">Select All</button>
+                                            <span>|</span>
+                                            <button type="button" @onclick="ReplanDeselectAllMachines">Deselect All</button>
+                                        </span>
+                                    </div>
+                                    <div class="rp-panel-body">
+                                        <table class="rp-mc-table">
+                                            <thead>
+                                                <tr>
+                                                    <th class="c">Select</th>
+                                                    <th class="c">S.N.</th>
+                                                    <th>Start Date</th>
+                                                    <th>Machine Name</th>
+                                                    <th class="r">Qty</th>
+                                                    <th class="c">Available Date</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @if (ReplanMachineList.Count == 0)
+                                                {
+                                                    <tr><td colspan="6" class="none">No machines for this gauge</td></tr>
+                                                }
+                                                @{ int mcSn = 1; }
+                                                @foreach (var mc in ReplanMachineList)
+                                                {
+                                                    bool isChecked = ReplanSelectedMachineIds.Contains(mc.Machine_ID);
+                                                    bool isFree = string.Equals(mc.Status, "FREE", StringComparison.OrdinalIgnoreCase);
+                                                    bool canPick = isFree || isChecked;
+                                                    alloc.TryGetValue(mc.Machine_ID, out var mcQty);
+                                                    var mcStart = ReplanStart(mc.FreeDate);
+                                                    <tr class="@(isChecked ? "on" : "") @(canPick ? "" : "busy")">
+                                                        <td class="c">
+                                                            <input type="checkbox" checked="@isChecked" disabled="@(!canPick)"
+                                                                   @onchange="e => ReplanToggleMachine(mc, (bool)(e.Value ?? false))" />
+                                                        </td>
+                                                        <td class="c mono">@(mcSn++)</td>
+                                                        <td>@mcStart.ToString("dd-MMM")</td>
+                                                        <td class="name">@mc.MachineNo @(isFree ? "" : "(busy)")</td>
+                                                        <td class="r">@(isChecked ? mcQty.ToString("N0") : "0")</td>
+                                                        <td class="c avail">@(isChecked ? ReplanMachineEnd(mc, mcQty).ToString("dd-MMM") : mcStart.ToString("dd-MMM"))</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="rp-field">
+                        <label>Quantity</label>
+                        <input class="rp-input" type="text" readonly value="@ReplanEditRow.Qty.ToString("N0")" />
+                    </div>
+
+                    <div class="rp-field">
+                        <label>Est. End Date</label>
+                        <input class="rp-input rp-date" type="text" readonly value="@(pickedEnd.HasValue ? pickedEnd.Value.ToString("dd-MMM-yyyy") : "-")" />
+                    </div>
+
+                    <div class="rp-field">
+                        <label>Overtime</label>
+                        <input type="checkbox" checked="@ReplanOvertime" @onchange="e => ReplanOvertime = (bool)(e.Value ?? false)" />
+                    </div>
+
+                    <div class="rp-field">
+                        <label>Work Saturdays</label>
+                        <input type="checkbox" checked="@ReplanSaturday" @onchange="e => ReplanSaturday = (bool)(e.Value ?? false)" />
+                    </div>
+
+                    <button type="button" class="rp-confirm" disabled="@IsSavingReplanEdit" @onclick="SaveReplanEdit">
+                        @(IsSavingReplanEdit ? "SAVING..." : (ReplanSelectedMachineIds.Count == 0 ? "UN-ASSIGN" : "CONFIRM"))
+                    </button>
+                </div>
+
+                <div class="rp-card">
+                    <table class="rp-lines">
+                        <thead>
+                            <tr>
+                                <th class="sn">S.N</th>
+                                <th>Style</th>
+                                <th class="r">Color</th>
+                                <th class="c">Size</th>
+                                <th class="r">Plan Qty</th>
+                                @foreach (var mc in pickedMachines)
+                                {
+                                    <th class="c mc">@mc.MachineNo</th>
+                                }
+                                <th class="r">Alloc</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="sn">1</td>
+                                <td class="style">@ReplanEditRow.StyleNo</td>
+                                <td class="r">@ReplanEditRow.Color</td>
+                                <td class="c size">@ReplanEditRow.Size.ToUpperInvariant()</td>
+                                <td class="r">@ReplanEditRow.Qty.ToString("N0")</td>
+                                @foreach (var mc in pickedMachines)
+                                {
+                                    var mcId = mc.Machine_ID;
+                                    <td class="c mc">
+                                        <input type="number" min="0" max="@((int)ReplanEditRow.Qty)" class="rp-qty"
+                                               value="@(alloc.TryGetValue(mcId, out var q) ? q.ToString("0") : "0")"
+                                               @onchange="e => ReplanSetAlloc(mcId, e.Value?.ToString())" />
+                                    </td>
+                                }
+                                <td class="r alloc @(allocTotal != ReplanEditRow.Qty && pickedMachines.Count > 0 ? "bad" : "")">@allocTotal.ToString("N0")</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="5">Machine Total</td>
+                                @foreach (var mc in pickedMachines)
+                                {
+                                    <td class="c mc">@(alloc.TryGetValue(mc.Machine_ID, out var qt) ? qt.ToString("N0") : "0")</td>
+                                }
+                                <td class="r alloc">@allocTotal.ToString("N0")</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <div class="rp-meta">
+                    Order <b>@ReplanEditRow.OrderNo</b> &middot; Knitter <b>@(string.IsNullOrEmpty(ReplanEditRow.KnitterName) ? ReplanEditRow.Knitter : ReplanEditRow.KnitterName)</b> &middot; Saved in PLM only
+                </div>
+            </div>
+        }
+    </DataModal>
     <DataModal @bind-IsVisible="IsPlanningDetailsModalOpen"
                Title="@($"Planning Details: {(SelectedOrders.LastOrDefault()?.OrderNo ?? "N/A")}")"
                BadgeText=""
