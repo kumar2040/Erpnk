@@ -1,16 +1,17 @@
 namespace NkplmErp.Blazor.Services.ThirdPartyApi.Manager.Route
 {
-    // Central place for the ThirdPartyApi controller routes (UI -> NkplmErp.API).
+    // Central place for the ProductionPlan and Dashboard controller routes (UI -> NkplmErp.API).
     public static class ThirdPartyApiEndpoint
     {
-        public const string Base = "api/v1/ThirdPartyApi";
+        public const string Base = "api/v1/ProductionPlan";
+        public const string DashboardBase = "api/v1/Dashboard";
 
         // Main dashboard
         public static string OrderStatus(int year, string status) =>
-            $"{Base}/order-status?year={year}&status={Uri.EscapeDataString(status)}";
+            $"{DashboardBase}/order-status?year={year}&status={Uri.EscapeDataString(status)}";
 
         public static string ProductionFlow(int buyerId, string? orderNo) =>
-            $"{Base}/production-flow?buyerId={buyerId}&orderNo={Uri.EscapeDataString(orderNo ?? string.Empty)}";
+            $"{DashboardBase}/production-flow?buyerId={buyerId}&orderNo={Uri.EscapeDataString(orderNo ?? string.Empty)}";
 
         // Order planning
         public static string Months(DateTime inputDate) => $"{Base}/months?inputDate={inputDate:yyyy-MM-dd}";

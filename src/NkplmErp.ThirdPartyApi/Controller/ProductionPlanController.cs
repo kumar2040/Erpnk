@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,32 +7,16 @@ using NkplmErp.Shared.DTOs.OrderPlanningApi;
 using NkplmErp.ThirdPartyApi.Manager.Interface;
 using NkplmErp.ThirdPartyApi.Route;
 
-namespace NkplmErp.API.Controllers.ThirdPartyApi
+namespace NkplmErp.ThirdPartyApi.Controller
 {
-    /// <summary>The one controller through which the UI reaches the third-party (PLM) API.</summary>
+    /// <summary>Production planning page: order planning, replan and machine edit, backed by the PLM API.</summary>
     [ApiController]
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]
     [Authorize]
-    public class ThirdPartyApiController(IThirdPartyManager thirdParty, IRoleManagementService roleService) : ControllerBase
+    public class ProductionPlanController(IThirdPartyManager thirdParty, IRoleManagementService roleService) : PermissionController(roleService)
     {
-        private async Task<bool> CanEditAsync(string module)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId)) return false;
-            var perms = await roleService.GetUserPermissionsAsync(userId);
-            return perms.CanEdit(module);
-        }
-
-        private async Task<bool> CanViewAsync(string module)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId)) return false;
-            var perms = await roleService.GetUserPermissionsAsync(userId);
-            return perms.CanView(module);
-        }
-
-        // GET api/v1/ThirdPartyApi/months?inputDate=2026-11-19
+        // GET api/v1/ProductionPlan/months?inputDate=2026-11-19
         [HttpGet("months")]
         public async Task<IActionResult> GetMonthsAsync([FromQuery] DateTime inputDate, CancellationToken ct)
         {
@@ -42,7 +25,7 @@ namespace NkplmErp.API.Controllers.ThirdPartyApi
                 ThirdPartyRouter.Months, new { inputDate = inputDate.ToString("yyyy-MM-dd") }, ct));
         }
 
-        // GET api/v1/ThirdPartyApi/orders?month=2026-11-01
+        // GET api/v1/ProductionPlan/orders?month=2026-11-01
         [HttpGet("orders")]
         public async Task<IActionResult> GetOrdersAsync([FromQuery] DateTime month, [FromQuery] string? knitType, CancellationToken ct)
         {
@@ -51,7 +34,7 @@ namespace NkplmErp.API.Controllers.ThirdPartyApi
                 ThirdPartyRouter.Orders, new { month = month.ToString("yyyy-MM-dd"), knitType = knitType ?? string.Empty }, ct));
         }
 
-        // GET api/v1/ThirdPartyApi/collection-types
+        // GET api/v1/ProductionPlan/collection-types
         [HttpGet("collection-types")]
         public async Task<IActionResult> GetCollectionTypesAsync(CancellationToken ct)
         {
@@ -59,7 +42,7 @@ namespace NkplmErp.API.Controllers.ThirdPartyApi
             return Ok(await thirdParty.CallAsync<List<OrderCollectionTypeDto>>(ThirdPartyRouter.CollectionTypes, null, ct));
         }
 
-        // GET api/v1/ThirdPartyApi/remaining?orderNo=SND-113
+        // GET api/v1/ProductionPlan/remaining?orderNo=SND-113
         [HttpGet("remaining")]
         public async Task<IActionResult> GetRemainingAsync([FromQuery] string orderNo, CancellationToken ct)
         {
@@ -68,31 +51,9 @@ namespace NkplmErp.API.Controllers.ThirdPartyApi
                 ThirdPartyRouter.Remaining, new { orderNo }, ct));
         }
 
-        // ---- Main dashboard ----
-
-        // GET api/v1/ThirdPartyApi/order-status?year=2026&status=Running
-        // Running-orders list (and the dashboard order table), live from PLM.
-        [HttpGet("order-status")]
-        public async Task<IActionResult> GetOrderStatusAsync([FromQuery] int year, [FromQuery] string status, CancellationToken ct)
-        {
-            if (!await CanViewAsync("Dashboard")) return Forbid();
-            return Ok(await thirdParty.CallAsync<List<OrderStatusDetailDto>>(
-                ThirdPartyRouter.OrderStatus, new { year, status }, ct));
-        }
-
-        // GET api/v1/ThirdPartyApi/production-flow?buyerId=87&orderNo=GT-26025
-        // Production Flow chart: pieces per department, dispatch totals and department due dates.
-        [HttpGet("production-flow")]
-        public async Task<IActionResult> GetProductionFlowAsync([FromQuery] int buyerId, [FromQuery] string? orderNo, CancellationToken ct)
-        {
-            if (!await CanViewAsync("Dashboard")) return Forbid();
-            return Ok(await thirdParty.CallAsync<List<ProductionFlowDto>>(
-                ThirdPartyRouter.ProductionFlow, new { buyerId, orderNo = orderNo ?? string.Empty }, ct));
-        }
-
         // ---- Order planning (continued) ----
 
-        // GET api/v1/ThirdPartyApi/order-analysis?orderNo=PO-1978&mode=1[&knitType=Knit]
+        // GET api/v1/ProductionPlan/order-analysis?orderNo=PO-1978&mode=1[&knitType=Knit]
         // mode 1 = per product type, 2 = print/emb styles of one type, 3 = print/emb totals.
         [HttpGet("order-analysis")]
         public async Task<IActionResult> GetOrderAnalysisAsync([FromQuery] string orderNo, [FromQuery] string? knitType, [FromQuery] int mode, CancellationToken ct)
@@ -102,7 +63,7 @@ namespace NkplmErp.API.Controllers.ThirdPartyApi
                 ThirdPartyRouter.Analysis, new { orderNo, knitType = knitType ?? string.Empty, mode }, ct));
         }
 
-        // GET api/v1/ThirdPartyApi/order-types?month=2026-11-01
+        // GET api/v1/ProductionPlan/order-types?month=2026-11-01
         // Product types of every order in the month, in one call (order dropdown filter).
         [HttpGet("order-types")]
         public async Task<IActionResult> GetOrderTypesAsync([FromQuery] DateTime month, CancellationToken ct)
@@ -112,7 +73,7 @@ namespace NkplmErp.API.Controllers.ThirdPartyApi
                 ThirdPartyRouter.OrderTypes, new { month = month.ToString("yyyy-MM-dd") }, ct));
         }
 
-        // GET api/v1/ThirdPartyApi/weave-factories?orderNo=PO-1978
+        // GET api/v1/ProductionPlan/weave-factories?orderNo=PO-1978
         // Weave pieces per factory for the order, nothing hidden (adds up to the order's Weave quantity).
         [HttpGet("weave-factories")]
         public async Task<IActionResult> GetWeaveFactoriesAsync([FromQuery] string orderNo, CancellationToken ct)
@@ -122,7 +83,7 @@ namespace NkplmErp.API.Controllers.ThirdPartyApi
                 ThirdPartyRouter.WeaveFactories, new { orderNo }, ct));
         }
 
-        // GET api/v1/ThirdPartyApi/production-progress?orderNo=PO-1968&knitType=Weave
+        // GET api/v1/ProductionPlan/production-progress?orderNo=PO-1968&knitType=Weave
         // Per style: ordered / issued / made / remaining for one non-Knit product type.
         [HttpGet("production-progress")]
         public async Task<IActionResult> GetProductionProgressAsync([FromQuery] string orderNo, [FromQuery] string knitType, CancellationToken ct)
@@ -132,7 +93,7 @@ namespace NkplmErp.API.Controllers.ThirdPartyApi
                 ThirdPartyRouter.ProductionProgress, new { orderNo, knitType }, ct));
         }
 
-        // GET api/v1/ThirdPartyApi/master-progress?orderNo=PO-1978&knitType=Silk
+        // GET api/v1/ProductionPlan/master-progress?orderNo=PO-1978&knitType=Silk
         // Same figures as production-progress, one row per tailor master (Style holds the master name).
         [HttpGet("master-progress")]
         public async Task<IActionResult> GetMasterProgressAsync([FromQuery] string orderNo, [FromQuery] string knitType, CancellationToken ct)
@@ -142,7 +103,7 @@ namespace NkplmErp.API.Controllers.ThirdPartyApi
                 ThirdPartyRouter.MasterProgress, new { orderNo, knitType }, ct));
         }
 
-        // GET api/v1/ThirdPartyApi/plan-rows[?orderNo=GT-133]
+        // GET api/v1/ProductionPlan/plan-rows[?orderNo=GT-133]
         // Open plan rows in PLM (Replan list) for every order, or one order; machine is empty when none is assigned.
         [HttpGet("plan-rows")]
         public async Task<IActionResult> GetPlanRowsAsync([FromQuery] string? orderNo, CancellationToken ct)
@@ -151,7 +112,7 @@ namespace NkplmErp.API.Controllers.ThirdPartyApi
             return Ok(await thirdParty.CallAsync<List<PlanRowModel>>(ThirdPartyRouter.PlanRows, new { orderNo = orderNo ?? string.Empty }, ct));
         }
 
-        // POST api/v1/ThirdPartyApi/plan-row-machine   { id, machines: [{ machineNo, qty }] }
+        // POST api/v1/ProductionPlan/plan-row-machine   { id, machines: [{ machineNo, qty }] }
         // Edits the machines of one open PLM plan row (qty split over them); only PLM's table is changed.
         [HttpPost("plan-row-machine")]
         public async Task<IActionResult> UpdatePlanRowMachineAsync([FromBody] PlanRowMachineModel request, CancellationToken ct)
@@ -162,7 +123,7 @@ namespace NkplmErp.API.Controllers.ThirdPartyApi
                 new { id = request.Id, machines = (request.Machines ?? new()).Select(m => new { machineNo = m.MachineNo, qty = m.Qty }).ToList() }, ct));
         }
 
-        // GET api/v1/ThirdPartyApi/yarn-names?productIds=192,4,228
+        // GET api/v1/ProductionPlan/yarn-names?productIds=192,4,228
         // Yarn display names ("product_name: count1") for product ids.
         [HttpGet("yarn-names")]
         public async Task<IActionResult> GetYarnNamesAsync([FromQuery] string productIds, CancellationToken ct)
@@ -174,7 +135,7 @@ namespace NkplmErp.API.Controllers.ThirdPartyApi
             return Ok(await thirdParty.CallAsync<List<YarnNameModel>>(ThirdPartyRouter.YarnNames, new { productIds = ids }, ct));
         }
 
-        // GET api/v1/ThirdPartyApi/dept-completion-date?orderNo=GT-26025&dept=KNIT
+        // GET api/v1/ProductionPlan/dept-completion-date?orderNo=GT-26025&dept=KNIT
         [HttpGet("dept-completion-date")]
         public async Task<IActionResult> GetDeptCompletionDateAsync([FromQuery] string orderNo, [FromQuery] string? dept, CancellationToken ct)
         {
@@ -183,7 +144,7 @@ namespace NkplmErp.API.Controllers.ThirdPartyApi
                 ThirdPartyRouter.DeptCompletionDate, new { orderNo, dept = dept ?? "KNIT" }, ct));
         }
 
-        // GET api/v1/ThirdPartyApi/gauge-details?orderNo=PO-1978&gauge=16&flag=1
+        // GET api/v1/ProductionPlan/gauge-details?orderNo=PO-1978&gauge=16&flag=1
         // flag 1 = this order's lines, 0 = backlog of earlier-shipping orders; lines with nothing left are omitted.
         [HttpGet("gauge-details")]
         public async Task<IActionResult> GetGaugeDetailsAsync([FromQuery] string orderNo, [FromQuery] string? gauge, [FromQuery] string? flag, [FromQuery] string? knitType, CancellationToken ct)
@@ -193,7 +154,7 @@ namespace NkplmErp.API.Controllers.ThirdPartyApi
                 ThirdPartyRouter.GaugeDetails, new { orderNo, gauge = gauge ?? string.Empty, flag = flag ?? "1", knitType = knitType ?? string.Empty }, ct));
         }
 
-        // GET api/v1/ThirdPartyApi/yarn?orderNo=SND-113[&byColor=true&gauge=7&ply=1]
+        // GET api/v1/ProductionPlan/yarn?orderNo=SND-113[&byColor=true&gauge=7&ply=1]
         // byColor=true => one row per colour of that yarn/gauge/ply. A blank gauge/ply is valid (arrives as null).
         [HttpGet("yarn")]
         public async Task<IActionResult> GetYarnAsync([FromQuery] string orderNo, [FromQuery] bool byColor, [FromQuery] string? gauge, [FromQuery] string? ply, CancellationToken ct)
