@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>NkplmErp.ThirdPartyApi</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Gives the library HttpClientFactory, Options and Logging without extra packages. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NkplmErp.Shared\NkplmErp.Shared.csproj" />
+    <ProjectReference Include="..\NkplmErp.Application\NkplmErp.Application.csproj" />
+    <PackageReference Include="Asp.Versioning.Mvc" Version="8.1.1" />
+  </ItemGroup>
+
+</Project>

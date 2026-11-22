@@ -7,7 +7,7 @@ GO
 
 -- =========================================================================
 -- sp_SyncKnitterRecords
--- Incrementally pulls NEW rows from MySQL (linked server MYSQL_NatureKnit)
+-- Incrementally pulls NEW rows from MySQL (linked server SERVER2012)
 -- into SQL Server, using a high-water-mark (MAX local id) so already-synced
 -- rows are never re-inserted (no duplicates).
 --   tbl_knitter_record_data : key column d_id   (IDENTITY)
@@ -45,7 +45,7 @@ BEGIN
             INSERT INTO dbo.tbl_knitter_record_data
                 (d_id, r_id, knitter, cone_id, pics, status, knd, krd, cone_wt, order_id, req_wt,
                  barcode, ret_pic, forward, ret_wt, r_status, for_pics, p_typ, will_ret_daate, plan_id, setting_pc)
-            SELECT * FROM OPENQUERY(MYSQL_NatureKnit,
+            SELECT * FROM OPENQUERY(SERVER2012,
                 ''SELECT d_id, r_id, knitter, cone_id, pics, status, CAST(knd AS DATE), CAST(krd AS DATE),
                          cone_wt, order_id, req_wt, barcode, ret_pic, forward, ret_wt, r_status, for_pics,
                          p_typ, CAST(will_ret_daate AS DATETIME), plan_id, setting_pc
@@ -62,7 +62,7 @@ BEGIN
             INSERT INTO dbo.tbl_knitter_record
                 (kr_id, knitter_id, po, style_no, kpics, color, size, kcone_id, cone_wt, kr_status,
                  machine_no, [return], order_id, flag, i_time, date_ty)
-            SELECT * FROM OPENQUERY(MYSQL_NatureKnit,
+            SELECT * FROM OPENQUERY(SERVER2012,
                 ''SELECT kr_id, knitter_id, po, style_no, kpics, color, size, kcone_id, cone_wt, kr_status,
                          machine_no, `return`, order_id, flag, i_time, CAST(date_ty AS DATETIME)
                   FROM db_natureknit.tbl_knitter_record

@@ -93,7 +93,7 @@ BEGIN
 
     /* ============================================================
        Mirror the just-saved size lines to the linked MySQL server
-       (MYSQL_NatureKnit -> db_natureknit.tbl_production_plan_detail).
+       (SERVER2012 -> db_natureknit.tbl_production_plan_detail).
 
        Best-effort: a linked-server failure is caught and reported in
        LinkedServerError but does NOT roll back the local save.
@@ -115,7 +115,7 @@ BEGIN
         DECLARE @del NVARCHAR(MAX) =
             N'DELETE FROM db_natureknit.tbl_production_plan_detail WHERE id_no = '
             + CAST(@masterPlanDetailId AS NVARCHAR(20)) + N';';
-        EXEC (@del) AT [MYSQL_NatureKnit];
+        EXEC (@del) AT [SERVER2012];
 
         /* 2. Insert each size line. */
         DECLARE
@@ -173,7 +173,7 @@ BEGIN
               + CASE WHEN @s_end   IS NULL THEN N'NULL' ELSE N'''' + @q_end   + N'''' END
               + N');';
 
-            EXEC (@ins) AT [MYSQL_NatureKnit];
+            EXEC (@ins) AT [SERVER2012];
 
             FETCH NEXT FROM line_cur INTO @s_idNo, @s_order, @s_size, @s_qty, @s_mc, @s_start, @s_end;
         END

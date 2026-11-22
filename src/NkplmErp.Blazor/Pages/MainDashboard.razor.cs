@@ -10,8 +10,12 @@ namespace NkplmErp.Blazor.Pages;
 
 public partial class MainDashboard : ComponentBase
 {
-    [Inject] 
+    [Inject]
     private IBuyerOrderSummaryService BuyerOrderSummaryService { get; set; } = default!;
+
+    // Running orders and the Production Flow chart come live from the third-party (PLM) API.
+    [Inject]
+    private NkplmErp.Blazor.Services.ThirdPartyApi.Manager.Interface.IThirdPartyApiManager ThirdPartyApiManager { get; set; } = default!;
 
     [Inject]
     private Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
@@ -618,8 +622,11 @@ public partial class MainDashboard : ComponentBase
         IsOrderDetailLoading = true;
         try
         {
-            var result = await BuyerOrderSummaryService.GetOrderStatusDetailAsync(CurrentYear, SelectedType);
-            var list = (result ?? Enumerable.Empty<OrderStatusDetailDto>()).ToList();
+            var live = await ThirdPartyApiManager.GetOrderStatusAsync(CurrentYear, SelectedType);
+            var result = live.Succeeded && live.Data is not null
+                ? live.Data
+                : (await BuyerOrderSummaryService.GetOrderStatusDetailAsync(CurrentYear, SelectedType))?.ToList();
+            var list = (result ?? new List<OrderStatusDetailDto>()).ToList();
             for (int i = 0; i < list.Count; i++) list[i].SN = i + 1;
             OrderStatusDetailList = list.AsQueryable();
         }
@@ -643,7 +650,10 @@ public partial class MainDashboard : ComponentBase
         StateHasChanged(); // force spinner to show immediately
         try
         {
-            var result = await BuyerOrderSummaryService.GetProductionFlowAsync(buyerId, OrderNo);
+            var live = await ThirdPartyApiManager.GetProductionFlowAsync(buyerId, OrderNo);
+            IEnumerable<ProductionFlowDto> result = live.Succeeded && live.Data is not null
+                ? live.Data
+                : await BuyerOrderSummaryService.GetProductionFlowAsync(buyerId, OrderNo);
             ProductionFlowList = result.AsQueryable();
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)

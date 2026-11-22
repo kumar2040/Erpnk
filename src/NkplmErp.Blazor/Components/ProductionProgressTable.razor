@@ -1,0 +1,57 @@
+@using NkplmErp.Shared.DTOs.OrderPlanningApi
+
+<div class="progress-block">
+    <div class="progress-title">
+        <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+        <span>@Title</span>
+    </div>
+
+    @if (Items.Count == 0)
+    {
+        <div class="progress-empty">Nothing recorded for this product type yet.</div>
+    }
+    else
+    {
+        <table class="nk-table compact-table">
+            <thead>
+                <tr>
+                    <th>Style</th>
+                    <th class="text-center">Qty</th>
+                    <th class="text-center">Issued</th>
+                    <th class="text-center">Made</th>
+                    <th class="text-center">Remaining</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Items)
+                {
+                    <tr>
+                        <td class="font-bold text-navy">@item.Style</td>
+                        <td class="text-center">@item.OrderQty.ToString("N0")</td>
+                        <td class="text-center text-muted">@item.Issued.ToString("N0")</td>
+                        <td class="text-center made-cell">@item.Made.ToString("N0")</td>
+                        <td class="text-center">
+                            @if (item.Remaining > 0)
+                            {
+                                <span class="remaining-cell">@item.Remaining.ToString("N0")</span>
+                            }
+                            else
+                            {
+                                <i class="fa-solid fa-circle-check done-icon" title="Complete" aria-hidden="true"></i>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr class="progress-total">
+                    <td>Total</td>
+                    <td class="text-center">@Items.Sum(i => i.OrderQty).ToString("N0")</td>
+                    <td class="text-center">@Items.Sum(i => i.Issued).ToString("N0")</td>
+                    <td class="text-center">@Items.Sum(i => i.Made).ToString("N0")</td>
+                    <td class="text-center">@Items.Sum(i => i.Remaining).ToString("N0")</td>
+                </tr>
+            </tfoot>
+        </table>
+    }
+</div>

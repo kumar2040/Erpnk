@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -74,7 +74,7 @@ if (!builder.Environment.IsDevelopment() &&
 {
     throw new InvalidOperationException(
         "Insecure Jwt:Key. Configure a strong, secret signing key (>= 32 chars) via " +
-        "environment variable or user-secrets — the default/committed key must not be used in production.");
+        "environment variable or user-secrets Ã¢â‚¬â€ the default/committed key must not be used in production.");
 }
 builder.Services.AddAuthentication(options =>
 {
@@ -99,7 +99,7 @@ builder.Services.AddAuthentication(options =>
         OnMessageReceived = context =>
         {
             // SignalR (WebSocket) sends the JWT as the access_token query param on hub
-            // requests — pick it up so [Authorize] hubs authenticate.
+            // requests Ã¢â‚¬â€ pick it up so [Authorize] hubs authenticate.
             var accessToken = context.Request.Query["access_token"];
             var path = context.HttpContext.Request.Path;
             if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
@@ -174,6 +174,9 @@ builder.Services.AddScoped<ITaskManagementService, TaskManagementService>();
 builder.Services.AddScoped<ITaskGateService, TaskGateService>();
 builder.Services.AddScoped<IYarnOrderService, YarnOrderService>();
 builder.Services.AddScoped<IPoTaskService, PoTaskService>();
+// Third-party (PLM / PHP) API: one generic manager from the NkplmErp.ThirdPartyApi project.
+builder.Services.AddHttpClient<NkplmErp.ThirdPartyApi.Manager.Interface.IThirdPartyManager, NkplmErp.ThirdPartyApi.Manager.Implementation.ThirdPartyManager>(
+    client => client.Timeout = TimeSpan.FromSeconds(builder.Configuration.GetValue("ThirdPartyApi:TimeoutSeconds", 60)));
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IDropdownService, DropdownService>();
 builder.Services.AddScoped<IGenericRepository, GenericRepository>();
@@ -225,7 +228,7 @@ builder.Services.AddCors(options =>
                .AllowCredentials();
     });
 });
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddApplicationPart(typeof(NkplmErp.ThirdPartyApi.Controller.ThirdPartyProductionPlanController).Assembly);
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
@@ -355,7 +358,7 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Hangfire dashboard — development only. Hangfire's default authorization
+// Hangfire dashboard Ã¢â‚¬â€ development only. Hangfire's default authorization
 // filter additionally restricts the dashboard to local requests.
 if (app.Environment.IsDevelopment())
 {
