@@ -224,7 +224,7 @@
     .custom-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
     .custom-scroll::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
-    /* Machine Allocation â€” large popup that fills the parent modal when a gauge is selected.
+    /* Machine Allocation — large popup that fills the parent modal when a gauge is selected.
        (Absolute, not fixed, so the parent modal's transform/overflow doesn't clip it.) */
     .alloc-backdrop {
         position: absolute; inset: 0; background: rgba(15, 23, 42, .45);
@@ -300,7 +300,7 @@
             <div class="panel" style="flex: 1 1 auto; min-height: 0; overflow: visible;">
                 <div class="panel-header" style="border-radius: 8px 8px 0 0;">
                     <div class="panel-header-left">
-                        <span class="panel-icon">ðŸ—‚</span>
+                        <span class="panel-icon"><i class="fa-solid fa-folder-open"></i></span>
                         <span class="panel-title">Order Selection</span>
                     </div>
                 </div>
@@ -309,7 +309,7 @@
                         <div class="form-field">
                             <label class="form-label">Product Type</label>
                             <select class="form-select" @bind="WizardProductType" @bind:after="OnWizardProductTypeChanged">
-                                <option value="" disabled>Select Product Typeâ€¦</option>
+                                <option value="" disabled>Select Product Type…</option>
                                 @foreach (var pt in WizardProductTypes)
                                 {
                                     <option value="@pt">@pt</option>
@@ -322,14 +322,14 @@
                             <div class="form-field">
                                 <label class="form-label">Sample / Production</label>
                                 <select class="form-select" @bind="WizardOrderType" @bind:after="OnWizardOrderTypeChanged">
-                                    <option value="" disabled>Select Sample / Productionâ€¦</option>
+                                    <option value="" disabled>Select Sample / Production…</option>
                                     <option value="Production">Production</option>
                                     <option value="Sample">Sample</option>
                                 </select>
                                 @if (OrderTypesUnavailable)
                                 {
                                     <div class="mt-1 text-[9px] text-amber-600 leading-tight">
-                                        <i class="fa-solid fa-triangle-exclamation mr-1"></i>Sample/Production data unavailable â€” showing all orders.
+                                        <i class="fa-solid fa-triangle-exclamation mr-1"></i>Sample/Production data unavailable — showing all orders.
                                     </div>
                                 }
                             </div>
@@ -360,7 +360,7 @@
                                     }
                                     else if (IsScanningOrderTypes)
                                     {
-                                        <span class="text-muted"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Classifying ordersâ€¦</span>
+                                        <span class="text-muted"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Classifying orders…</span>
                                     }
                                     else
                                     {
@@ -535,7 +535,7 @@
                 <div class="panel   h-full " style="font-size: 11px;">
                     <div class="panel-header  ">
                         <div class="panel-header-left">
-                            <span class="panel-icon">@(SelectedKnitType == "Knit" ? "âš™ï¸" : "ðŸ§µ")</span>
+                            <span class="panel-icon"><i class="fa-solid @(SelectedKnitType == "Knit" ? "fa-gear" : "fa-grip-lines")"></i></span>
                             <span class="panel-title">@(SelectedKnitType == "Knit" ? "Gauge & Machine Analysis" : $"{SelectedKnitType} Analysis & Fabric Plan")</span>
                         </div>
                     </div>
@@ -659,7 +659,7 @@
                         <div class="panel flex flex-col h-full">
                             <div class="panel-header compact-panel-header" style="background: var(--bg); color: var(--navy); border-bottom: 1px solid var(--border);">
                                 <div class="panel-header-left">
-                                    <span class="panel-icon">ðŸ“Š</span>
+                                    <span class="panel-icon"><i class="fa-solid fa-chart-column"></i></span>
                                     <span class="compact-panel-title font-bold">Extra Work Details</span>
                                     <span class="panel-count">@(Mode2Analysis?.SummaryAnalysis?.Count ?? 0)</span>
                                 </div>
@@ -730,7 +730,7 @@
                     <div class="panel flex-[1_1_60%] min-h-0 overflow-hidden flex flex-col">
                         <div class="panel-header compact-panel-header" style="background: var(--navy); color: #fff;">
                             <div class="panel-header-left">
-                                <span class="panel-icon" style="font-size: 11px;">ðŸ§µ</span>
+                                <span class="panel-icon" style="font-size: 11px;"><i class="fa-solid fa-grip-lines"></i></span>
                                 <span class="compact-panel-title">Yarn Stock & Requirement Overview</span>
                             </div>
                         </div>
@@ -873,7 +873,7 @@
                                 <div class="panel flex flex-col">
                                     <div class="panel-header compact-panel-header" style="background: var(--bg); color: var(--navy); border-bottom: 1px solid var(--border);">
                                         <div class="panel-header-left">
-                                            <span class="panel-icon">ðŸ“Š</span>
+                                            <span class="panel-icon"><i class="fa-solid fa-chart-column"></i></span>
                                             <span class="compact-panel-title font-bold">Extra Work Details (Weave)</span>
                                             <span class="panel-count">@WeaveAnalysisData.PrintEmbroiderySummaries.Count</span>
                                         </div>
@@ -963,7 +963,7 @@
                                 <div class="panel h-full flex flex-col">
                                     <div class="panel-header compact-panel-header" style="background: var(--navy); color: #fff;">
                                         <div class="panel-header-left">
-                                            <span class="panel-icon" style="font-size: 11px;">âš–ï¸</span>
+                                            <span class="panel-icon" style="font-size: 11px;"><i class="fa-solid fa-scale-balanced"></i></span>
                                             <span class="compact-panel-title">Yarn Balance & Stock Overview</span>
                                         </div>
                                     </div>
@@ -1059,7 +1059,7 @@
                                 <div class="panel flex flex-col">
                                     <div class="panel-header compact-panel-header" style="background: var(--bg); color: var(--navy); border-bottom: 1px solid var(--border);">
                                         <div class="panel-header-left">
-                                            <span class="panel-icon">ðŸ“Š</span>
+                                            <span class="panel-icon"><i class="fa-solid fa-chart-column"></i></span>
                                             <span class="compact-panel-title font-bold">Extra Work Details</span>
                                             <span class="panel-count">@FabricAnalysisData.EmbroideryPrintRequirements.Count</span>
                                         </div>
@@ -1139,7 +1139,7 @@
                                 <div class="panel h-full flex flex-col">
                                     <div class="panel-header compact-panel-header" style="background: var(--navy); color: #fff;">
                                         <div class="panel-header-left">
-                                            <span class="panel-icon" style="font-size: 11px;">âš–ï¸</span>
+                                            <span class="panel-icon" style="font-size: 11px;"><i class="fa-solid fa-scale-balanced"></i></span>
                                             <span class="compact-panel-title">Fabric Balance & Stock Overview</span>
                                         </div>
                                     </div>
@@ -1234,7 +1234,7 @@
                     <div class="panel flex-none">
                         <div class="panel-header">
                             <div class="panel-header-left">
-                                <span class="panel-icon">ðŸ“Š</span>
+                                <span class="panel-icon"><i class="fa-solid fa-chart-column"></i></span>
                                 <span class="panel-title">Gauge Utilization</span>
                             </div>
                         </div>
@@ -1309,7 +1309,7 @@
                 <div class="panel flex-1 min-h-0 flex flex-col">
                     <div class="panel-header" style="background: var(--bg); color: var(--navy); border-bottom: 1px solid var(--border);">
                         <div class="panel-header-left">
-                            <span class="panel-icon">ðŸ‘¥</span>
+                            <span class="panel-icon"><i class="fa-solid fa-users"></i></span>
                             <span class="panel-title">Knitters</span>
                             <span class="panel-count" style="background: var(--border); color: var(--navy);">@Knitters.Count</span>
                         </div>
@@ -1564,7 +1564,7 @@
                MaxWidth="1100px">
         @if (ReplanRows.Count == 0 && !IsLoadingReplan)
         {
-            <div class="replan-empty">No open plans in PLM</div>
+            <div class="replan-empty">No plans to re-plan</div>
         }
         else
         {
@@ -1581,12 +1581,21 @@
                     || r.KnitterName.Contains(replanQ, StringComparison.OrdinalIgnoreCase)
                     || r.Machine.Contains(replanQ, StringComparison.OrdinalIgnoreCase))
                 .ToList();
-            var orderGroups = shownReplan.GroupBy(r => r.OrderNo).Select(g => new { No = g.Key, Rows = g.ToList() }).ToList();
+            var orderGroups = shownReplan.GroupBy(r => r.OrderNo).Select(g => new { No = g.Key, Rows = g.ToList() })
+                .OrderBy(g => replanSearching && g.No.StartsWith(replanQ, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+                .ToList();
             var selGrp = orderGroups.FirstOrDefault(g => g.No == ReplanSelectedOrder) ?? orderGroups.FirstOrDefault();
             <div class="rp2">
                 <div class="rp2-side">
                     <input type="search" class="replan-search rp2-search" placeholder="Search order, style, color, knitter..."
+                           list="replan-order-suggest" autocomplete="off"
                            @bind="ReplanSearch" @bind:event="oninput" />
+                    <datalist id="replan-order-suggest">
+                        @foreach (var sugg in ReplanRows.Select(r => r.OrderNo).Distinct().OrderBy(o => o))
+                        {
+                            <option value="@sugg"></option>
+                        }
+                    </datalist>
                     <div class="rp2-list">
                         @foreach (var og in orderGroups)
                         {
@@ -1842,7 +1851,14 @@
                     </table>
                 </div>
                 <div class="rp-meta">
-                    Order <b>@ReplanEditRow.OrderNo</b> &middot; Knitter <b>@(string.IsNullOrEmpty(ReplanEditRow.KnitterName) ? ReplanEditRow.Knitter : ReplanEditRow.KnitterName)</b> &middot; Saved in PLM only
+                    @if (IsErpReplanRow(ReplanEditRow))
+                    {
+                        <text>Order <b>@ReplanEditRow.OrderNo</b> &middot; No knitter yet &middot; Whole plan moves to one machine &middot; Saved in ERP only</text>
+                    }
+                    else
+                    {
+                        <text>Order <b>@ReplanEditRow.OrderNo</b> &middot; Knitter <b>@(string.IsNullOrEmpty(ReplanEditRow.KnitterName) ? ReplanEditRow.Knitter : ReplanEditRow.KnitterName)</b> &middot; Saved in PLM only</text>
+                    }
                 </div>
             </div>
         }
@@ -2288,10 +2304,6 @@
                                                         <button style="border: none; background: var(--navy); color: #fff; border-radius: 6px; padding: 6px 14px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; box-shadow: 0 2px 5px rgba(26, 51, 83, 0.2); transition: all 0.2s ease;"
                                                                 class="uppercase text-white hover:bg-slate-700 active:scale-95 cursor-pointer whitespace-nowrap inline-block h-7"
                                                                 @onclick="() => AddManualPlan(SelectedModalGauge)" disabled="@IsConfirmSaving">
-                                                            @if (IsConfirmSaving)
-                                                            {
-                                                                <i class="fa-solid fa-spinner fa-spin mr-1"></i>
-                                                            }
                                                             Confirm
                                                         </button>
                                                     </div>
@@ -2361,10 +2373,6 @@
                                                     <button style="border: none; background: var(--navy); color: #fff; border-radius: 6px; padding: 6px 14px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; box-shadow: 0 2px 5px rgba(26, 51, 83, 0.2); transition: all 0.2s ease;" 
                                                             class="uppercase text-white hover:bg-slate-700 active:scale-95 cursor-pointer whitespace-nowrap inline-block"
                                                             @onclick="() => AddManualPlan(SelectedModalGauge)" disabled="@IsConfirmSaving">
-                                                        @if (IsConfirmSaving)
-                                                        {
-                                                            <i class="fa-solid fa-spinner fa-spin mr-1"></i>
-                                                        }
                                                         Confirm
                                                     </button>
                                                 </td>
@@ -2422,9 +2430,9 @@
                                             }
                                             @if (WindowStaffing.Count > 4)
                                             {
-                                                <span class="ml-1">â€¦</span>
+                                                <span class="ml-1">…</span>
                                             }
-                                            <span class="block text-[9px] text-slate-500 mt-0.5">Advisory only â€” does not change the machine selection yet.</span>
+                                            <span class="block text-[9px] text-slate-500 mt-0.5">Advisory only — does not change the machine selection yet.</span>
                                         </div>
                                     </div>
                                 }
@@ -3271,14 +3279,7 @@
                                                     <button style="border: none; background: var(--navy); color: #fff; border-radius: 6px; padding: 6px 14px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; box-shadow: 0 2px 5px rgba(26, 51, 83, 0.2); transition: all 0.2s ease;"
                                                             class="uppercase text-white hover:bg-slate-700 active:scale-95 cursor-pointer whitespace-nowrap inline-block @(IsWeaveConfirmSaving ? "opacity-60 cursor-not-allowed" : "")"
                                                             @onclick="AddWeaveManualPlan" disabled="@IsWeaveConfirmSaving">
-                                                        @if (IsWeaveConfirmSaving)
-                                                        {
-                                                            <i class="fa-solid fa-spinner fa-spin mr-1"></i><text>Saving...</text>
-                                                        }
-                                                        else
-                                                        {
-                                                            <text>Confirm</text>
-                                                        }
+                                                        <text>Confirm</text>
                                                     </button>
                                                 </td>
                                             </tr>
@@ -3644,7 +3645,7 @@
         <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center" style="z-index: 9000;">
             <div class="bg-white rounded-xl border border-slate-200 shadow-2xl w-full mx-4 overflow-hidden" style="max-width: 760px;">
                 <div class="px-4 py-3 flex items-center justify-between" style="background: var(--navy); color: #fff;">
-                    <span class="font-bold text-[12px] uppercase tracking-wide"><i class="fa-solid fa-wand-magic-sparkles mr-2" style="color: var(--teal);"></i>Plan All â€” Deadline Ordered</span>
+                    <span class="font-bold text-[12px] uppercase tracking-wide"><i class="fa-solid fa-wand-magic-sparkles mr-2" style="color: var(--teal);"></i>Plan All — Deadline Ordered</span>
                     <button @onclick="CloseBulkPlan" style="background:none;border:none;color:#fff;cursor:pointer;" disabled="@IsBulkBusy"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div class="px-4 pt-3 flex items-center justify-between gap-3 flex-wrap">
@@ -3676,7 +3677,7 @@
                     }
                     else if (!BulkRows.Any())
                     {
-                        <div class="text-center py-6 text-[12px]" style="color: var(--muted);">Nothing to plan â€” all gauges are fully planned or have no quantity.</div>
+                        <div class="text-center py-6 text-[12px]" style="color: var(--muted);">Nothing to plan — all gauges are fully planned or have no quantity.</div>
                     }
                     else
                     {
@@ -3723,7 +3724,7 @@
                                             }
                                             else
                                             {
-                                                <span class="text-[9px] text-slate-400">â€”</span>
+                                                <span class="text-[9px] text-slate-400">—</span>
                                             }
                                         </td>
                                     </tr>
@@ -3792,9 +3793,9 @@
                                             <td class="text-left py-1.5 font-bold text-navy">@k.KnitterName</td>
                                             <td class="text-center py-1.5 text-slate-500">@k.CardNo</td>
                                             <td class="text-center py-1.5"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold" style="background:#eafaf1;color:#1f8a4c;">Free</span></td>
-                                            <td class="text-left py-1.5 text-slate-400 italic">â€”</td>
-                                            <td class="text-center py-1.5 text-slate-400">â€”</td>
-                                            <td class="text-center py-1.5 text-slate-400">â€”</td>
+                                            <td class="text-left py-1.5 text-slate-400 italic">—</td>
+                                            <td class="text-center py-1.5 text-slate-400">—</td>
+                                            <td class="text-center py-1.5 text-slate-400">—</td>
                                         </tr>
                                     }
                                     else
@@ -3807,7 +3808,7 @@
                                                 <td class="text-center py-1.5"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold" style="background:#fdecea;color:#b11f1f;">Busy</span></td>
                                                 <td class="text-left py-1.5 text-navy">
                                                     @(string.IsNullOrEmpty(w.Machine) ? "" : w.Machine)
-                                                    @(string.IsNullOrEmpty(w.OrderId) ? "" : $"Â· Order {w.OrderId}")
+                                                    @(string.IsNullOrEmpty(w.OrderId) ? "" : $"· Order {w.OrderId}")
                                                     <span class="text-slate-400">(@w.Status)</span>
                                                 </td>
                                                 <td class="text-center py-1.5">@w.FromDate.ToString("dd-MMM-yyyy")</td>

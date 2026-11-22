@@ -289,6 +289,24 @@ public class ProductionPlanningController : ControllerBase
         return Ok(result);
     }
 
+    // Replan, MSSQL side: saved plans with no knitter assigned yet (the PLM side comes from the third-party API).
+    [HttpGet("replan-plans")]
+    public async Task<IActionResult> GetReplanPlans()
+    {
+        var result = await _productionPlanningService.GetReplanPlansAsync();
+        return Ok(result);
+    }
+
+    // Replan, MSSQL side: move one saved plan (no knitter yet) onto another machine with new dates.
+    [HttpPut("replan-machine")]
+    public async Task<IActionResult> SaveReplanMachine([FromBody] NkplmErp.Shared.DTOs.OrderPlanningApi.ReplanMachineModel request)
+    {
+        if (!await HasPermissionAsync("OrderPlanning", "Edit")) return Forbid();
+        if (!await OwnsPlanAsync(request.PlanId)) return Forbid(); // Zero Trust: only plans under their gauge
+        var result = await _productionPlanningService.SaveReplanMachineAsync(request, GetCurrentUserName());
+        return Ok(result);
+    }
+
     [HttpGet("knit-gantt-chart")]
     public async Task<IActionResult> GetKnitGanttChartData(
         [FromQuery] DateTime? startDate = null, 

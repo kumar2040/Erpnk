@@ -185,13 +185,24 @@ public class PoOrderReviewRankDto
     public int ReviewId { get; set; }
 }
 
-// One reviewed order not yet seeded into the lifecycle (sp_PoTask_PendingReviews).
-public class PoOrderReviewDto
+// An order review saved in PLM, pushed to NkplmErp through the inbound API (route "order-review").
+// Dates travel as strings; sp_PoTask_CreateFromOrderReview converts them.
+public class OrderReviewTaskRequest
 {
     public int ReviewId { get; set; }
     public string OrderNo { get; set; } = string.Empty;
     public string? Remark { get; set; }
-    public DateTime? ReviewDate { get; set; }
+    public string? ReviewDate { get; set; }
+    public int? ReviewUser { get; set; }
+    public int? Pc { get; set; }
+}
+
+// Result of sp_PoTask_CreateFromOrderReview: the Planning (Stage 1) and BOM (Stage 2) task ids.
+public class OrderReviewTaskResultDto
+{
+    public int PlanPoTaskId { get; set; }
+    public int BomPoTaskId { get; set; }
+    public bool ReviewInserted { get; set; }
 }
 
 public class PoTaskBomAttachResultDto

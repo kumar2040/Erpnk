@@ -15,8 +15,9 @@ public class ThirdPartyInboundOptions
     public string PasswordHash { get; set; } = string.Empty;
 
     /// <summary>
-    /// Base URLs allowed to call (scheme://host[:port], e.g. "http://plm.local"). Compared against the
-    /// caller's Origin, X-Client-Base-Url or Referer header. Empty list = nobody gets in.
+    /// Base URLs allowed to call, compared against the caller's Origin, X-Client-Base-Url or Referer header.
+    /// "http://plm.local" = exact scheme+host+port; a bare host or IP ("172.25.10.89") = that host on any
+    /// scheme/port. Empty list = nobody gets in.
     /// </summary>
     public List<string> AllowedBaseUrls { get; set; } = new();
 

@@ -24,6 +24,7 @@ public static class ThirdPartyRouter
     public static readonly ThirdPartyRoute ProductionProgress = new("orderplanning/production-progress");
     public static readonly ThirdPartyRoute UpdateMachine = new("orderplanning/update-machine");
     public static readonly ThirdPartyRoute PlanRows = new("orderplanning/plan-rows");
+    public static readonly ThirdPartyRoute SaveKnitterAssignment = new("orderplanning/knitter-assignment");
     public static readonly ThirdPartyRoute MasterProgress = new("orderplanning/master-progress");
     public static readonly ThirdPartyRoute WeaveFactories = new("orderplanning/weave-factories");
     public static readonly ThirdPartyRoute DeptCompletionDate = new("orderplanning/dept-completion-date");

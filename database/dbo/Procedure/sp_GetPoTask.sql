@@ -65,18 +65,6 @@ BEGIN
     DECLARE @WindowStart DATE = CAST(@StartDate AS DATE);
     DECLARE @WindowEnd   DATE = CAST(@EndDate   AS DATE);
 
-    /* ---------------------------------------------------- PENDINGREVIEWS
-       Keep every PoTask read behind this feature's shared read procedure. */
-    IF (@op = 'PENDINGREVIEWS')
-    BEGIN
-        DECLARE @pendingTop INT = ISNULL(@Top, 50);
-        DECLARE @pendingCutoff DATETIME = ISNULL(@CutoffDate, '2026-07-21');
-        EXEC [dbo].[sp_PoTask_PendingReviews]
-             @Top = @pendingTop,
-             @CutoffDate = @pendingCutoff;
-        RETURN;
-    END
-
     -- Shared display-name helpers reused by BOARD / MYTASKS / DETAIL.
     -- (Stage / Status / Priority -> friendly text.)
 

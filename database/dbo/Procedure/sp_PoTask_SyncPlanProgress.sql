@@ -83,21 +83,6 @@ BEGIN
         FROM [dbo].[MasterPlanDetail] mpd
         INNER JOIN @completedPlans cp ON cp.[PlanId] = mpd.[MasterPlanChildId]
         WHERE mpd.[EndDate] > CAST(cp.[CompletionDate] AS DATE);
-
-        -- 3. Sync MySQL Linked Server: Mark tbl_production_plan_detail status_ = 'Completed'
-        BEGIN TRY
-            DECLARE @planIdList NVARCHAR(MAX);
-            SELECT @planIdList = STRING_AGG(CAST([PlanId] AS NVARCHAR(20)), ',') FROM @completedPlans;
-
-            IF @planIdList IS NOT NULL AND LEN(@planIdList) > 0
-            BEGIN
-                DECLARE @sql NVARCHAR(MAX) = N'UPDATE db_natureknit.tbl_production_plan_detail SET status_ = ''Completed'' WHERE id_no IN (' + @planIdList + N');';
-                EXEC (@sql) AT [SERVER2012];
-            END
-        END TRY
-        BEGIN CATCH
-            -- Non-blocking: linked server failure does not abort the local update
-        END CATCH
     END
 
     -- History for exactly the rows that changed.

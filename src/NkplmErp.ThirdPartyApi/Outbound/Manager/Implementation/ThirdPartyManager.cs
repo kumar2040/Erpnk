@@ -12,7 +12,8 @@ namespace NkplmErp.ThirdPartyApi.Outbound.Manager.Implementation;
 
 /// <summary>
 /// The one generic caller for the third-party (PLM) API. Reads ThirdPartyApi:BaseUrl / Username /
-/// Password from configuration and sends them with every call.
+/// Password from configuration and sends them with every call, plus ThirdPartyApi:ClientBaseUrl as the
+/// X-Client-Base-Url header (PLM checks it against its allowed base URLs).
 /// </summary>
 public class ThirdPartyManager(HttpClient http, IConfiguration config, ILogger<ThirdPartyManager> logger) : IThirdPartyManager
 {
@@ -47,8 +48,15 @@ public class ThirdPartyManager(HttpClient http, IConfiguration config, ILogger<T
                 return Response<T>.Fail("Third-party API is not configured.");
 
             // Fixed-length body on purpose: PostAsJsonAsync streams chunked, which IIS + php-cgi never finishes reading.
-            using var body = new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8, "application/json");
-            using var resp = await http.PostAsync(baseUrl.TrimEnd('/') + "/" + request.Route.TrimStart('/'), body, ct);
+            using var message = new HttpRequestMessage(HttpMethod.Post, baseUrl.TrimEnd('/') + "/" + request.Route.TrimStart('/'))
+            {
+                Content = new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8, "application/json")
+            };
+            // PLM only accepts callers whose base URL is in its thirdParty allowedBaseUrls list.
+            var clientBaseUrl = config["ThirdPartyApi:ClientBaseUrl"];
+            if (!string.IsNullOrWhiteSpace(clientBaseUrl))
+                message.Headers.TryAddWithoutValidation("X-Client-Base-Url", clientBaseUrl.Trim());
+            using var resp = await http.SendAsync(message, ct);
             if (!resp.IsSuccessStatusCode)
             {
                 // The API answers every failure with the same generic 400; don't pretend to know more.

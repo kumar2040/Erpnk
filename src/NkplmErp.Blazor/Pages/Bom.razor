@@ -227,7 +227,9 @@ else
                                     <span class="orders">
                                         @foreach (var ord in l.Orders)
                                         {
-                                            <span class="ochip">@ord</span>
+                                            l.NeedQty.TryGetValue(ord, out var ordNeed);
+                                            l.OrderQty.TryGetValue(ord, out var ordKg);
+                                            <span class="ochip" title="@ord: need @ordNeed.ToString("N2") kg, ordering @ordKg.ToString("N2") kg">@ord<span class="ochip-qty"> · @ordNeed.ToString("N2")</span></span>
                                         }
                                     </span>
                                 </div>

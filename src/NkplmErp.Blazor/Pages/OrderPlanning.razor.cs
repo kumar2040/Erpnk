@@ -47,7 +47,7 @@ public partial class OrderPlanning
 
     // The order's ship month, sent alongside orderNo by sp_GetPoTask. LoadMonths otherwise
     // leaves the page on the current month, and an order shipping in another month is then
-    // genuinely absent from AllOrders â€” see OpenFromTaskLinkAsync.
+    // genuinely absent from AllOrders — see OpenFromTaskLinkAsync.
     [Parameter, SupplyParameterFromQuery(Name = "month")] public string? FromMonth { get; set; }
 
     private List<MonthlyOrderSummaryDto> Months { get; set; } = new();
@@ -348,7 +348,7 @@ public partial class OrderPlanning
             : 1m;
 
     // Plan start = machine free date + 1 day. If that lands on Saturday (a holiday),
-    // push to Sunday â€” unless Saturday working is enabled.
+    // push to Sunday — unless Saturday working is enabled.
     private DateTime GetMachinePlanStartDate(DateTime freeDate)
     {
         DateTime start = freeDate.AddDays(1);
@@ -384,7 +384,7 @@ public partial class OrderPlanning
             currentDate = currentDate.AddDays(fraction);
         }
 
-        // If the end date lands on Saturday (holiday), move it to Sunday â€” unless Saturday working is on.
+        // If the end date lands on Saturday (holiday), move it to Sunday — unless Saturday working is on.
         return NormalizeOffSaturday(currentDate);
     }
 
@@ -1530,6 +1530,7 @@ public partial class OrderPlanning
     {
         if (IsConfirmSaving) return;
         IsConfirmSaving = true;
+        _loading.Show("Saving plan…"); // main app loader instead of the inline spinner
         StateHasChanged();
         try
         {
@@ -1537,6 +1538,7 @@ public partial class OrderPlanning
         }
         finally
         {
+            _loading.Hide();
             IsConfirmSaving = false;
             StateHasChanged();
         }
@@ -1921,7 +1923,7 @@ public partial class OrderPlanning
 
                 if (result.WasClamped)
                 {
-                    ToastService.ShowError($"Qty exceeds order size limit â€” reset to {result.MaxAllowed:N0}.");
+                    ToastService.ShowError($"Qty exceeds order size limit — reset to {result.MaxAllowed:N0}.");
                 }
                 else
                 {
@@ -2153,7 +2155,7 @@ public partial class OrderPlanning
         ToastService.ShowSuccess($"Bulk planning done: {doneCount} gauge plan(s) saved.");
         if (skipped.Any())
         {
-            ToastService.ShowInfo($"{skipped.Count} row(s) skipped (already planned / no balance): {string.Join(", ", skipped.Take(8))}{(skipped.Count > 8 ? "â€¦" : "")}");
+            ToastService.ShowInfo($"{skipped.Count} row(s) skipped (already planned / no balance): {string.Join(", ", skipped.Take(8))}{(skipped.Count > 8 ? "…" : "")}");
         }
     }
 
@@ -2545,8 +2547,38 @@ public partial class OrderPlanning
     // Replan > Edit: assign machines to one PLM-only plan row. Same machine technique as the planning popup
     // (machines of the row's gauge, FREE ones only, qty shared over the selection) - but saved in PLM's table
     // only, nothing goes to MSSQL.
+    // An ERP row (MSSQL plan, no knitter yet) edits its whole plan instead: every size line of that plan, on ONE
+    // machine, saved in MSSQL only (SaveReplanErpEdit).
     private async Task OpenReplanEdit(NkplmErp.Shared.DTOs.OrderPlanningApi.PlanRowModel row)
     {
+        if (IsErpReplanRow(row))
+        {
+            var lines = ReplanRows.Where(r => IsErpReplanRow(r) && r.PlanId == row.PlanId).ToList();
+            static string Summarize(IEnumerable<string> values)
+            {
+                var distinct = values.Where(v => !string.IsNullOrWhiteSpace(v)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                return distinct.Count <= 1 ? distinct.FirstOrDefault() ?? string.Empty : $"{distinct[0]} +{distinct.Count - 1}";
+            }
+            row = new NkplmErp.Shared.DTOs.OrderPlanningApi.PlanRowModel
+            {
+                Id = row.Id,
+                PlanId = row.PlanId,
+                Source = row.Source,
+                OrderId = row.OrderId,
+                OrderNo = row.OrderNo,
+                Gauge = row.Gauge,
+                KnitType = row.KnitType,
+                StyleTarget = row.StyleTarget,
+                Machine = row.Machine,
+                StartDate = row.StartDate,
+                EndDate = row.EndDate,
+                StyleNo = Summarize(lines.Select(l => l.StyleNo)),
+                Color = Summarize(lines.Select(l => l.Color)),
+                Size = Summarize(lines.Select(l => l.Size)),
+                Qty = lines.Sum(l => l.Qty)
+            };
+        }
+
         ReplanEditRow = row;
         ReplanMachineList = new();
         ReplanSelectedMachineIds = new();
@@ -2636,6 +2668,13 @@ public partial class OrderPlanning
             : ReplanMachineList.Where(m => alloc.ContainsKey(m.Machine_ID)).Max(m => ReplanMachineEnd(m, alloc[m.Machine_ID]));
     private void ReplanToggleMachine(MachinePlaningDto mc, bool on)
     {
+        if (on && IsErpReplanRow(ReplanEditRow))
+        {
+            // an MSSQL plan sits on exactly one machine: picking another replaces it
+            ReplanSelectedMachineIds = new HashSet<int> { mc.Machine_ID };
+            ReplanAllocOverride = null;
+            return;
+        }
         if (on)
         {
             // never more machines than pieces: every machine must get at least one piece
@@ -2652,7 +2691,7 @@ public partial class OrderPlanning
 
     private void ReplanSelectAllMachines()
     {
-        var limit = ReplanEditRow is null ? 0 : (int)ReplanEditRow.Qty;
+        var limit = ReplanEditRow is null ? 0 : IsErpReplanRow(ReplanEditRow) ? 1 : (int)ReplanEditRow.Qty;
         ReplanSelectedMachineIds = ReplanMachineList
             .Where(m => string.Equals(m.Status, "FREE", StringComparison.OrdinalIgnoreCase))
             .Take(limit).Select(m => m.Machine_ID).ToHashSet();
@@ -2668,6 +2707,11 @@ public partial class OrderPlanning
     private async Task SaveReplanEdit()
     {
         if (ReplanEditRow is null) return;
+        if (IsErpReplanRow(ReplanEditRow))
+        {
+            await SaveReplanErpEdit();
+            return;
+        }
 
         var alloc = ReplanAllocations();
         if (alloc.Count > 0 && (alloc.Values.Sum() != ReplanEditRow.Qty || alloc.Values.Any(q => q <= 0)))
@@ -2712,11 +2756,67 @@ public partial class OrderPlanning
         IsReplanEditOpen = false;
         ToastService.ShowSuccess("Machine saved.");
 
-        // splitting adds rows, so reload the list
-        var rows = await ThirdPartyApiManager.GetPlanRowsAsync();
-        if (rows.Succeeded && rows.Data is not null) ReplanRows = rows.Data;
+        // splitting adds rows (and a row that got a machine leaves the list), so reload it
+        await LoadReplanRowsAsync();
     }
-    // Replan: every plan still open in PLM (tbl_production_plan_detail, status_ 0), whatever order is selected; rows without a machine are highlighted.
+
+    // Replan > Edit on an MSSQL plan (no knitter yet): the whole plan moves to ONE machine and is re-dated from
+    // that machine's free date. Only MSSQL changes; PLM gets the plan when a knitter is assigned.
+    private async Task SaveReplanErpEdit()
+    {
+        if (ReplanEditRow is null) return;
+
+        var mc = ReplanMachineList.FirstOrDefault(m => ReplanSelectedMachineIds.Contains(m.Machine_ID));
+        if (mc is null)
+        {
+            ToastService.ShowInfo("Select one machine for this plan.");
+            return;
+        }
+
+        IsSavingReplanEdit = true;
+        var result = await PlanningService.SaveReplanMachineAsync(new NkplmErp.Shared.DTOs.OrderPlanningApi.ReplanMachineModel
+        {
+            PlanId = ReplanEditRow.PlanId,
+            Machine = mc.MachineNo,
+            MachineId = mc.Machine_ID,
+            StartDate = ReplanStart(mc.FreeDate).ToString("yyyy-MM-dd"),
+            EndDate = ReplanMachineEnd(mc, ReplanEditRow.Qty).ToString("yyyy-MM-dd")
+        }, string.Empty);
+        IsSavingReplanEdit = false;
+
+        if (!result.Succeeded)
+        {
+            ToastService.ShowInfo(string.IsNullOrWhiteSpace(result.Messages) ? "The plan could not be saved. Please try again." : result.Messages);
+            return;
+        }
+
+        IsReplanEditOpen = false;
+        ToastService.ShowSuccess(string.IsNullOrWhiteSpace(result.Messages) ? "Machine saved." : result.Messages);
+        await LoadReplanRowsAsync();
+    }
+
+    // Replan list = old PLM plan rows still without a machine (PLM API) + saved MSSQL plans with no knitter
+    // assigned yet (sp_Replan). Either source failing still shows the other.
+    private async Task LoadReplanRowsAsync()
+    {
+        var plmTask = ThirdPartyApiManager.GetPlanRowsAsync();
+        var erpTask = PlanningService.GetReplanPlansAsync();
+        await Task.WhenAll(plmTask, erpTask);
+
+        var rows = new List<NkplmErp.Shared.DTOs.OrderPlanningApi.PlanRowModel>();
+        if (erpTask.Result.Succeeded && erpTask.Result.Data is not null) rows.AddRange(erpTask.Result.Data);
+        else ToastService.ShowInfo("Saved plans could not be loaded right now.");
+
+        if (plmTask.Result.Succeeded && plmTask.Result.Data is not null)
+        {
+            foreach (var r in plmTask.Result.Data) r.Source = "PLM";
+            rows.AddRange(plmTask.Result.Data);
+        }
+        else ToastService.ShowInfo("PLM plan rows could not be loaded right now.");
+
+        ReplanRows = rows;
+    }
+
     private async Task OpenReplanModal()
     {
         ReplanRows = new();
@@ -2726,12 +2826,13 @@ public partial class OrderPlanning
         IsLoadingReplan = true;
         StateHasChanged();
 
-        var rows = await ThirdPartyApiManager.GetPlanRowsAsync();
-        if (rows.Succeeded && rows.Data is not null) ReplanRows = rows.Data;
-        else ToastService.ShowInfo("Plan rows could not be loaded right now. Please try again shortly.");
+        await LoadReplanRowsAsync();
 
         IsLoadingReplan = false;
     }
+
+    private static bool IsErpReplanRow(NkplmErp.Shared.DTOs.OrderPlanningApi.PlanRowModel? row) =>
+        string.Equals(row?.Source, "ERP", StringComparison.OrdinalIgnoreCase);
 
     private async Task OpenPlanningDetailsModal()
     {
@@ -2954,6 +3055,7 @@ public partial class OrderPlanning
         var userId = authState.User.Identity?.Name ?? "system";
         var createdDate = DateTime.Now;
 
+        _loading.Show("Saving plan…"); // main app loader instead of the inline spinner
         try
         {
             int childId = await PlanningService.SavePlanAsync(
@@ -2986,6 +3088,7 @@ public partial class OrderPlanning
         }
         finally
         {
+            _loading.Hide();
             IsWeaveConfirmSaving = false;
             StateHasChanged();
         }
@@ -3222,7 +3325,7 @@ public partial class OrderPlanning
         // status, open the modal and select the gauge, which is the stretch that felt dead.
         var fromTaskLink = !string.IsNullOrWhiteSpace(FromOrderNo);
         if (fromTaskLink)
-            _loading.Show($"Loading planning for {FromOrderNo}â€¦");
+            _loading.Show($"Loading planning for {FromOrderNo}…");
 
         try
         {
@@ -3260,7 +3363,7 @@ public partial class OrderPlanning
 
         if (order is null)
         {
-            ToastService.ShowInfo($"Order {FromOrderNo} isn't in the selected month â€” pick its month to plan it.");
+            ToastService.ShowInfo($"Order {FromOrderNo} isn't in the selected month — pick its month to plan it.");
             return;
         }
 
@@ -3329,6 +3432,17 @@ public partial class OrderPlanning
 
             detail.MachineStatus = rows;
         }
+
+        // Per-gauge yarn badge from PLM's yarn rows too (stockStatus "READY" / "SHORTAGE: n"), not the SQL copy:
+        // any short yarn on the gauge -> SHORTAGE, all ready -> READY, no PLM yarn rows -> no badge.
+        var yarnByGauge = detail.YarnStatus
+            .GroupBy(y => (y.StyleGuage ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Any(y => (y.StockStatus ?? string.Empty).StartsWith("SHORTAGE", StringComparison.OrdinalIgnoreCase)) ? "SHORTAGE" : "READY",
+                StringComparer.OrdinalIgnoreCase);
+        foreach (var m in detail.MachineStatus)
+            m.YarnStatus = yarnByGauge.TryGetValue((m.Gauge ?? string.Empty).Trim(), out var ys) ? ys : string.Empty;
 
         PlanningDetail = detail;
     }

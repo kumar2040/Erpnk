@@ -203,7 +203,7 @@ public partial class Bom
     private static string LineKey(BomYarnLineDto l) => LineKey(l.ProductId, l.OrderColor);
     private static string LineKey(BasketLine l) => LineKey(l.ProductId, l.OrderColor);
 
-    private void AddImportLinesToBasket()
+    private async Task AddImportLinesToBasket()
     {
         if (string.IsNullOrEmpty(SelectedOrderNo)) return;
         if (IsImportAlreadyRequested)
@@ -219,6 +219,25 @@ public partial class Bom
             .ToList();
 
         if (ordersInBom.Count == 0) ordersInBom.Add(SelectedOrderNo);
+
+        // Which order really uses each yarn x colour: calculate every order on its own and keep its own
+        // required kg (SelfWt). The batch calculation only gives the combined line, so splitting it evenly
+        // would tag orders with yarns they never use.
+        var weights = new Dictionary<string, Dictionary<string, decimal>>(StringComparer.OrdinalIgnoreCase);
+        if (ordersInBom.Count > 1)
+        {
+            foreach (var ord in ordersInBom)
+            {
+                var r = await BomApi.GetYarnRequirementAsync(ord, flag: 1);
+                if (!r.Succeeded) { ShowStatus($"Could not read the yarn need of {ord}: {r.Messages}", true); return; }
+                foreach (var l in r.Data ?? new())
+                {
+                    var k = LineKey(l);
+                    if (!weights.TryGetValue(k, out var m)) weights[k] = m = new(StringComparer.OrdinalIgnoreCase);
+                    m[ord] = m.GetValueOrDefault(ord) + l.SelfWt;
+                }
+            }
+        }
 
         var touched = 0;
         foreach (var line in YarnLines.Where(l => l.IsImport))
@@ -236,23 +255,28 @@ public partial class Bom
                 Basket.Add(bl);
             }
 
-            // Distribute line requirement across all order numbers in this BOM batch
-            var perOrderQty = Math.Round(line.OrderKg / ordersInBom.Count, 2);
-            var perOrderNeed = Math.Round(line.ImportKg / ordersInBom.Count, 2);
+            // Orders that use this yarn, weighted by their own requirement (all orders, evenly, if unknown).
+            var share = ordersInBom.Count == 1
+                ? new Dictionary<string, decimal> { [ordersInBom[0]] = 1m }
+                : (weights.TryGetValue(LineKey(line), out var w)
+                    ? w.Where(x => x.Value > 0).ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase)
+                    : new Dictionary<string, decimal>());
+            if (share.Count == 0) share = ordersInBom.ToDictionary(o => o, _ => 1m, StringComparer.OrdinalIgnoreCase);
+            var totalShare = share.Values.Sum();
+            var users = share.Keys.ToList();
 
-            foreach (var orderNo in ordersInBom)
+            foreach (var orderNo in users)
             {
-                bl.OrderQty[orderNo] = perOrderQty;
-                bl.NeedQty[orderNo] = perOrderNeed;
+                bl.OrderQty[orderNo] = Math.Round(line.OrderKg * share[orderNo] / totalShare, 2);
+                bl.NeedQty[orderNo] = Math.Round(line.ImportKg * share[orderNo] / totalShare, 2);
             }
 
-            // Adjust rounding difference on the primary order so the sum matches line.OrderKg exactly
-            var firstOrder = ordersInBom[0];
+            // Put the rounding difference on the order with the biggest share so the sums match exactly.
+            var main = users.OrderByDescending(o => share[o]).First();
             var orderDiff = line.OrderKg - bl.OrderQty.Values.Sum();
-            if (orderDiff != 0) bl.OrderQty[firstOrder] += orderDiff;
-
+            if (orderDiff != 0) bl.OrderQty[main] += orderDiff;
             var needDiff = line.ImportKg - bl.NeedQty.Values.Sum();
-            if (needDiff != 0) bl.NeedQty[firstOrder] += needDiff;
+            if (needDiff != 0) bl.NeedQty[main] += needDiff;
 
             touched++;
         }

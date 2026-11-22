@@ -87,6 +87,7 @@ span.sub{margin-left:6px}
 .line-meta{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:2px}
 .line-meta .orders{display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end}
 .ochip{font-size:.58rem;font-weight:700;color:#475569;background:#eef1f6;border-radius:4px;padding:1px 5px;white-space:nowrap}
+.ochip-qty{font-weight:600;color:#64748b}
 .basket-tot{display:flex;justify-content:space-between;font-size:.8rem;font-weight:800;color:var(--navy);padding:2px 2px 10px}
 .basket-tot .imp-txt{color:var(--import)}
 .basket-actions{display:flex;gap:8px}

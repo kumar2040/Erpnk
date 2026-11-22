@@ -3,16 +3,68 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using NkplmErp.Application.Interfaces;
 using NkplmErp.Shared.DTOs;
+using NkplmErp.Shared.DTOs.OrderPlanningApi;
+using NkplmErp.Shared.DataAccess.GenericRepository;
+using NkplmErp.Shared.Wrapper;
+using NkplmErp.ThirdPartyApi.Outbound.Manager.Interface;
+using NkplmErp.ThirdPartyApi.Outbound.Route;
 
 namespace NkplmErp.Infrastructure.Services;
 
 public class ProductionPlanningService : IProductionPlanningService
 {
     private readonly string _connectionString;
+    private readonly IThirdPartyManager _thirdParty;
+    private readonly IGenericRepository _repo;
 
-    public ProductionPlanningService(IConfiguration configuration)
+    public ProductionPlanningService(IConfiguration configuration, IThirdPartyManager thirdParty, IGenericRepository repo)
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+        _thirdParty = thirdParty;
+        _repo = repo;
+    }
+
+    // ---- Replan, MSSQL side (sp_Replan). The procedure decides what can be re-planned and owns the message. ----
+
+    public async Task<IResponse<List<PlanRowModel>>> GetReplanPlansAsync()
+    {
+        try
+        {
+            var rows = await _repo.GetQueryResultAsync<PlanRowModel>("sp_Replan", new { Flag = "L" }, CommandType.StoredProcedure);
+            return Response<List<PlanRowModel>>.Success(rows ?? new List<PlanRowModel>());
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"GetReplanPlansAsync Error: {ex.Message}");
+            return Response<List<PlanRowModel>>.Fail("Saved plans could not be loaded.");
+        }
+    }
+
+    public async Task<IResponse<bool>> SaveReplanMachineAsync(ReplanMachineModel request, string userId)
+    {
+        try
+        {
+            var result = await _repo.GetQueryFirstOrDefaultResultAsync<ReplanResultModel>("sp_Replan", new
+            {
+                Flag = "M",
+                request.PlanId,
+                request.Machine,
+                request.MachineId,
+                request.StartDate,
+                request.EndDate,
+                UserId = userId
+            }, CommandType.StoredProcedure);
+
+            if (result is null) return Response<bool>.Fail("The plan could not be saved.");
+            return result.Succeeded
+                ? Response<bool>.Success(true, result.Message)
+                : Response<bool>.Fail(result.Message);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"SaveReplanMachineAsync Error: {ex.Message}");
+            return Response<bool>.Fail("The plan could not be saved.");
+        }
     }
 
     public async Task<IEnumerable<MonthlyOrderDetailDto>> GetMonthlyOrderDetailsAsync(DateTime inputDate)
@@ -1234,30 +1286,90 @@ public class ProductionPlanningService : IProductionPlanningService
         return (matched, unmatchedGauges);
     }
 
+    /// <summary>
+    /// Assigns a knitter to a machine plan in SQL Server AND PLM, all-or-nothing from the caller's view:
+    /// the SQL Server save runs in a transaction, PLM (MySQL tbl_production_plan_detail) is updated through
+    /// the third-party API while that transaction is still open, and the transaction commits only if PLM
+    /// accepted it. Returns false when the knitter is double-booked (nothing saved, PLM not called);
+    /// throws when PLM fails, after rolling the SQL Server save back.
+    /// </summary>
     public async Task<bool> SaveKnitterAssignmentAsync(int masterPlanDetailId, string cardNo, string? knitterName, string? assignedBy)
     {
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
         try
         {
-            using (var connection = new SqlConnection(_connectionString))
-            {
-                await connection.OpenAsync();
-                using (var command = new SqlCommand("saveKnitterAssignment", connection))
-                {
-                    command.CommandType = CommandType.StoredProcedure;
-                    command.CommandTimeout = 90;
-                    command.Parameters.AddWithValue("@masterPlanDetailId", masterPlanDetailId);
-                    command.Parameters.AddWithValue("@cardNo", (object?)cardNo ?? DBNull.Value);
-                    command.Parameters.AddWithValue("@knitterName", (object?)knitterName ?? DBNull.Value);
-                    command.Parameters.AddWithValue("@assignedBy", (object?)assignedBy ?? DBNull.Value);
+            int affected = 0;
+            var lines = new List<KnitterAssignmentLineModel>();
 
-                    var result = await command.ExecuteScalarAsync();
-                    return result != null && result != DBNull.Value && Convert.ToInt32(result) > 0;
+            await using (var command = new SqlCommand("saveKnitterAssignment", connection, transaction))
+            {
+                command.CommandType = CommandType.StoredProcedure;
+                command.CommandTimeout = 90;
+                command.Parameters.AddWithValue("@masterPlanDetailId", masterPlanDetailId);
+                command.Parameters.AddWithValue("@cardNo", (object?)cardNo ?? DBNull.Value);
+                command.Parameters.AddWithValue("@knitterName", (object?)knitterName ?? DBNull.Value);
+                command.Parameters.AddWithValue("@assignedBy", (object?)assignedBy ?? DBNull.Value);
+
+                await using var reader = await command.ExecuteReaderAsync();
+                if (await reader.ReadAsync() && !reader.IsDBNull(0))
+                    affected = Convert.ToInt32(reader[0]);
+
+                if (affected > 0 && await reader.NextResultAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        lines.Add(new KnitterAssignmentLineModel
+                        {
+                            SizeLineId = Convert.ToInt32(reader["SizeLineId"]),
+                            OrderId = reader["OrderId"] is DBNull ? null : Convert.ToInt32(reader["OrderId"]),
+                            OrderNo = reader["OrderNo"]?.ToString() ?? string.Empty,
+                            Size = reader["Size"]?.ToString() ?? string.Empty,
+                            Qty = Convert.ToDecimal(reader["Qty"]),
+                            Machine = reader["Machine"]?.ToString() ?? string.Empty,
+                            FactoryType = reader["FactoryType"]?.ToString() ?? string.Empty,
+                            StartDate = reader["StartDate"]?.ToString() ?? string.Empty,
+                            EndDate = reader["EndDate"]?.ToString() ?? string.Empty
+                        });
+                    }
                 }
             }
+
+            if (affected <= 0 || lines.Count == 0)
+            {
+                await transaction.RollbackAsync();
+                return false;   // -1 = double-booked, 0 = no size lines
+            }
+
+            var sync = await _thirdParty.CallAsync<KnitterAssignmentSyncResultModel>(
+                ThirdPartyRouter.SaveKnitterAssignment,
+                new
+                {
+                    cardNo,
+                    lines = lines.Select(l => new
+                    {
+                        sizeLineId = l.SizeLineId,
+                        orderId = l.OrderId,
+                        orderNo = l.OrderNo,
+                        size = l.Size,
+                        qty = l.Qty,
+                        machine = l.Machine,
+                        factoryType = l.FactoryType,
+                        startDate = l.StartDate,
+                        endDate = l.EndDate
+                    }).ToList()
+                });
+
+            if (!sync.Succeeded)
+                throw new InvalidOperationException("The knitter could not be saved in PLM, so nothing was changed. Please try again.");
+
+            await transaction.CommitAsync();
+            return true;
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"SaveKnitterAssignmentAsync Error: {ex.Message}");
+            try { await transaction.RollbackAsync(); } catch { /* already rolled back or connection gone */ }
             throw;
         }
     }

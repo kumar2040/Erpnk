@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using Microsoft.Extensions.Logging;
 using NkplmErp.Application.Interfaces;
 using NkplmErp.Shared.DTOs;
+using NkplmErp.Shared.Wrapper;
 
 namespace NkplmErp.Blazor.Services.ProductionPlanning;
 
@@ -248,6 +249,42 @@ public class ProductionPlanningService : IProductionPlanningService
         {
             _logger.LogError(ex, "Error in UpdateMasterPlanMachineAsync");
             throw;
+        }
+    }
+
+    // Replan, MSSQL side. The API answers the Response<T> envelope; a failure keeps the procedure's message.
+    public async Task<IResponse<List<NkplmErp.Shared.DTOs.OrderPlanningApi.PlanRowModel>>> GetReplanPlansAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/v1/ProductionPlanning/replan-plans");
+            if (!response.IsSuccessStatusCode)
+                return Response<List<NkplmErp.Shared.DTOs.OrderPlanningApi.PlanRowModel>>.Fail($"API Error {response.StatusCode}");
+            return await response.Content.ReadFromJsonAsync<Response<List<NkplmErp.Shared.DTOs.OrderPlanningApi.PlanRowModel>>>()
+                   ?? Response<List<NkplmErp.Shared.DTOs.OrderPlanningApi.PlanRowModel>>.Fail("No response.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in GetReplanPlansAsync");
+            return Response<List<NkplmErp.Shared.DTOs.OrderPlanningApi.PlanRowModel>>.Fail("Saved plans could not be loaded.");
+        }
+    }
+
+    public async Task<IResponse<bool>> SaveReplanMachineAsync(NkplmErp.Shared.DTOs.OrderPlanningApi.ReplanMachineModel request, string userId)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync("api/v1/ProductionPlanning/replan-machine", request);
+            if (!response.IsSuccessStatusCode)
+                return Response<bool>.Fail(response.StatusCode == System.Net.HttpStatusCode.Forbidden
+                    ? "You don't have permission to re-plan this plan."
+                    : $"API Error {response.StatusCode}");
+            return await response.Content.ReadFromJsonAsync<Response<bool>>() ?? Response<bool>.Fail("No response.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in SaveReplanMachineAsync");
+            return Response<bool>.Fail("The plan could not be saved.");
         }
     }
 

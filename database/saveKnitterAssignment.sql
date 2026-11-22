@@ -1,11 +1,3 @@
-USE [NatureKnit]
-GO
-
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-
 /* ============================================================
    Assign a knitter to a machine plan: upserts a KnitterAssignment
    row for every size line (MasterPlanDetailSize) under the given
@@ -14,12 +6,18 @@ GO
    Conflict guard: if the knitter already has a NON-completed
    assignment on another plan overlapping this plan's date range,
    nothing is saved and -1 is returned.
-   ============================================================ */
-IF OBJECT_ID('[dbo].[saveKnitterAssignment]', 'P') IS NULL
-    EXEC('CREATE PROCEDURE [dbo].[saveKnitterAssignment] AS BEGIN SET NOCOUNT ON; END');
-GO
 
-ALTER PROCEDURE [dbo].[saveKnitterAssignment]
+   This procedure only writes SQL Server. PLM (MySQL
+   tbl_production_plan_detail) is updated by the .NET service through the
+   third-party API right after this runs, inside the same SQL transaction
+   (ProductionPlanningService.SaveKnitterAssignmentAsync), so if PLM fails
+   this save is rolled back. There is no linked-server mirror here any more.
+
+   Result sets:
+     1. AffectedLines  (-1 = double-booking blocked, 0 = no size lines)
+     2. the plan's size lines, for the PLM call (only when AffectedLines > 0)
+   ============================================================ */
+CREATE OR ALTER PROCEDURE [dbo].[saveKnitterAssignment]
     @masterPlanDetailId INT,                 -- MasterPlanDetail.MasterPlanChildId
     @cardNo             NVARCHAR(50),
     @knitterName        NVARCHAR(150) = NULL,
@@ -91,105 +89,27 @@ BEGIN
 
     DECLARE @affected INT = @@ROWCOUNT;
 
-    /* ============================================================
-       Mirror the just-saved size lines to the linked MySQL server
-       (SERVER2012 -> db_natureknit.tbl_production_plan_detail).
+    SELECT @affected AS AffectedLines;
 
-       Best-effort: a linked-server failure is caught and reported in
-       LinkedServerError but does NOT roll back the local save.
-
-       Strategy: replace this plan's rows on MySQL (DELETE by plan_id,
-       then INSERT one row per size line) so re-assignment stays in sync.
-
-       Column mappings:
-         id_no  = MasterPlanDetail.MasterPlanChildId  (@masterPlanDetailId)
-         plan_id= MasterPlanDetailSize.id             (size-line id)
-         knitter= card_no
-         old_qty= qty
-       ============================================================ */
-    DECLARE @LinkedServerError NVARCHAR(2000) = NULL;
-
-    BEGIN TRY
-        /* 1. Remove existing MySQL rows for this plan so we don't duplicate.
-              id_no holds the MasterPlanChildId, so delete by id_no. */
-        DECLARE @del NVARCHAR(MAX) =
-            N'DELETE FROM db_natureknit.tbl_production_plan_detail WHERE id_no = '
-            + CAST(@masterPlanDetailId AS NVARCHAR(20)) + N';';
-        EXEC (@del) AT [SERVER2012];
-
-        /* 2. Insert each size line. */
-        DECLARE
-            @s_idNo   NVARCHAR(20),
-            @s_order  NVARCHAR(50),
-            @s_size   NVARCHAR(50),
-            @s_qty    DECIMAL(18,2),
-            @s_mc     NVARCHAR(100),
-            @s_start  DATETIME,
-            @s_end    DATETIME;
-
-        DECLARE line_cur CURSOR LOCAL FAST_FORWARD FOR
-            SELECT
-                CAST(sz.[id] AS NVARCHAR(20)),
-                CAST(sz.[order_id] AS NVARCHAR(50)),
-                sz.[size],
-                sz.[qty],
-                mpd.[Machine],
-                mpd.[StartDate],
-                mpd.[EndDate]
-            FROM [dbo].[MasterPlanDetailSize] sz
-            INNER JOIN [dbo].[MasterPlanDetail] mpd ON mpd.[MasterPlanChildId] = sz.[MasterPlanDetailId]
-            WHERE sz.[MasterPlanDetailId] = @masterPlanDetailId;
-
-        OPEN line_cur;
-        FETCH NEXT FROM line_cur INTO @s_idNo, @s_order, @s_size, @s_qty, @s_mc, @s_start, @s_end;
-
-        WHILE @@FETCH_STATUS = 0
-        BEGIN
-            /* Escape single quotes for the pass-through statement. */
-            DECLARE
-                @q_order NVARCHAR(100) = REPLACE(ISNULL(@s_order,''), '''', ''''''),
-                @q_knit  NVARCHAR(150) = REPLACE(ISNULL(@cardNo,''), '''', ''''''),
-                @q_size  NVARCHAR(100) = REPLACE(ISNULL(@s_size,''), '''', ''''''),
-                @q_mc    NVARCHAR(200) = REPLACE(ISNULL(@s_mc,''), '''', ''''''),
-                @q_user  NVARCHAR(200) = REPLACE(ISNULL(@assignedBy,''), '''', ''''''),
-                @q_start NVARCHAR(30)  = CONVERT(NVARCHAR(19), @s_start, 120),
-                @q_end   NVARCHAR(30)  = CONVERT(NVARCHAR(19), @s_end, 120);
-
-            DECLARE @ins NVARCHAR(MAX) =
-                N'INSERT INTO db_natureknit.tbl_production_plan_detail '
-              + N'(order_id, id_no, plan_id, knitter, size, qty, machine_, date_, user_, status_, old_qty, startDate, endDate) VALUES ('
-              + N'''' + @q_order + N''','
-              + CAST(@masterPlanDetailId AS NVARCHAR(20)) + N','           /* id_no  = MasterPlanChildId */
-              + @s_idNo + N','                                            /* plan_id = size-line id     */
-              + N'''' + @q_knit + N''','                                   /* knitter = card_no          */
-              + N'''' + @q_size + N''','
-              + CAST(@s_qty AS NVARCHAR(30)) + N','
-              + N'''' + @q_mc + N''','
-              + N'NOW(),'
-              + N'''' + @q_user + N''','
-              + N'''Assigned'','
-              + CAST(@s_qty AS NVARCHAR(30)) + N','                        /*? old_qty */
-              + CASE WHEN @s_start IS NULL THEN N'NULL' ELSE N'''' + @q_start + N'''' END + N','
-              + CASE WHEN @s_end   IS NULL THEN N'NULL' ELSE N'''' + @q_end   + N'''' END
-              + N');';
-
-            EXEC (@ins) AT [SERVER2012];
-
-            FETCH NEXT FROM line_cur INTO @s_idNo, @s_order, @s_size, @s_qty, @s_mc, @s_start, @s_end;
-        END
-
-        CLOSE line_cur;
-        DEALLOCATE line_cur;
-    END TRY
-    BEGIN CATCH
-        IF CURSOR_STATUS('local','line_cur') >= 0
-        BEGIN
-            CLOSE line_cur;
-            DEALLOCATE line_cur;
-        END
-        SET @LinkedServerError = ERROR_MESSAGE();
-    END CATCH
-
-    SELECT @affected AS AffectedLines, @LinkedServerError AS LinkedServerError;
+    /* The size lines PLM needs (one row per MasterPlanDetailSize). Dates go out as yyyy-MM-dd text.
+       OrderNo is the plan's own MasterPlan.OrderNo: order_id was taken live from PLM when the plan
+       was made, and the local tbl_order copy is no longer synced (its ids now point at other orders),
+       so looking the number up there sent PLM a mismatched id/number pair and it refused the save. */
+    IF @affected > 0
+        SELECT
+            sz.[id]                                        AS SizeLineId,
+            sz.[order_id]                                  AS OrderId,
+            mp.[OrderNo]                                   AS OrderNo,
+            sz.[size]                                      AS Size,
+            sz.[qty]                                       AS Qty,
+            mpd.[Machine]                                  AS Machine,
+            mpd.[factory_type]                             AS FactoryType,
+            CONVERT(CHAR(10), mpd.[StartDate], 23)         AS StartDate,
+            CONVERT(CHAR(10), mpd.[EndDate], 23)           AS EndDate
+        FROM [dbo].[MasterPlanDetailSize] sz
+        INNER JOIN [dbo].[MasterPlanDetail] mpd ON mpd.[MasterPlanChildId] = sz.[MasterPlanDetailId]
+        INNER JOIN [dbo].[MasterPlan] mp ON mp.[MaterID] = mpd.[MaterID]
+        WHERE sz.[MasterPlanDetailId] = @masterPlanDetailId
+        ORDER BY sz.[id];
 END
 GO

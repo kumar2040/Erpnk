@@ -62,14 +62,19 @@ public class ThirdPartyInboundAuthFilter(IConfiguration config, IMemoryCache cac
                 return $"rate limit exceeded (limit={opt.RateLimit}/{opt.RateWindowSeconds}s)";
         }
 
-        // 2) Allowed base URL.
-        var allowed = opt.AllowedBaseUrls.Select(NormalizeBaseUrl).OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (allowed.Count == 0)
+        // 2) Allowed base URL. "http://plm.local" must match scheme+host+port exactly;
+        //    a bare host / IP entry ("172.25.10.89") matches that host on any scheme or port.
+        var entries = opt.AllowedBaseUrls.Where(e => !string.IsNullOrWhiteSpace(e)).Select(e => e.Trim()).ToList();
+        if (entries.Count == 0)
             return "no AllowedBaseUrls configured";
         var caller = CallerBaseUrl(http.Request);
         if (caller is null)
             return $"no caller base URL (send Origin or {ClientBaseUrlHeader})";
-        if (!allowed.Contains(caller))
+        var callerHost = new Uri(caller).Host;
+        var allowedMatch = entries.Any(e => e.Contains("://")
+            ? string.Equals(NormalizeBaseUrl(e), caller, StringComparison.OrdinalIgnoreCase)
+            : string.Equals(e.TrimEnd('/'), callerHost, StringComparison.OrdinalIgnoreCase));
+        if (!allowedMatch)
             return $"base URL not allowed: {caller}";
 
         // 3) Body must be a JSON object; read it buffered so model binding can read it again.

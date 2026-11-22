@@ -24,9 +24,6 @@ namespace NkplmErp.Blazor.Services.TaskManagement.Manager.Interface
         // (cascading sub-filter options; tailor codes resolve to names).
         Task<IResponse<List<string>>> GetSubCategoriesAsync(string? factoryType, DateTime? startDate = null, DateTime? endDate = null);
 
-        // Pull new knitter rows from MySQL into SQL Server (incremental, no duplicates).
-        Task<IResponse<SyncResultModel>> SyncAsync();
-
         // ---- Order return-detail modal (opened from a PO card's linked line) ----
 
         // Aggregated summary for one line (buyer / issued / returned / qty / machines /

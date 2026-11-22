@@ -123,24 +123,6 @@ namespace NkplmErp.Infrastructure.Services.TaskManagement
             }
         }
 
-        public async Task<IResponse<SyncResultModel>> SyncKnitterRecordsAsync()
-        {
-            try
-            {
-                // Watermark-based incremental pull from MySQL via the linked server.
-                var result = await _genericRepository.GetQueryFirstOrDefaultResultAsync<SyncResultModel>(
-                    "sp_SyncKnitterRecords",
-                    new { },
-                    CommandType.StoredProcedure);
-
-                return Response<SyncResultModel>.Success(result ?? new SyncResultModel { Message = "No response from sync procedure." });
-            }
-            catch (Exception ex)
-            {
-                return Response<SyncResultModel>.Fail(ex.Message);
-            }
-        }
-
         // ---- Order return-detail modal (flags KH / KD / KS) ----
 
         public async Task<IResponse<KnitterSummaryResponseModel?>> GetKnitterSummaryAsync(int taskId, string userId)

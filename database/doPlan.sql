@@ -1,12 +1,11 @@
-USE [NatureKnit]
-GO
-
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-ALTER PROCEDURE [dbo].[doPlan]
+/* Deployed to both NatureKnit and NatureKnit_test (no USE: run it against each DB).
+   SQL Server only: the old weave mirror to the MySQL linked server was removed. */
+CREATE OR ALTER PROCEDURE [dbo].[doPlan]
     @orderNo NVARCHAR(50),
     @guage NVARCHAR(50),
     @startDate DATETIME,
@@ -104,49 +103,6 @@ BEGIN
     );
 
     SET @childId = SCOPE_IDENTITY();
-
-    /* ============================================================
-       WEAVE ONLY: mirror this plan row to the linked MySQL server
-       (SERVER2012 -> db_natureknit.tbl_weave_plandetail).
-       Best-effort: a linked-server failure is swallowed so it never
-       breaks the local save. Requires 'rpc out' on the linked server.
-
-       Mapping:
-         plan_id = MasterPlanChildId (@childId)
-         factory = MasterPlanDetail.Guage (@guage)  -- the value saved locally
-         qty     = @qty
-         orderNo = @orderNo
-         enddate = @endDate (date)
-         date_   = NOW(), status = 'Planed'
-       NOTE: if @guage is a factory NAME (non-numeric), the MySQL
-             [factory] column must be VARCHAR to hold it.
-       ============================================================ */
-    IF UPPER(LTRIM(RTRIM(ISNULL(@knitType, '')))) = 'WEAVE'
-    BEGIN
-        BEGIN TRY
-            DECLARE @wFactory   NVARCHAR(100)  = REPLACE(ISNULL(@guage, ''), '''', '''''');
-            DECLARE @wOrderNo   NVARCHAR(200)  = REPLACE(ISNULL(@orderNo, ''), '''', '''''');
-            DECLARE @wEndDate   NVARCHAR(10)   = CONVERT(NVARCHAR(10), @endDate, 23);   -- yyyy-MM-dd
-            DECLARE @wStartDate NVARCHAR(10)   = CONVERT(NVARCHAR(10), @startDate, 23); -- yyyy-MM-dd
-
-            DECLARE @wIns NVARCHAR(MAX) =
-                N'INSERT INTO db_natureknit.tbl_weave_plandetail '
-              + N'(plan_id, factory, qty, orderNo, date_, startDate, enddate, status) VALUES ('
-              + CAST(@childId AS NVARCHAR(20)) + N','
-              + N'''' + @wFactory + N''','                                 -- factory = gauge value
-              + CAST(CAST(ROUND(@qty, 0) AS INT) AS NVARCHAR(20)) + N','
-              + N'''' + @wOrderNo + N''','
-              + N'NOW(),'
-              + N'''' + @wStartDate + N''','                               -- startDate = plan start
-              + N'''' + @wEndDate + N''','
-              + N'''Planed'');';
-
-            EXEC (@wIns) AT [SERVER2012];
-        END TRY
-        BEGIN CATCH
-            /* best-effort: ignore so the local plan still succeeds */
-        END CATCH
-    END
 
     /* RETURN THE INSERTED CHILD (DETAIL) ID FIRST so callers can link
        size lines (MasterPlanDetailSize) to this exact machine row,
