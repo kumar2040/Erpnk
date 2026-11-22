@@ -16,25 +16,6 @@ public class ProductionPlanningService : IProductionPlanningService
         _logger = logger;
     }
 
-    public async Task<IEnumerable<MonthlyOrderSummaryDto>> GetMonthlySummaryAsync(DateTime inputDate)
-    {
-        var url = $"api/v1/ProductionPlanning/monthly-summary?inputDate={inputDate:yyyy-MM-dd}";
-        try
-        {
-            var response = await _httpClient.GetAsync(url);
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<IEnumerable<MonthlyOrderSummaryDto>>() ?? Enumerable.Empty<MonthlyOrderSummaryDto>();
-            }
-            throw new HttpRequestException($"API Error {response.StatusCode}");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error in GetMonthlySummaryAsync");
-            throw;
-        }
-    }
-
     public async Task<IEnumerable<MonthlyOrderDetailDto>> GetMonthlyOrderDetailsAsync(DateTime inputDate)
     {
         var url = $"api/v1/ProductionPlanning/monthly-details?inputDate={inputDate:yyyy-MM-dd}";
@@ -52,61 +33,6 @@ public class ProductionPlanningService : IProductionPlanningService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in GetMonthlyOrderDetailsAsync");
-            throw;
-        }
-    }
-    public async Task<IEnumerable<OrderCollectionTypeDto>> GetOrderCollectionTypesAsync()
-    {
-        var url = "api/v1/ProductionPlanning/order-collection-types";
-        try
-        {
-            var response = await _httpClient.GetAsync(url);
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<IEnumerable<OrderCollectionTypeDto>>() ?? Enumerable.Empty<OrderCollectionTypeDto>();
-            }
-            throw new HttpRequestException($"API Error {response.StatusCode}");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error in GetOrderCollectionTypesAsync");
-            throw;
-        }
-    }
-
-    public async Task<OrderProductionStatusDto> GetOrderProductionStatusAsync(string orderNo, int flag)
-    {
-        var url = $"api/v1/ProductionPlanning/order-wise-planning?orderNo={orderNo}&flag={flag}";
-        try
-        {
-            var response = await _httpClient.GetAsync(url);
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<OrderProductionStatusDto>() ?? new OrderProductionStatusDto();
-            }
-            throw new HttpRequestException($"API Error {response.StatusCode}");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error in GetOrderProductionStatusAsync");
-            throw;
-        }
-    }
-    public async Task<OrderDeptCompletionDto?> GetOrderDeptCompletionDateAsync(string orderNo, string deptName)
-    {
-        var url = $"api/v1/ProductionPlanning/order-dept-completion-date?orderNo={orderNo}&deptName={deptName}";
-        try
-        {
-            var response = await _httpClient.GetAsync(url);
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<OrderDeptCompletionDto>();
-            }
-            throw new HttpRequestException($"API Error {response.StatusCode}");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error in GetOrderDeptCompletionDateAsync");
             throw;
         }
     }
@@ -168,27 +94,6 @@ public class ProductionPlanningService : IProductionPlanningService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in GetOrderDetailByGuageAsync");
-            throw;
-        }
-    }
-
-    public async Task<OrderAnalysisResultDto> GetOrderAnalysisAsync(string orderNo, string? knitType, int mode)
-    {
-        var url = $"api/v1/ProductionPlanning/order-analysis-while-planing?orderNo={orderNo}&mode={mode}";
-        if (!string.IsNullOrEmpty(knitType)) url += $"&knitType={knitType}";
-
-        try
-        {
-            var response = await _httpClient.GetAsync(url);
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<OrderAnalysisResultDto>() ?? new OrderAnalysisResultDto();
-            }
-            throw new HttpRequestException($"API Error {response.StatusCode}");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error in GetOrderAnalysisAsync");
             throw;
         }
     }

@@ -4,15 +4,10 @@ namespace NkplmErp.Application.Interfaces;
 
 public interface IProductionPlanningService
 {
-    Task<IEnumerable<MonthlyOrderSummaryDto>> GetMonthlySummaryAsync(DateTime inputDate);
     Task<IEnumerable<MonthlyOrderDetailDto>> GetMonthlyOrderDetailsAsync(DateTime inputDate);
-    Task<IEnumerable<OrderCollectionTypeDto>> GetOrderCollectionTypesAsync();
-    Task<OrderProductionStatusDto> GetOrderProductionStatusAsync(string orderNo, int flag);
-    Task<OrderDeptCompletionDto?> GetOrderDeptCompletionDateAsync(string orderNo, string deptName);
     Task<IEnumerable<GaugeUtilizationDto>> GetGaugeUtilizationReportAsync(double? targetGauge);
     Task<OrderPlanningDetailDto> GetOrderPlanningDetailAsync(string orderNo, int flag, string? gauge = null, string? ply = null);
     Task<IEnumerable<OrderDetailByGuageDto>> GetOrderDetailByGuageAsync(string orderNo, string guage, string? flag = null);
-    Task<OrderAnalysisResultDto> GetOrderAnalysisAsync(string orderNo, string? knitType, int mode);
     Task<FabricAnalysisPlanDto> GetFabricAnalysisPlanAsync(string orderNo, string fabricType, int flag);
     Task<WeaveAnalysisPlanDto> GetWeaveAnalysisPlanAsync(string orderNo, string? factoryName, int flag);
     Task<int> SavePlanAsync(string orderNo, string guage, DateTime startDate, DateTime endDate, decimal qty, int machine, string orderType, string knitType, string userId, DateTime createdDate, List<PlanSizeLineDto>? sizeLines = null, string? machineNo = null, int? machineId = null, bool isOvertime = false, decimal overtimeHours = 0, bool workSaturday = false);

@@ -92,13 +92,6 @@ public class ProductionPlanningController : ControllerBase
         return perms.IsRowAllowed(planKnitType, planGauge);
     }
 
-    [HttpGet("monthly-summary")]
-    public async Task<IActionResult> GetMonthlySummary([FromQuery] DateTime inputDate)
-    {
-        var result = await _productionPlanningService.GetMonthlySummaryAsync(inputDate);
-        return Ok(result);
-    }
-
     [HttpGet("monthly-details")]
     public async Task<IActionResult> GetMonthlyOrderDetails([FromQuery] DateTime inputDate)
     {
@@ -106,27 +99,6 @@ public class ProductionPlanningController : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet("order-collection-types")]
-    public async Task<IActionResult> GetOrderCollectionTypes()
-    {
-        var result = await _productionPlanningService.GetOrderCollectionTypesAsync();
-        return Ok(result);
-    }
-    
-    [HttpGet("order-wise-planning")]
-    public async Task<IActionResult> OrderWisePlanning([FromQuery] string orderNo, [FromQuery] int flag = 0)
-    {
-        var result = await _productionPlanningService.GetOrderProductionStatusAsync(orderNo, flag);
-        return Ok(result);
-    }
-    
-    [HttpGet("order-dept-completion-date")]
-    public async Task<IActionResult> GetOrderDeptCompletionDate([FromQuery] string orderNo, [FromQuery] string deptName)
-    {
-        var result = await _productionPlanningService.GetOrderDeptCompletionDateAsync(orderNo, deptName);
-        return Ok(result);
-    }
-    
     [HttpGet("gauge-utilization-report")]
     public async Task<IActionResult> GetGaugeUtilizationReport([FromQuery] double? targetGauge)
     {
@@ -162,24 +134,6 @@ public class ProductionPlanningController : ControllerBase
             return Ok(Array.Empty<OrderDetailByGuageDto>());
 
         var result = await _productionPlanningService.GetOrderDetailByGuageAsync(orderNo, guage, flag);
-        return Ok(result);
-    }
-
-    [HttpGet("order-analysis-while-planing")]
-    public async Task<IActionResult> GetOrderAnalysis([FromQuery] string orderNo, [FromQuery] string? knitType, [FromQuery] int mode)
-    {
-        var result = await _productionPlanningService.GetOrderAnalysisAsync(orderNo, knitType, mode);
-
-        // Department scoping: a user restricted to e.g. {Knit} (or weave+GyatriPashmina)
-        // only sees the breakdown rows for departments they have any access to.
-        var perms = await GetCurrentPermissionsAsync();
-        if (!perms.IsUnrestricted && result?.DetailedAnalysis != null)
-        {
-            result.DetailedAnalysis = result.DetailedAnalysis
-                .Where(d => perms.CanAccessDept(d.KnitType))
-                .ToList();
-        }
-
         return Ok(result);
     }
 
