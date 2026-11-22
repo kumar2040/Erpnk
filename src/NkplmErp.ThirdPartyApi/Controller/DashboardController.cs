@@ -1,8 +1,9 @@
-using Asp.Versioning;
+﻿using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NkplmErp.Application.Interfaces;
 using NkplmErp.Shared.DTOs;
+using NkplmErp.ThirdPartyApi.Base;
 using NkplmErp.Shared.DTOs.OrderPlanningApi;
 using NkplmErp.ThirdPartyApi.Manager.Interface;
 using NkplmErp.ThirdPartyApi.Route;
@@ -14,7 +15,7 @@ namespace NkplmErp.ThirdPartyApi.Controller
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]
     [Authorize]
-    public class DashboardController(IThirdPartyManager thirdParty, IRoleManagementService roleService) : PermissionController(roleService)
+    public class DashboardController(IThirdPartyManager thirdParty, IRoleManagementService roleService) : PermissionBase(roleService)
     {
         // GET api/v1/Dashboard/order-status?year=2026&status=Running
         // Running-orders list (and the dashboard order table), live from PLM.

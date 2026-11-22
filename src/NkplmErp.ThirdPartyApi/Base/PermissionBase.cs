@@ -1,11 +1,11 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using NkplmErp.Application.Interfaces;
 
-namespace NkplmErp.ThirdPartyApi.Controller
+namespace NkplmErp.ThirdPartyApi.Base
 {
-    /// <summary>Shared permission checks for the page controllers (ProductionPlan, Dashboard, ...). Not routable itself.</summary>
-    public abstract class PermissionController(IRoleManagementService roleService) : ControllerBase
+    /// <summary>Base class (not a controller) with the CanEdit/CanView checks the page controllers inherit.</summary>
+    public abstract class PermissionBase(IRoleManagementService roleService) : ControllerBase
     {
         protected async Task<bool> CanEditAsync(string module)
         {
