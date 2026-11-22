@@ -2548,7 +2548,7 @@ public partial class OrderPlanning
         ReplanEditRow = row;
         ReplanMachineList = new();
         ReplanSelectedMachineIds = new();
-        IsReplanMcOpen = false;
+        IsReplanMcOpen = true; // machine list opens straight away
         ReplanAllocOverride = null;
         ReplanOvertime = false;
         ReplanSaturday = false;
@@ -2689,8 +2689,26 @@ public partial class OrderPlanning
             return;
         }
 
+        // mirror into MSSQL MasterPlanDetail.Machine (best effort: PLM is already saved)
+        try
+        {
+            await PlanningService.UpdateMasterPlanMachineAsync(new NkplmErp.Shared.DTOs.OrderPlanningApi.MasterPlanMachineModel
+            {
+                OrderId = ReplanEditRow.OrderId,
+                StyleNo = ReplanEditRow.StyleNo,
+                Color = ReplanEditRow.Color,
+                Size = ReplanEditRow.Size,
+                MachineNo = string.Join(",", machines.Select(m => m.MachineNo)),
+                MachineId = ReplanMachineList.Where(m => alloc.ContainsKey(m.Machine_ID)).Select(m => (int?)m.Machine_ID).FirstOrDefault()
+            }, string.Empty);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"MasterPlanDetail machine sync failed: {ex.Message}");
+        }
+
         IsReplanEditOpen = false;
-        ToastService.ShowSuccess("Machine saved in PLM.");
+        ToastService.ShowSuccess("Machine saved.");
 
         // splitting adds rows, so reload the list
         var rows = await ThirdPartyApiManager.GetPlanRowsAsync();

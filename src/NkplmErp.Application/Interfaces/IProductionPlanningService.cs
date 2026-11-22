@@ -19,6 +19,7 @@ public interface IProductionPlanningService
     Task<IEnumerable<PlannedDataDto>> GetPlannedDataByOrderAsync(string orderNo, string? gauge = null, decimal? qty = null);
     Task<bool> DeletePlanDetailAsync(int planDetailId);
     Task<bool> UpdatePlanDetailAsync(int planDetailId, DateTime startDate, DateTime endDate, decimal qty, int machine, string userId);
+    Task<bool> UpdateMasterPlanMachineAsync(NkplmErp.Shared.DTOs.OrderPlanningApi.MasterPlanMachineModel request, string userId);
     Task<List<KnitGanttChartDto>> GetKnitGanttChartDataAsync(DateTime? startDate, DateTime? endDate, string? orderNo, string? gauge);
     Task<List<MachinePlaningDto>> GetMachinePlaningAsync(string? targetGauge = null);
     Task<List<MasterPlanningRowDto>> GetMasterPlanningAsync(string? orderNo = null, string? gauge = null);

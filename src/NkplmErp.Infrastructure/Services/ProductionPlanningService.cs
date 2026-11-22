@@ -1064,6 +1064,53 @@ public class ProductionPlanningService : IProductionPlanningService
         }
     }
 
+    // Mirrors a PLM plan-row machine edit: sets MasterPlanDetail.Machine / MachineID for the plan row(s)
+    // that own the (order, style, colour, size) line.
+    public async Task<bool> UpdateMasterPlanMachineAsync(NkplmErp.Shared.DTOs.OrderPlanningApi.MasterPlanMachineModel request, string userId)
+    {
+        try
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                using (var command = new SqlCommand(@"
+                    UPDATE mpd
+                    SET Machine = @Machine,
+                        MachineID = @MachineID,
+                        ModifyDate = @ModifyDate,
+                        ModifiedBy = @ModifiedBy
+                    FROM dbo.MasterPlanDetail mpd
+                    WHERE mpd.MasterPlanChildId IN (
+                        SELECT sz.MasterPlanDetailId
+                        FROM dbo.MasterPlanDetailSize sz
+                        WHERE sz.order_id = @OrderId
+                          AND sz.style_no = @StyleNo
+                          AND sz.color = @Color
+                          AND sz.size = @Size)", connection))
+                {
+                    var machineNo = (request.MachineNo ?? string.Empty).Trim();
+                    if (machineNo.Length > 50) machineNo = machineNo.Substring(0, 50);
+
+                    command.Parameters.AddWithValue("@OrderId", request.OrderId);
+                    command.Parameters.AddWithValue("@StyleNo", request.StyleNo ?? string.Empty);
+                    command.Parameters.AddWithValue("@Color", request.Color ?? string.Empty);
+                    command.Parameters.AddWithValue("@Size", request.Size ?? string.Empty);
+                    command.Parameters.AddWithValue("@Machine", machineNo);
+                    command.Parameters.AddWithValue("@MachineID", (object?)request.MachineId ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@ModifyDate", DateTime.Now);
+                    command.Parameters.AddWithValue("@ModifiedBy", (object?)userId ?? DBNull.Value);
+
+                    return await command.ExecuteNonQueryAsync() > 0;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"UpdateMasterPlanMachineAsync Error: {ex.Message}");
+            throw;
+        }
+    }
+
     public async Task<List<KnitGanttChartDto>> GetKnitGanttChartDataAsync(DateTime? startDate, DateTime? endDate, string? orderNo, string? gauge)
     {
         var result = new List<KnitGanttChartDto>();

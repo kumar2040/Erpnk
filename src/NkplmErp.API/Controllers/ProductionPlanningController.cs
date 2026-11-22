@@ -326,6 +326,15 @@ public class ProductionPlanningController : ControllerBase
         return Ok(result);
     }
 
+    // Mirrors a PLM plan-row machine edit into MasterPlanDetail.Machine (MSSQL).
+    [HttpPut("plan-machine")]
+    public async Task<IActionResult> UpdateMasterPlanMachine([FromBody] NkplmErp.Shared.DTOs.OrderPlanningApi.MasterPlanMachineModel request)
+    {
+        if (!await HasPermissionAsync("OrderPlanning", "Edit")) return Forbid();
+        var result = await _productionPlanningService.UpdateMasterPlanMachineAsync(request, GetCurrentUserName());
+        return Ok(result);
+    }
+
     [HttpGet("knit-gantt-chart")]
     public async Task<IActionResult> GetKnitGanttChartData(
         [FromQuery] DateTime? startDate = null, 

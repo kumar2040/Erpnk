@@ -1600,9 +1600,22 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @{ int rSn = 1; }
-                        @foreach (var row in shownReplan)
+                        @foreach (var grp in shownReplan.GroupBy(r => r.OrderNo))
                         {
+                            int grpNoMc = grp.Count(r => string.IsNullOrEmpty(r.Machine));
+                            int rSn = 1;
+                            <tr class="replan-group">
+                                <td colspan="9">
+                                    <span class="replan-group-order">@grp.Key</span>
+                                    <span class="replan-group-meta">@grp.Count() rows &middot; @grp.Sum(r => r.Qty).ToString("N0") pcs</span>
+                                    @if (grpNoMc > 0)
+                                    {
+                                        <span class="replan-chip replan-chip-warn">&#9888; @grpNoMc without machine</span>
+                                    }
+                                </td>
+                            </tr>
+                            @foreach (var row in grp)
+                            {
                             bool noMachine = string.IsNullOrEmpty(row.Machine);
                             <tr class="@(noMachine ? "replan-row-warn" : "")">
                                 <td class="c">@(rSn++)</td>
@@ -1623,12 +1636,13 @@
                                     }
                                 </td>
                                 <td class="c">
-                                    @if (row.KnitType == "Knit")
+                                    @if (string.Equals(row.KnitType, "knit", StringComparison.OrdinalIgnoreCase))
                                     {
                                         <button type="button" class="replan-edit" title="Assign machines to this plan row" @onclick="() => OpenReplanEdit(row)">&#9998; Edit</button>
                                     }
                                 </td>
                             </tr>
+                            }
                         }
                     </tbody>
                     <tfoot>

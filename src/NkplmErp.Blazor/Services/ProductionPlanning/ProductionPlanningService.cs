@@ -328,6 +328,24 @@ public class ProductionPlanningService : IProductionPlanningService
         }
     }
 
+    public async Task<bool> UpdateMasterPlanMachineAsync(NkplmErp.Shared.DTOs.OrderPlanningApi.MasterPlanMachineModel request, string userId)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync("api/v1/ProductionPlanning/plan-machine", request);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<bool>();
+            }
+            throw new HttpRequestException($"API Error {response.StatusCode}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in UpdateMasterPlanMachineAsync");
+            throw;
+        }
+    }
+
     public async Task<List<KnitGanttChartDto>> GetKnitGanttChartDataAsync(DateTime? startDate, DateTime? endDate, string? orderNo, string? gauge)
     {
         var url = $"api/v1/ProductionPlanning/knit-gantt-chart?";
