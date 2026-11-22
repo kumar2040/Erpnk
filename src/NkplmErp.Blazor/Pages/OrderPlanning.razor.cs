@@ -47,7 +47,7 @@ public partial class OrderPlanning
 
     // The order's ship month, sent alongside orderNo by sp_GetPoTask. LoadMonths otherwise
     // leaves the page on the current month, and an order shipping in another month is then
-    // genuinely absent from AllOrders — see OpenFromTaskLinkAsync.
+    // genuinely absent from AllOrders â€” see OpenFromTaskLinkAsync.
     [Parameter, SupplyParameterFromQuery(Name = "month")] public string? FromMonth { get; set; }
 
     private List<MonthlyOrderSummaryDto> Months { get; set; } = new();
@@ -121,6 +121,8 @@ public partial class OrderPlanning
     private bool IsReplanModalOpen { get; set; }
     private bool IsLoadingReplan { get; set; }
     private bool ReplanOnlyNoMachine { get; set; }
+    private string? ReplanSearch { get; set; }
+    private string? ReplanSelectedOrder { get; set; }
     private bool IsReplanEditOpen { get; set; }
     private bool IsSavingReplanEdit { get; set; }
     private NkplmErp.Shared.DTOs.OrderPlanningApi.PlanRowModel? ReplanEditRow { get; set; }
@@ -346,7 +348,7 @@ public partial class OrderPlanning
             : 1m;
 
     // Plan start = machine free date + 1 day. If that lands on Saturday (a holiday),
-    // push to Sunday — unless Saturday working is enabled.
+    // push to Sunday â€” unless Saturday working is enabled.
     private DateTime GetMachinePlanStartDate(DateTime freeDate)
     {
         DateTime start = freeDate.AddDays(1);
@@ -382,7 +384,7 @@ public partial class OrderPlanning
             currentDate = currentDate.AddDays(fraction);
         }
 
-        // If the end date lands on Saturday (holiday), move it to Sunday — unless Saturday working is on.
+        // If the end date lands on Saturday (holiday), move it to Sunday â€” unless Saturday working is on.
         return NormalizeOffSaturday(currentDate);
     }
 
@@ -1919,7 +1921,7 @@ public partial class OrderPlanning
 
                 if (result.WasClamped)
                 {
-                    ToastService.ShowError($"Qty exceeds order size limit — reset to {result.MaxAllowed:N0}.");
+                    ToastService.ShowError($"Qty exceeds order size limit â€” reset to {result.MaxAllowed:N0}.");
                 }
                 else
                 {
@@ -2151,7 +2153,7 @@ public partial class OrderPlanning
         ToastService.ShowSuccess($"Bulk planning done: {doneCount} gauge plan(s) saved.");
         if (skipped.Any())
         {
-            ToastService.ShowInfo($"{skipped.Count} row(s) skipped (already planned / no balance): {string.Join(", ", skipped.Take(8))}{(skipped.Count > 8 ? "…" : "")}");
+            ToastService.ShowInfo($"{skipped.Count} row(s) skipped (already planned / no balance): {string.Join(", ", skipped.Take(8))}{(skipped.Count > 8 ? "â€¦" : "")}");
         }
     }
 
@@ -2718,6 +2720,8 @@ public partial class OrderPlanning
     private async Task OpenReplanModal()
     {
         ReplanRows = new();
+        ReplanSearch = null;
+        ReplanSelectedOrder = null;
         IsReplanModalOpen = true;
         IsLoadingReplan = true;
         StateHasChanged();
@@ -3218,7 +3222,7 @@ public partial class OrderPlanning
         // status, open the modal and select the gauge, which is the stretch that felt dead.
         var fromTaskLink = !string.IsNullOrWhiteSpace(FromOrderNo);
         if (fromTaskLink)
-            _loading.Show($"Loading planning for {FromOrderNo}…");
+            _loading.Show($"Loading planning for {FromOrderNo}â€¦");
 
         try
         {
@@ -3256,7 +3260,7 @@ public partial class OrderPlanning
 
         if (order is null)
         {
-            ToastService.ShowInfo($"Order {FromOrderNo} isn't in the selected month — pick its month to plan it.");
+            ToastService.ShowInfo($"Order {FromOrderNo} isn't in the selected month â€” pick its month to plan it.");
             return;
         }
 

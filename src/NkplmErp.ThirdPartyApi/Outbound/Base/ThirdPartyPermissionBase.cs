@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using NkplmErp.Application.Interfaces;
 
-namespace NkplmErp.ThirdPartyApi.Base
+namespace NkplmErp.ThirdPartyApi.Outbound.Base
 {
     /// <summary>Base class (not a controller) with the CanEdit/CanView checks the page controllers inherit.</summary>
     public abstract class ThirdPartyPermissionBase(IRoleManagementService roleService) : ControllerBase

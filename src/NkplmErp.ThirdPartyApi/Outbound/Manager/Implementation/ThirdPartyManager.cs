@@ -4,11 +4,11 @@ using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using NkplmErp.Shared.Wrapper;
-using NkplmErp.ThirdPartyApi.Manager.Interface;
-using NkplmErp.ThirdPartyApi.Model;
-using NkplmErp.ThirdPartyApi.Route;
+using NkplmErp.ThirdPartyApi.Outbound.Manager.Interface;
+using NkplmErp.ThirdPartyApi.Common.Model;
+using NkplmErp.ThirdPartyApi.Outbound.Route;
 
-namespace NkplmErp.ThirdPartyApi.Manager.Implementation;
+namespace NkplmErp.ThirdPartyApi.Outbound.Manager.Implementation;
 
 /// <summary>
 /// The one generic caller for the third-party (PLM) API. Reads ThirdPartyApi:BaseUrl / Username /

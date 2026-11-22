@@ -1,7 +1,7 @@
 using NkplmErp.Shared.Wrapper;
-using NkplmErp.ThirdPartyApi.Route;
+using NkplmErp.ThirdPartyApi.Outbound.Route;
 
-namespace NkplmErp.ThirdPartyApi.Manager.Interface;
+namespace NkplmErp.ThirdPartyApi.Outbound.Manager.Interface;
 
 public interface IThirdPartyManager
 {

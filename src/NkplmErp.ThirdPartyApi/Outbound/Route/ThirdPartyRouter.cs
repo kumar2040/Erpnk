@@ -1,4 +1,4 @@
-namespace NkplmErp.ThirdPartyApi.Route;
+namespace NkplmErp.ThirdPartyApi.Outbound.Route;
 
 /// <summary>A third-party route plus the route to try when it fails (null = no fallback).</summary>
 public readonly record struct ThirdPartyRoute(string Path, string? Fallback = null);

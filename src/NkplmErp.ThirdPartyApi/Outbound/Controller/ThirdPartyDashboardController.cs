@@ -3,12 +3,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NkplmErp.Application.Interfaces;
 using NkplmErp.Shared.DTOs;
-using NkplmErp.ThirdPartyApi.Base;
+using NkplmErp.ThirdPartyApi.Outbound.Base;
 using NkplmErp.Shared.DTOs.OrderPlanningApi;
-using NkplmErp.ThirdPartyApi.Manager.Interface;
-using NkplmErp.ThirdPartyApi.Route;
+using NkplmErp.ThirdPartyApi.Outbound.Manager.Interface;
+using NkplmErp.ThirdPartyApi.Outbound.Route;
 
-namespace NkplmErp.ThirdPartyApi.Controller
+namespace NkplmErp.ThirdPartyApi.Outbound.Controller
 {
     /// <summary>Main dashboard: running orders and production flow, backed by the PLM API.</summary>
     [ApiController]

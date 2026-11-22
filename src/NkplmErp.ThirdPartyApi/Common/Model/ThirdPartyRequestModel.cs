@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace NkplmErp.ThirdPartyApi.Model;
+namespace NkplmErp.ThirdPartyApi.Common.Model;
 
 /// <summary>
 /// What every third-party call sends. The manager fills Username/Password from configuration, so a
