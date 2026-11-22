@@ -15,9 +15,9 @@ namespace NkplmErp.ThirdPartyApi.Controller
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]
     [Authorize]
-    public class DashboardController(IThirdPartyManager thirdParty, IRoleManagementService roleService) : PermissionBase(roleService)
+    public class ThirdPartyDashboardController(IThirdPartyManager thirdParty, IRoleManagementService roleService) : ThirdPartyPermissionBase(roleService)
     {
-        // GET api/v1/Dashboard/order-status?year=2026&status=Running
+        // GET api/v1/ThirdPartyDashboard/order-status?year=2026&status=Running
         // Running-orders list (and the dashboard order table), live from PLM.
         [HttpGet("order-status")]
         public async Task<IActionResult> GetOrderStatusAsync([FromQuery] int year, [FromQuery] string status, CancellationToken ct)
@@ -27,7 +27,7 @@ namespace NkplmErp.ThirdPartyApi.Controller
                 ThirdPartyRouter.OrderStatus, new { year, status }, ct));
         }
 
-        // GET api/v1/Dashboard/production-flow?buyerId=87&orderNo=GT-26025
+        // GET api/v1/ThirdPartyDashboard/production-flow?buyerId=87&orderNo=GT-26025
         // Production Flow chart: pieces per department, dispatch totals and department due dates.
         [HttpGet("production-flow")]
         public async Task<IActionResult> GetProductionFlowAsync([FromQuery] int buyerId, [FromQuery] string? orderNo, CancellationToken ct)

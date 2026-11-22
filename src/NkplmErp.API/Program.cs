@@ -228,7 +228,7 @@ builder.Services.AddCors(options =>
                .AllowCredentials();
     });
 });
-builder.Services.AddControllers().AddApplicationPart(typeof(NkplmErp.ThirdPartyApi.Controller.ProductionPlanController).Assembly);
+builder.Services.AddControllers().AddApplicationPart(typeof(NkplmErp.ThirdPartyApi.Controller.ThirdPartyProductionPlanController).Assembly);
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 

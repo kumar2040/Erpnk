@@ -5,7 +5,7 @@ using NkplmErp.Application.Interfaces;
 namespace NkplmErp.ThirdPartyApi.Base
 {
     /// <summary>Base class (not a controller) with the CanEdit/CanView checks the page controllers inherit.</summary>
-    public abstract class PermissionBase(IRoleManagementService roleService) : ControllerBase
+    public abstract class ThirdPartyPermissionBase(IRoleManagementService roleService) : ControllerBase
     {
         protected async Task<bool> CanEditAsync(string module)
         {
