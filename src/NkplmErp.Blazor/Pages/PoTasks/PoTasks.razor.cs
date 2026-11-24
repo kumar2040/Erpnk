@@ -231,7 +231,7 @@ namespace NkplmErp.Blazor.Pages.PoTasks
         // Pinned on top of the Scheduled column. Not a task: a live count of orders due to ship in
         // the chosen range, read from PLM (third-party API shipment/due-orders). Click opens the list.
 
-        [Inject] private NkplmErp.Blazor.Services.ThirdPartyApi.Manager.Interface.IThirdPartyApiManager ThirdParty { get; set; } = default!;
+        [Inject] private NkplmErp.Blazor.Services.ThirdPartyApi.Plm.Manager.Interface.IThirdPartyApiManager ThirdParty { get; set; } = default!;
 
         private const string ShipRangeStorageKey = "tasks-ship-range";
         private string shipPreset = "7";                       // today | 3 | 7 | 15 | 30 | custom

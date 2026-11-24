@@ -1,7 +1,7 @@
 using NkplmErp.Shared.DTOs.Tts;
 using NkplmErp.Shared.Wrapper;
 
-namespace NkplmErp.Blazor.Services.Tts.Manager.Interface
+namespace NkplmErp.Blazor.Services.ThirdPartyApi.Tts.Manager.Interface
 {
     public interface ITtsManager
     {

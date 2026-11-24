@@ -17,7 +17,7 @@ public partial class OrderPlanning
 
     // Third-party (PLM) API: dropdowns, planning quantities and yarn come from here.
     [Inject]
-    private NkplmErp.Blazor.Services.ThirdPartyApi.Manager.Interface.IThirdPartyApiManager ThirdPartyApiManager { get; set; } = default!;
+    private NkplmErp.Blazor.Services.ThirdPartyApi.Plm.Manager.Interface.IThirdPartyApiManager ThirdPartyApiManager { get; set; } = default!;
 
     [Inject]
     private IJSRuntime JS { get; set; } = null!;

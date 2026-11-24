@@ -2,7 +2,7 @@ using NkplmErp.Shared.DTOs;
 using NkplmErp.Shared.DTOs.OrderPlanningApi;
 using NkplmErp.Shared.Wrapper;
 
-namespace NkplmErp.Blazor.Services.ThirdPartyApi.Manager.Interface
+namespace NkplmErp.Blazor.Services.ThirdPartyApi.Plm.Manager.Interface
 {
     public interface IThirdPartyApiManager
     {

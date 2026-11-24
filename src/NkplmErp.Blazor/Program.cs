@@ -136,7 +136,7 @@ builder.Services.AddHttpClient<ITaskManagementManager, TaskManagementManager>(cl
 .AddHttpMessageHandler<AuthenticationDelegatingHandler>();
 
 // Text-to-speech (read notifications aloud), through the API's TtsController
-builder.Services.AddHttpClient<NkplmErp.Blazor.Services.Tts.Manager.Interface.ITtsManager, NkplmErp.Blazor.Services.Tts.Manager.Implementation.TtsManager>(client =>
+builder.Services.AddHttpClient<NkplmErp.Blazor.Services.ThirdPartyApi.Tts.Manager.Interface.ITtsManager, NkplmErp.Blazor.Services.ThirdPartyApi.Tts.Manager.Implementation.TtsManager>(client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
     client.Timeout = TimeSpan.FromSeconds(120);   // generating speech takes a while
@@ -161,7 +161,7 @@ builder.Services.AddScoped<IYarnOrderManager, YarnOrderManager>();
 builder.Services.AddScoped<IDropdownManager, DropdownManager>();
 
 // Third-party (PLM) API, reached through the API's ThirdPartyApi controller
-builder.Services.AddScoped<NkplmErp.Blazor.Services.ThirdPartyApi.Manager.Interface.IThirdPartyApiManager, NkplmErp.Blazor.Services.ThirdPartyApi.Manager.Implementation.ThirdPartyApiManager>();
+builder.Services.AddScoped<NkplmErp.Blazor.Services.ThirdPartyApi.Plm.Manager.Interface.IThirdPartyApiManager, NkplmErp.Blazor.Services.ThirdPartyApi.Plm.Manager.Implementation.ThirdPartyApiManager>();
 
 // Login task gate (blocking one-task-at-a-time popup)
 builder.Services.AddScoped<ITaskGateManager, TaskGateManager>();

@@ -12,7 +12,7 @@ public partial class Bom
 {
     [Inject] private BomApiClient BomApi { get; set; } = default!;
     // The month's orders come from PLM through the third-party API.
-    [Inject] private NkplmErp.Blazor.Services.ThirdPartyApi.Manager.Interface.IThirdPartyApiManager ThirdPartyApiManager { get; set; } = default!;
+    [Inject] private NkplmErp.Blazor.Services.ThirdPartyApi.Plm.Manager.Interface.IThirdPartyApiManager ThirdPartyApiManager { get; set; } = default!;
     [Inject] private NkplmErp.Blazor.Services.Toast.ToastService ToastService { get; set; } = default!;
     [Inject] private PermissionService PermSvc { get; set; } = default!;
     [Inject] private NkplmErp.Blazor.Services.Loading.LoadingService _loading { get; set; } = default!;

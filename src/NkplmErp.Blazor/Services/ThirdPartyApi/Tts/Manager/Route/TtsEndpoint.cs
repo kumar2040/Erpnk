@@ -1,4 +1,4 @@
-namespace NkplmErp.Blazor.Services.Tts.Manager.Route
+namespace NkplmErp.Blazor.Services.ThirdPartyApi.Tts.Manager.Route
 {
     // Central place for the TtsController routes (UI -> NkplmErp.API).
     public static class TtsEndpoint

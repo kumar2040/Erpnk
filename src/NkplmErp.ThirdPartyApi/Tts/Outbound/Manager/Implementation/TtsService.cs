@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NkplmErp.ThirdPartyApi.Tts.Outbound.Manager.Interface;
 using NkplmErp.ThirdPartyApi.Tts.Outbound.Model;
+using NkplmErp.ThirdPartyApi.Tts.Outbound.Route;
 using NkplmErp.Shared.DTOs.Tts;
 using NkplmErp.Shared.Wrapper;
 
@@ -21,16 +22,16 @@ namespace NkplmErp.ThirdPartyApi.Tts.Outbound.Manager.Implementation
         private readonly TtsSettings _settings = options.Value;
 
         public Task<IResponse<TtsVoicesResponseModel>> GetVoicesAsync(CancellationToken ct = default) =>
-            GetJsonAsync<TtsVoicesResponseModel>("/api/v1/voices", ct);
+            GetJsonAsync<TtsVoicesResponseModel>(TtsRouter.Voices, ct);
 
         public Task<IResponse<TtsHealthResponseModel>> GetHealthAsync(CancellationToken ct = default) =>
-            GetJsonAsync<TtsHealthResponseModel>("/api/health", ct);
+            GetJsonAsync<TtsHealthResponseModel>(TtsRouter.Health, ct);
 
         public async Task<IResponse<TtsAudioResponseModel>> SpeakAsync(TtsRequestModel request, CancellationToken ct = default)
         {
             try
             {
-                if (!TryBuildUri("/api/v1/tts", out var uri, out var configError))
+                if (!TryBuildUri(TtsRouter.Speak, out var uri, out var configError))
                     return Response<TtsAudioResponseModel>.Fail(configError);
 
                 using var message = new HttpRequestMessage(HttpMethod.Post, uri) { Content = JsonContent.Create(request) };

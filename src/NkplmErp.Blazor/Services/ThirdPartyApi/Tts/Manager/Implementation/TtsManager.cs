@@ -1,10 +1,10 @@
 using System.Net.Http.Json;
-using NkplmErp.Blazor.Services.Tts.Manager.Interface;
-using NkplmErp.Blazor.Services.Tts.Manager.Route;
+using NkplmErp.Blazor.Services.ThirdPartyApi.Tts.Manager.Interface;
+using NkplmErp.Blazor.Services.ThirdPartyApi.Tts.Manager.Route;
 using NkplmErp.Shared.DTOs.Tts;
 using NkplmErp.Shared.Wrapper;
 
-namespace NkplmErp.Blazor.Services.Tts.Manager.Implementation
+namespace NkplmErp.Blazor.Services.ThirdPartyApi.Tts.Manager.Implementation
 {
     /// <summary>
     /// Typed client for TtsController. Speak answers with raw audio on success (not the usual IResponse

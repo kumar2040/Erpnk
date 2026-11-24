@@ -1,11 +1,11 @@
-using NkplmErp.Blazor.Services.ThirdPartyApi.Manager.Interface;
-using NkplmErp.Blazor.Services.ThirdPartyApi.Manager.Route;
+using NkplmErp.Blazor.Services.ThirdPartyApi.Plm.Manager.Interface;
+using NkplmErp.Blazor.Services.ThirdPartyApi.Plm.Manager.Route;
 using NkplmErp.Blazor.Shared.Http;
 using NkplmErp.Shared.DTOs;
 using NkplmErp.Shared.DTOs.OrderPlanningApi;
 using NkplmErp.Shared.Wrapper;
 
-namespace NkplmErp.Blazor.Services.ThirdPartyApi.Manager.Implementation
+namespace NkplmErp.Blazor.Services.ThirdPartyApi.Plm.Manager.Implementation
 {
     public class ThirdPartyApiManager(IHttpServices http) : IThirdPartyApiManager
     {

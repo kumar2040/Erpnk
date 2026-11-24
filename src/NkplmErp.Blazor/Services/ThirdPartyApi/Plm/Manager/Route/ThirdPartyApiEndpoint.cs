@@ -1,4 +1,4 @@
-﻿namespace NkplmErp.Blazor.Services.ThirdPartyApi.Manager.Route
+﻿namespace NkplmErp.Blazor.Services.ThirdPartyApi.Plm.Manager.Route
 {
     // Central place for the ThirdPartyProductionPlan and ThirdPartyDashboard controller routes (UI -> NkplmErp.API).
     public static class ThirdPartyApiEndpoint

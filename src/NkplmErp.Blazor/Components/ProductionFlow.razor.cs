@@ -59,7 +59,7 @@ public partial class ProductionFlow : ComponentBase
     }
 
     [Inject]
-    private NkplmErp.Blazor.Services.ThirdPartyApi.Manager.Interface.IThirdPartyApiManager ThirdParty { get; set; } = default!;
+    private NkplmErp.Blazor.Services.ThirdPartyApi.Plm.Manager.Interface.IThirdPartyApiManager ThirdParty { get; set; } = default!;
 
     // Department stock comes from the third-party (PLM) API; the local service is only a fallback when
     // that call fails (same pattern as the dashboard's order list and flow chart).
