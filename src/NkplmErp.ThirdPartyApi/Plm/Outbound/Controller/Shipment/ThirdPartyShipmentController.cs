@@ -7,7 +7,7 @@ using NkplmErp.ThirdPartyApi.Plm.Outbound.Base;
 using NkplmErp.ThirdPartyApi.Plm.Outbound.Manager.Interface;
 using NkplmErp.ThirdPartyApi.Plm.Outbound.Route;
 
-namespace NkplmErp.ThirdPartyApi.Plm.Outbound.Controller
+namespace NkplmErp.ThirdPartyApi.Plm.Outbound.Controller.Shipment
 {
     /// <summary>Task board shipment alert card: orders due to ship in a date range, backed by the PLM API.</summary>
     [ApiController]

@@ -2,11 +2,12 @@ using System.Data;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using NkplmErp.Application.Interfaces;
+using NkplmErp.ThirdPartyApi.Plm.Inbound.Manager.Interface.MakeOrder;
 using NkplmErp.Shared.DataAccess.GenericRepository;
 using NkplmErp.Shared.DTOs.MakeOrder;
 using NkplmErp.Shared.Wrapper;
 
-namespace NkplmErp.Infrastructure.Services;
+namespace NkplmErp.ThirdPartyApi.Plm.Inbound.Manager.Implementation.MakeOrder;
 
 /// <summary>
 /// Order placed in PLM -> task + notification. This service only picks who is notified (by notification

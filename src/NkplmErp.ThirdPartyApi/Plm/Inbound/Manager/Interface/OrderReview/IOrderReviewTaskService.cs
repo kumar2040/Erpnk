@@ -1,7 +1,7 @@
 using NkplmErp.Shared.DTOs;
 using NkplmErp.Shared.Wrapper;
 
-namespace NkplmErp.Application.Interfaces;
+namespace NkplmErp.ThirdPartyApi.Plm.Inbound.Manager.Interface.OrderReview;
 
 /// <summary>
 /// Creates the Planning (Stage 1) and BOM (Stage 2) tasks on the /tasks board (dbo.PoTask) for an

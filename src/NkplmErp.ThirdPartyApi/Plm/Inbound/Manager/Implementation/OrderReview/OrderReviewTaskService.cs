@@ -2,11 +2,12 @@ using System.Data;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using NkplmErp.Application.Interfaces;
+using NkplmErp.ThirdPartyApi.Plm.Inbound.Manager.Interface.OrderReview;
 using NkplmErp.Shared.DataAccess.GenericRepository;
 using NkplmErp.Shared.DTOs;
 using NkplmErp.Shared.Wrapper;
 
-namespace NkplmErp.Infrastructure.Services;
+namespace NkplmErp.ThirdPartyApi.Plm.Inbound.Manager.Implementation.OrderReview;
 
 /// <summary>
 /// Order reviewed in PLM -> Planning + BOM tasks, the same tasks the old background sweep created

@@ -7,7 +7,7 @@ using NkplmErp.ThirdPartyApi.Plm.Outbound.Base;
 using NkplmErp.ThirdPartyApi.Plm.Outbound.Manager.Interface;
 using NkplmErp.ThirdPartyApi.Plm.Outbound.Route;
 
-namespace NkplmErp.ThirdPartyApi.Plm.Outbound.Controller
+namespace NkplmErp.ThirdPartyApi.Plm.Outbound.Controller.Bom
 {
     /// <summary>BOM page: the order list, backed by the PLM API. (The yarn requirement itself is served by BomController.)</summary>
     [ApiController]

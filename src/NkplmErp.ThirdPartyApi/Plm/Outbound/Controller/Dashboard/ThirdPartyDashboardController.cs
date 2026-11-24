@@ -8,7 +8,7 @@ using NkplmErp.Shared.DTOs.OrderPlanningApi;
 using NkplmErp.ThirdPartyApi.Plm.Outbound.Manager.Interface;
 using NkplmErp.ThirdPartyApi.Plm.Outbound.Route;
 
-namespace NkplmErp.ThirdPartyApi.Plm.Outbound.Controller
+namespace NkplmErp.ThirdPartyApi.Plm.Outbound.Controller.Dashboard
 {
     /// <summary>Main dashboard: running orders and production flow, backed by the PLM API.</summary>
     [ApiController]

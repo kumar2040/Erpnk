@@ -8,7 +8,7 @@ using NkplmErp.Shared.DTOs.OrderPlanningApi;
 using NkplmErp.ThirdPartyApi.Plm.Outbound.Manager.Interface;
 using NkplmErp.ThirdPartyApi.Plm.Outbound.Route;
 
-namespace NkplmErp.ThirdPartyApi.Plm.Outbound.Controller
+namespace NkplmErp.ThirdPartyApi.Plm.Outbound.Controller.ProductionPlan
 {
     /// <summary>Production planning page: order planning, replan and machine edit, backed by the PLM API.</summary>
     [ApiController]

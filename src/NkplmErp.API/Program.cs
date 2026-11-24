@@ -1,4 +1,8 @@
 ﻿using System.Text;
+using NkplmErp.ThirdPartyApi.Plm.Inbound.Manager.Implementation.MakeOrder;
+using NkplmErp.ThirdPartyApi.Plm.Inbound.Manager.Implementation.OrderReview;
+using NkplmErp.ThirdPartyApi.Plm.Inbound.Manager.Interface.MakeOrder;
+using NkplmErp.ThirdPartyApi.Plm.Inbound.Manager.Interface.OrderReview;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -235,7 +239,7 @@ builder.Services.AddCors(options =>
                .AllowCredentials();
     });
 });
-builder.Services.AddControllers().AddApplicationPart(typeof(NkplmErp.ThirdPartyApi.Plm.Outbound.Controller.ThirdPartyProductionPlanController).Assembly);
+builder.Services.AddControllers().AddApplicationPart(typeof(NkplmErp.ThirdPartyApi.Plm.Outbound.Controller.ProductionPlan.ThirdPartyProductionPlanController).Assembly);
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
