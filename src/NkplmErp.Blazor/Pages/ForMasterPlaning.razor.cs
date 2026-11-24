@@ -15,6 +15,7 @@ public partial class ForMasterPlaning
     [Inject] private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
     [Inject] private TokenProvider _tokenProvider { get; set; } = default!;
     [Inject] private ToastService ToastService { get; set; } = default!;
+    [Inject] private NkplmErp.Blazor.Services.Confirm.ConfirmService Confirm { get; set; } = default!;
     [Inject] private NavigationManager Navigation { get; set; } = default!;
     [Inject] private IJSRuntime JS { get; set; } = default!;
     [Inject] private NkplmErp.Blazor.Services.RoleManagement.PermissionService Permissions { get; set; } = default!;
@@ -423,7 +424,8 @@ public partial class ForMasterPlaning
     private async Task CompleteAssignment(PlanGroup g)
     {
         var label = GetAssignedKnitterLabel(g) ?? "this knitter";
-        bool ok = await JS.InvokeAsync<bool>("confirm", $"Mark {g.Machine} ({label}) as COMPLETED?");
+        bool ok = await Confirm.ConfirmAsync($"Mark {g.Machine} ({label}) as COMPLETED?",
+            title: "Mark as completed", confirmText: "Mark completed");
         if (!ok) return;
 
         try
@@ -445,7 +447,8 @@ public partial class ForMasterPlaning
     private async Task UnassignKnitter(PlanGroup g)
     {
         var label = GetAssignedKnitterLabel(g) ?? "the knitter";
-        bool ok = await JS.InvokeAsync<bool>("confirm", $"Remove {label} from {g.Machine}?");
+        bool ok = await Confirm.ConfirmAsync($"Remove {label} from {g.Machine}?",
+            title: "Remove knitter", confirmText: "Remove", danger: true);
         if (!ok) return;
 
         try

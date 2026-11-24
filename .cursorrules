@@ -1,0 +1,7 @@
+# Global Agent Rules Pointer
+
+You MUST read and strictly adhere to the rules located at:
+1. D:\agentRule\global.rules.md (and any related rules under D:\agentRule\)
+2. AGENTS.md in the project root
+
+Always consult and follow these rules before planning, writing, or modifying any code.

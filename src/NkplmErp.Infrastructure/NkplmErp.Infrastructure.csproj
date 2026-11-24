@@ -4,6 +4,8 @@
     <ProjectReference Include="..\NkplmErp.Domain\NkplmErp.Domain.csproj" />
     <ProjectReference Include="..\NkplmErp.Application\NkplmErp.Application.csproj" />
     <ProjectReference Include="..\NkplmErp.Shared\NkplmErp.Shared.csproj" />
+    <!-- Outbound third-party (PLM) caller, used by ProductionPlanningService for the knitter-assignment sync. -->
+    <ProjectReference Include="..\NkplmErp.ThirdPartyApi\NkplmErp.ThirdPartyApi.csproj" />
   </ItemGroup>
 
   <ItemGroup>

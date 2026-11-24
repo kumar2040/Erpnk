@@ -14,8 +14,7 @@ public class DapperRepository : IDapperRepository
     private readonly ILogger<DapperRepository> _logger;
     private readonly IConfiguration _configuration;
     // Command timeout in seconds (Database:CommandTimeoutSeconds, default 120).
-    // The SqlClient default of 30s is too tight for linked-server (MySQL/ODBC)
-    // pulls and the heavier reporting procs.
+    // The SqlClient default of 30s is too tight for the heavier reporting procs.
     private readonly int _commandTimeout;
     public DapperRepository(ILogger<DapperRepository> logger, IConfiguration configuration)
     {

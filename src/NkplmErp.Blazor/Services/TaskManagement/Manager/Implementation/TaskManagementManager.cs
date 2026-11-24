@@ -91,28 +91,6 @@ namespace NkplmErp.Blazor.Services.TaskManagement.Manager.Implementation
             }
         }
 
-        public async Task<IResponse<SyncResultModel>> SyncAsync()
-        {
-            try
-            {
-                var response = await _httpClient.PostAsync(TaskManagementEndpoint.Sync, null);
-                if (response.IsSuccessStatusCode)
-                {
-                    var data = await response.Content.ReadFromJsonAsync<SyncResultModel>();
-                    return Response<SyncResultModel>.Success(data ?? new SyncResultModel { Message = "No response." });
-                }
-
-                var error = await response.Content.ReadAsStringAsync();
-                _logger.LogWarning("SyncAsync returned {Status}: {Error}", response.StatusCode, error);
-                return Response<SyncResultModel>.Fail(error);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "SyncAsync failed");
-                return Response<SyncResultModel>.Fail(ex.Message);
-            }
-        }
-
         // ---- Order return-detail modal (KH / KD / KS) ----
 
         public async Task<IResponse<KnitterSummaryResponseModel?>> GetKnitterSummaryAsync(int taskId)

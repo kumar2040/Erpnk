@@ -13,10 +13,6 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
         // True when the user lacks TaskManagement.View — the page shows Access Denied.
         private bool AccessDenied;
 
-        // MySQL sync state (manual "Sync" button).
-        private bool isSyncing;
-        private string? syncMsg;
-
         // ---- Filter state ----
         // Selected date window (the CompactDateRangeFilter binds these). Seeded in
         // OnInitializedAsync to today/today — the same window as the old Daily/today default.
@@ -116,30 +112,6 @@ namespace NkplmErp.Blazor.Pages.TaskManagement
                 selectedFactoryType = scope.AssignedGauge;
 
             await LoadBoardAsync();   // also (re)loads the cascading sub-category options
-        }
-
-        // Manual MySQL -> SQL Server pull, then refresh the board. Guarded so a second
-        // click can't run a concurrent sync.
-        private async Task SyncNowAsync()
-        {
-            if (isSyncing) return;
-            isSyncing = true;
-            syncMsg = null;
-            try
-            {
-                var resp = await TaskManager.SyncAsync();
-                var r = resp.Data;
-                syncMsg = r is null
-                    ? (string.IsNullOrWhiteSpace(resp.Messages) ? "Sync failed." : resp.Messages)
-                    : r.Ran
-                        ? $"Synced from MySQL — {r.Total} new row(s)."
-                        : (string.IsNullOrWhiteSpace(r.Message) ? "Sync skipped." : r.Message);
-                await LoadBoardAsync();   // show any newly pulled rows
-            }
-            finally
-            {
-                isSyncing = false;
-            }
         }
 
         // ======================================================================

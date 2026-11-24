@@ -8,9 +8,6 @@ namespace NkplmErp.Blazor.Services.TaskManagement.Manager.Route
         // Current user's factory scope (admin vs gauge-restricted + dropdown list).
         public const string Scope = Base + "/scope";
 
-        // Incremental pull of new knitter rows from MySQL into SQL Server (POST).
-        public const string Sync = Base + "/sync";
-
         // ---- Order return-detail modal (opened from a PO card's linked line) ----
         // KH: aggregated summary; KD: chart return series; KS: (style, colour, size) rows.
         public static string KnitterSummary(int taskId) => $"{Base}/knitter-summary?taskId={taskId}";

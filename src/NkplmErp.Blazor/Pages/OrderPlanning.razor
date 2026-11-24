@@ -300,7 +300,7 @@
             <div class="panel" style="flex: 1 1 auto; min-height: 0; overflow: visible;">
                 <div class="panel-header" style="border-radius: 8px 8px 0 0;">
                     <div class="panel-header-left">
-                        <span class="panel-icon">🗂</span>
+                        <span class="panel-icon"><i class="fa-solid fa-folder-open"></i></span>
                         <span class="panel-title">Order Selection</span>
                     </div>
                 </div>
@@ -535,7 +535,7 @@
                 <div class="panel   h-full " style="font-size: 11px;">
                     <div class="panel-header  ">
                         <div class="panel-header-left">
-                            <span class="panel-icon">@(SelectedKnitType == "Knit" ? "⚙️" : "🧵")</span>
+                            <span class="panel-icon"><i class="fa-solid @(SelectedKnitType == "Knit" ? "fa-gear" : "fa-grip-lines")"></i></span>
                             <span class="panel-title">@(SelectedKnitType == "Knit" ? "Gauge & Machine Analysis" : $"{SelectedKnitType} Analysis & Fabric Plan")</span>
                         </div>
                     </div>
@@ -659,7 +659,7 @@
                         <div class="panel flex flex-col h-full">
                             <div class="panel-header compact-panel-header" style="background: var(--bg); color: var(--navy); border-bottom: 1px solid var(--border);">
                                 <div class="panel-header-left">
-                                    <span class="panel-icon">📊</span>
+                                    <span class="panel-icon"><i class="fa-solid fa-chart-column"></i></span>
                                     <span class="compact-panel-title font-bold">Extra Work Details</span>
                                     <span class="panel-count">@(Mode2Analysis?.SummaryAnalysis?.Count ?? 0)</span>
                                 </div>
@@ -730,7 +730,7 @@
                     <div class="panel flex-[1_1_60%] min-h-0 overflow-hidden flex flex-col">
                         <div class="panel-header compact-panel-header" style="background: var(--navy); color: #fff;">
                             <div class="panel-header-left">
-                                <span class="panel-icon" style="font-size: 11px;">🧵</span>
+                                <span class="panel-icon" style="font-size: 11px;"><i class="fa-solid fa-grip-lines"></i></span>
                                 <span class="compact-panel-title">Yarn Stock & Requirement Overview</span>
                             </div>
                         </div>
@@ -873,7 +873,7 @@
                                 <div class="panel flex flex-col">
                                     <div class="panel-header compact-panel-header" style="background: var(--bg); color: var(--navy); border-bottom: 1px solid var(--border);">
                                         <div class="panel-header-left">
-                                            <span class="panel-icon">📊</span>
+                                            <span class="panel-icon"><i class="fa-solid fa-chart-column"></i></span>
                                             <span class="compact-panel-title font-bold">Extra Work Details (Weave)</span>
                                             <span class="panel-count">@WeaveAnalysisData.PrintEmbroiderySummaries.Count</span>
                                         </div>
@@ -963,7 +963,7 @@
                                 <div class="panel h-full flex flex-col">
                                     <div class="panel-header compact-panel-header" style="background: var(--navy); color: #fff;">
                                         <div class="panel-header-left">
-                                            <span class="panel-icon" style="font-size: 11px;">⚖️</span>
+                                            <span class="panel-icon" style="font-size: 11px;"><i class="fa-solid fa-scale-balanced"></i></span>
                                             <span class="compact-panel-title">Yarn Balance & Stock Overview</span>
                                         </div>
                                     </div>
@@ -1059,7 +1059,7 @@
                                 <div class="panel flex flex-col">
                                     <div class="panel-header compact-panel-header" style="background: var(--bg); color: var(--navy); border-bottom: 1px solid var(--border);">
                                         <div class="panel-header-left">
-                                            <span class="panel-icon">📊</span>
+                                            <span class="panel-icon"><i class="fa-solid fa-chart-column"></i></span>
                                             <span class="compact-panel-title font-bold">Extra Work Details</span>
                                             <span class="panel-count">@FabricAnalysisData.EmbroideryPrintRequirements.Count</span>
                                         </div>
@@ -1139,7 +1139,7 @@
                                 <div class="panel h-full flex flex-col">
                                     <div class="panel-header compact-panel-header" style="background: var(--navy); color: #fff;">
                                         <div class="panel-header-left">
-                                            <span class="panel-icon" style="font-size: 11px;">⚖️</span>
+                                            <span class="panel-icon" style="font-size: 11px;"><i class="fa-solid fa-scale-balanced"></i></span>
                                             <span class="compact-panel-title">Fabric Balance & Stock Overview</span>
                                         </div>
                                     </div>
@@ -1234,7 +1234,7 @@
                     <div class="panel flex-none">
                         <div class="panel-header">
                             <div class="panel-header-left">
-                                <span class="panel-icon">📊</span>
+                                <span class="panel-icon"><i class="fa-solid fa-chart-column"></i></span>
                                 <span class="panel-title">Gauge Utilization</span>
                             </div>
                         </div>
@@ -1309,7 +1309,7 @@
                 <div class="panel flex-1 min-h-0 flex flex-col">
                     <div class="panel-header" style="background: var(--bg); color: var(--navy); border-bottom: 1px solid var(--border);">
                         <div class="panel-header-left">
-                            <span class="panel-icon">👥</span>
+                            <span class="panel-icon"><i class="fa-solid fa-users"></i></span>
                             <span class="panel-title">Knitters</span>
                             <span class="panel-count" style="background: var(--border); color: var(--navy);">@Knitters.Count</span>
                         </div>
@@ -1564,95 +1564,138 @@
                MaxWidth="1100px">
         @if (ReplanRows.Count == 0 && !IsLoadingReplan)
         {
-            <div class="replan-empty">No open plans in PLM</div>
+            <div class="replan-empty">No plans to re-plan</div>
         }
         else
         {
-            var shownReplan = ReplanRows.Where(r => !ReplanOnlyNoMachine || string.IsNullOrEmpty(r.Machine)).ToList();
-            <label class="replan-filter">
-                <input type="checkbox" @bind="ReplanOnlyNoMachine" /> Only without machine
-                <span class="replan-count">@shownReplan.Count rows</span>
-            </label>
-            <div class="replan-scroll">
-                <table class="replan-table">
-                    <colgroup>
-                        <col style="width:44px" />
-                        <col style="width:130px" />
-                        <col style="width:170px" />
-                        <col />
-                        <col style="width:64px" />
-                        <col style="width:56px" />
-                        <col style="width:190px" />
-                        <col style="width:130px" />
-                        <col style="width:80px" />
-                    </colgroup>
-                    <thead>
-                        <tr>
-                            <th class="c">S.N</th>
-                            <th>Order</th>
-                            <th>Style</th>
-                            <th>Color</th>
-                            <th class="c">Size</th>
-                            <th class="c">Qty</th>
-                            <th>Knitter</th>
-                            <th class="c">Machine</th>
-                            <th class="c">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var grp in shownReplan.GroupBy(r => r.OrderNo))
+            var replanQ = (ReplanSearch ?? string.Empty).Trim();
+            bool replanSearching = replanQ.Length > 0;
+            var shownReplan = ReplanRows
+                .Where(r => !ReplanOnlyNoMachine || string.IsNullOrEmpty(r.Machine))
+                .Where(r => !replanSearching
+                    || r.OrderNo.Contains(replanQ, StringComparison.OrdinalIgnoreCase)
+                    || r.StyleNo.Contains(replanQ, StringComparison.OrdinalIgnoreCase)
+                    || r.Color.Contains(replanQ, StringComparison.OrdinalIgnoreCase)
+                    || r.Size.Contains(replanQ, StringComparison.OrdinalIgnoreCase)
+                    || r.Knitter.Contains(replanQ, StringComparison.OrdinalIgnoreCase)
+                    || r.KnitterName.Contains(replanQ, StringComparison.OrdinalIgnoreCase)
+                    || r.Machine.Contains(replanQ, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            var orderGroups = shownReplan.GroupBy(r => r.OrderNo).Select(g => new { No = g.Key, Rows = g.ToList() })
+                .OrderBy(g => replanSearching && g.No.StartsWith(replanQ, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+                .ToList();
+            var selGrp = orderGroups.FirstOrDefault(g => g.No == ReplanSelectedOrder) ?? orderGroups.FirstOrDefault();
+            <div class="rp2">
+                <div class="rp2-side">
+                    <input type="search" class="replan-search rp2-search" placeholder="Search order, style, color, knitter..."
+                           list="replan-order-suggest" autocomplete="off"
+                           @bind="ReplanSearch" @bind:event="oninput" />
+                    <datalist id="replan-order-suggest">
+                        @foreach (var sugg in ReplanRows.Select(r => r.OrderNo).Distinct().OrderBy(o => o))
                         {
-                            int grpNoMc = grp.Count(r => string.IsNullOrEmpty(r.Machine));
-                            int rSn = 1;
-                            <tr class="replan-group">
-                                <td colspan="9">
-                                    <span class="replan-group-order">@grp.Key</span>
-                                    <span class="replan-group-meta">@grp.Count() rows &middot; @grp.Sum(r => r.Qty).ToString("N0") pcs</span>
-                                    @if (grpNoMc > 0)
-                                    {
-                                        <span class="replan-chip replan-chip-warn">&#9888; @grpNoMc without machine</span>
-                                    }
-                                </td>
-                            </tr>
-                            @foreach (var row in grp)
-                            {
-                            bool noMachine = string.IsNullOrEmpty(row.Machine);
-                            <tr class="@(noMachine ? "replan-row-warn" : "")">
-                                <td class="c">@(rSn++)</td>
-                                <td class="strong">@row.OrderNo</td>
-                                <td>@row.StyleNo</td>
-                                <td>@row.Color</td>
-                                <td class="c upper">@row.Size</td>
-                                <td class="c strong">@row.Qty.ToString("N0")</td>
-                                <td>@(string.IsNullOrEmpty(row.KnitterName) ? row.Knitter : row.KnitterName)</td>
-                                <td class="c">
-                                    @if (noMachine)
-                                    {
-                                        <span class="replan-chip replan-chip-warn">&#9888; Not assigned</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="replan-chip">@row.Machine</span>
-                                    }
-                                </td>
-                                <td class="c">
-                                    @if (string.Equals(row.KnitType, "knit", StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        <button type="button" class="replan-edit" title="Assign machines to this plan row" @onclick="() => OpenReplanEdit(row)">&#9998; Edit</button>
-                                    }
-                                </td>
-                            </tr>
-                            }
+                            <option value="@sugg"></option>
                         }
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="5">Total</td>
-                            <td class="c">@shownReplan.Sum(r => r.Qty).ToString("N0")</td>
-                            <td colspan="3"></td>
-                        </tr>
-                    </tfoot>
-                </table>
+                    </datalist>
+                    <div class="rp2-list">
+                        @foreach (var og in orderGroups)
+                        {
+                            int ogNoMc = og.Rows.Count(r => string.IsNullOrEmpty(r.Machine));
+                            <button type="button" class="rp2-item @(selGrp?.No == og.No ? "sel" : "")" @onclick="() => ReplanSelectedOrder = og.No">
+                                <span class="rp2-name">@og.No</span>
+                                <span class="rp2-meta">@og.Rows.Count rows</span>
+                                @if (ogNoMc > 0)
+                                {
+                                    <span class="replan-chip replan-chip-warn">@ogNoMc</span>
+                                }
+                                else
+                                {
+                                    <span class="replan-chip">&#10003;</span>
+                                }
+                            </button>
+                        }
+                        @if (orderGroups.Count == 0)
+                        {
+                            <div class="replan-empty">No matching orders</div>
+                        }
+                    </div>
+                </div>
+                <div class="rp2-main">
+                    <div class="rp2-head">
+                        <span class="rp2-title">@(selGrp?.No ?? "No order")</span>
+                        @if (selGrp is not null)
+                        {
+                            <span class="rp2-sub">@selGrp.Rows.Count rows &middot; @selGrp.Rows.Sum(r => r.Qty).ToString("N0") pcs</span>
+                        }
+                        <label class="replan-check rp2-only">
+                            <input type="checkbox" @bind="ReplanOnlyNoMachine" /> Only without machine
+                        </label>
+                        <span class="replan-count" style="margin-left:0">@shownReplan.Count rows total</span>
+                    </div>
+                    <div class="replan-scroll">
+                        <table class="replan-table">
+                            <colgroup>
+                                <col style="width:44px" />
+                                <col style="width:150px" />
+                                <col />
+                                <col style="width:64px" />
+                                <col style="width:56px" />
+                                <col style="width:190px" />
+                                <col style="width:130px" />
+                                <col style="width:80px" />
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th class="c">S.N</th>
+                                    <th>Style</th>
+                                    <th>Color</th>
+                                    <th class="c">Size</th>
+                                    <th class="c">Qty</th>
+                                    <th>Knitter</th>
+                                    <th class="c">Machine</th>
+                                    <th class="c">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{ int rSn = 1; }
+                                @foreach (var row in selGrp?.Rows ?? new())
+                                {
+                                    bool noMachine = string.IsNullOrEmpty(row.Machine);
+                                    <tr class="@(noMachine ? "replan-row-warn" : "")">
+                                        <td class="c">@(rSn++)</td>
+                                        <td class="strong">@row.StyleNo</td>
+                                        <td>@row.Color</td>
+                                        <td class="c upper">@row.Size</td>
+                                        <td class="c strong">@row.Qty.ToString("N0")</td>
+                                        <td>@(string.IsNullOrEmpty(row.KnitterName) ? row.Knitter : row.KnitterName)</td>
+                                        <td class="c">
+                                            @if (noMachine)
+                                            {
+                                                <span class="replan-chip replan-chip-warn">&#9888; Not assigned</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="replan-chip">@row.Machine</span>
+                                            }
+                                        </td>
+                                        <td class="c">
+                                            @if (string.Equals(row.KnitType, "knit", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <button type="button" class="replan-edit" title="Assign machines to this plan row" @onclick="() => OpenReplanEdit(row)">&#9998; Edit</button>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="4">Total</td>
+                                    <td class="c">@((selGrp?.Rows.Sum(r => r.Qty) ?? 0).ToString("N0"))</td>
+                                    <td colspan="3"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
             </div>
         }
     </DataModal>
@@ -1808,7 +1851,14 @@
                     </table>
                 </div>
                 <div class="rp-meta">
-                    Order <b>@ReplanEditRow.OrderNo</b> &middot; Knitter <b>@(string.IsNullOrEmpty(ReplanEditRow.KnitterName) ? ReplanEditRow.Knitter : ReplanEditRow.KnitterName)</b> &middot; Saved in PLM only
+                    @if (IsErpReplanRow(ReplanEditRow))
+                    {
+                        <text>Order <b>@ReplanEditRow.OrderNo</b> &middot; No knitter yet &middot; Whole plan moves to one machine &middot; Saved in ERP only</text>
+                    }
+                    else
+                    {
+                        <text>Order <b>@ReplanEditRow.OrderNo</b> &middot; Knitter <b>@(string.IsNullOrEmpty(ReplanEditRow.KnitterName) ? ReplanEditRow.Knitter : ReplanEditRow.KnitterName)</b> &middot; Saved in PLM only</text>
+                    }
                 </div>
             </div>
         }
@@ -2254,10 +2304,6 @@
                                                         <button style="border: none; background: var(--navy); color: #fff; border-radius: 6px; padding: 6px 14px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; box-shadow: 0 2px 5px rgba(26, 51, 83, 0.2); transition: all 0.2s ease;"
                                                                 class="uppercase text-white hover:bg-slate-700 active:scale-95 cursor-pointer whitespace-nowrap inline-block h-7"
                                                                 @onclick="() => AddManualPlan(SelectedModalGauge)" disabled="@IsConfirmSaving">
-                                                            @if (IsConfirmSaving)
-                                                            {
-                                                                <i class="fa-solid fa-spinner fa-spin mr-1"></i>
-                                                            }
                                                             Confirm
                                                         </button>
                                                     </div>
@@ -2327,10 +2373,6 @@
                                                     <button style="border: none; background: var(--navy); color: #fff; border-radius: 6px; padding: 6px 14px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; box-shadow: 0 2px 5px rgba(26, 51, 83, 0.2); transition: all 0.2s ease;" 
                                                             class="uppercase text-white hover:bg-slate-700 active:scale-95 cursor-pointer whitespace-nowrap inline-block"
                                                             @onclick="() => AddManualPlan(SelectedModalGauge)" disabled="@IsConfirmSaving">
-                                                        @if (IsConfirmSaving)
-                                                        {
-                                                            <i class="fa-solid fa-spinner fa-spin mr-1"></i>
-                                                        }
                                                         Confirm
                                                     </button>
                                                 </td>
@@ -3237,14 +3279,7 @@
                                                     <button style="border: none; background: var(--navy); color: #fff; border-radius: 6px; padding: 6px 14px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; box-shadow: 0 2px 5px rgba(26, 51, 83, 0.2); transition: all 0.2s ease;"
                                                             class="uppercase text-white hover:bg-slate-700 active:scale-95 cursor-pointer whitespace-nowrap inline-block @(IsWeaveConfirmSaving ? "opacity-60 cursor-not-allowed" : "")"
                                                             @onclick="AddWeaveManualPlan" disabled="@IsWeaveConfirmSaving">
-                                                        @if (IsWeaveConfirmSaving)
-                                                        {
-                                                            <i class="fa-solid fa-spinner fa-spin mr-1"></i><text>Saving...</text>
-                                                        }
-                                                        else
-                                                        {
-                                                            <text>Confirm</text>
-                                                        }
+                                                        <text>Confirm</text>
                                                     </button>
                                                 </td>
                                             </tr>

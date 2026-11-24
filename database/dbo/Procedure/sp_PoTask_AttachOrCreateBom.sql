@@ -1,3 +1,5 @@
+-- Scripted from live DB [NatureKnit] on 2026-11-22, plus @ResultPoTaskId / @SuppressResult (deployed to NatureKnit + NatureKnit_test).
+-- NOTE: NatureKnit_test runs an older variant of this proc; only the two new parameters were added there.
 CREATE OR ALTER PROCEDURE [dbo].[sp_PoTask_AttachOrCreateBom]
     @OrderNo          nvarchar(50),
     @ReviewId         int            = NULL,
@@ -8,7 +10,11 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_PoTask_AttachOrCreateBom]
     @AssigneeUserIds  nvarchar(max)  = NULL,
     @GroupId          int            = NULL,
     @UserId           nvarchar(450)  = NULL,
-    @MaxOrders        int            = 5
+    @MaxOrders        int            = 5,
+    -- For callers running this inside their own transaction (sp_PoTask_CreateFromOrderReview):
+    -- the BOM task id comes back here; @SuppressResult = 1 skips the final result set.
+    @ResultPoTaskId   int            = NULL OUTPUT,
+    @SuppressResult   bit            = 0
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -28,11 +34,7 @@ BEGIN
             @WasCreated bit = 0,
             @WasAttached bit = 0;
 
-    DECLARE @TargetAssignees TABLE
-    (
-        [UserId] nvarchar(450) NOT NULL PRIMARY KEY
-    );
-
+    DECLARE @TargetAssignees TABLE ([UserId] nvarchar(450) NOT NULL PRIMARY KEY);
     INSERT INTO @TargetAssignees ([UserId])
     SELECT DISTINCT CONVERT(nvarchar(450), LTRIM(RTRIM([value])))
     FROM STRING_SPLIT(ISNULL(@AssigneeUserIds, N''), N'|')
@@ -40,21 +42,49 @@ BEGIN
 
     BEGIN TRANSACTION;
 
-    -- Serialize membership for this order. The filtered unique index remains the
-    -- final protection if two sweep workers reach this branch together.
-    -- Check if a BOM task already exists for this specific order
+    -- Check if this order is already in an active BOM task
     SELECT @PoTaskId = [PoTaskId]
     FROM [dbo].[PoTaskOrder] WITH (UPDLOCK, HOLDLOCK)
     WHERE [OrderNo] = @OrderNo AND [IsActive] = 1;
 
+    -- If not, find the active UNCALCULATED BOM Task (Status 'S', Stage 2) with capacity (< @MaxOrders)
     IF @PoTaskId IS NULL
     BEGIN
-        SELECT @PoTaskId = [PoTaskId]
-        FROM [dbo].[PoTask] WITH (UPDLOCK, HOLDLOCK)
-        WHERE [OrderNo] = @OrderNo AND [Stage] = 2 AND [IsActive] = 1;
+        SELECT TOP (1) @PoTaskId = t.[PoTaskId]
+        FROM [dbo].[PoTask] t WITH (UPDLOCK, HOLDLOCK)
+        WHERE t.[Stage] = 2 AND t.[Status] = 'S' AND t.[IsActive] = 1
+          AND (
+                SELECT COUNT(*) FROM [dbo].[PoTaskOrder] o WITH (UPDLOCK, HOLDLOCK)
+                WHERE o.[PoTaskId] = t.[PoTaskId] AND o.[IsActive] = 1
+              ) < @MaxOrders
+        ORDER BY t.[PoTaskId] ASC;
     END;
 
-    IF @PoTaskId IS NULL
+    -- If uncalculated BOM task found -> JOIN it
+    IF @PoTaskId IS NOT NULL
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM [dbo].[PoTaskOrder] WHERE [PoTaskId] = @PoTaskId AND [OrderNo] = @OrderNo)
+        BEGIN
+            INSERT INTO [dbo].[PoTaskOrder]
+                ([PoTaskId], [OrderNo], [Status], [ReviewId], [AddedBy])
+            VALUES
+                (@PoTaskId, @OrderNo, 'S', @ReviewId, ISNULL(@UserId, N'system'));
+
+            DECLARE @CombinedOrders nvarchar(500);
+            SELECT @CombinedOrders = STRING_AGG([OrderNo], ', ') 
+            FROM [dbo].[PoTaskOrder]
+            WHERE [PoTaskId] = @PoTaskId AND [IsActive] = 1;
+
+            UPDATE [dbo].[PoTask]
+            SET [Title] = N'BOM — ' + @CombinedOrders,
+                [Detail] = ISNULL(@Detail, [Detail])
+            WHERE [PoTaskId] = @PoTaskId;
+
+            SET @WasAttached = 1;
+        END;
+    END
+    ELSE
+    -- If NO uncalculated BOM exists -> CREATE new
     BEGIN
         DECLARE @created TABLE ([PoTaskId] int);
         DECLARE @TaskTitle nvarchar(200) = N'BOM — ' + @OrderNo;
@@ -86,53 +116,30 @@ BEGIN
         END;
     END;
 
-    -- Re-sync BOM task assignees: ensure ONLY current Production Managers (@TargetAssignees)
-    -- remain active assignees on this BOM task, and deactivate legacy non-PM assignees.
+    -- Update assignees
     IF @PoTaskId IS NOT NULL AND EXISTS (SELECT 1 FROM @TargetAssignees)
     BEGIN
         UPDATE [dbo].[PoTaskAssignee]
         SET [IsActive] = 0
-        WHERE [PoTaskId] = @PoTaskId
-          AND [IsActive] = 1
+        WHERE [PoTaskId] = @PoTaskId AND [IsActive] = 1
           AND [UserId] NOT IN (SELECT [UserId] FROM @TargetAssignees);
 
         UPDATE [dbo].[PoTaskAssignee]
-        SET [IsActive] = 1,
-            [Status] = 'S',
-            [AssignedBy] = ISNULL(@UserId, N'system'),
-            [AssignedDate] = GETDATE()
-        WHERE [PoTaskId] = @PoTaskId
-          AND [UserId] IN (SELECT [UserId] FROM @TargetAssignees);
+        SET [IsActive] = 1, [Status] = 'S', [AssignedBy] = ISNULL(@UserId, N'system'), [AssignedDate] = GETDATE()
+        WHERE [PoTaskId] = @PoTaskId AND [UserId] IN (SELECT [UserId] FROM @TargetAssignees);
 
-        INSERT INTO [dbo].[PoTaskAssignee]
-            ([PoTaskId], [UserId], [Status], [AssignedBy], [IsActive])
-        SELECT @PoTaskId, target.[UserId], 'S', ISNULL(@UserId, N'system'), 1
-        FROM @TargetAssignees target
-        WHERE NOT EXISTS
-              (SELECT 1 FROM [dbo].[PoTaskAssignee] existing
-               WHERE existing.[PoTaskId] = @PoTaskId
-                 AND existing.[UserId] = target.[UserId]);
-    END;
-
-    -- Notify the active Production Manager assignees
-    IF @WasCreated = 1
-       AND OBJECT_ID(N'[dbo].[PoTaskNotification]', N'U') IS NOT NULL
-    BEGIN
-        INSERT INTO [dbo].[PoTaskNotification]
-            ([UserId], [PoTaskId], [Kind], [Title], [Body])
-        SELECT a.[UserId], @PoTaskId, 'A', N'BOM Task Created',
-               N'BOM task for order ' + @OrderNo + N' is ready for calculation.'
-        FROM [dbo].[PoTaskAssignee] a
-        WHERE a.[PoTaskId] = @PoTaskId AND a.[IsActive] = 1;
+        INSERT INTO [dbo].[PoTaskAssignee] ([PoTaskId], [UserId], [Status], [AssignedBy])
+        SELECT @PoTaskId, t.[UserId], 'S', ISNULL(@UserId, N'system')
+        FROM @TargetAssignees t
+        WHERE NOT EXISTS (SELECT 1 FROM [dbo].[PoTaskAssignee] a WHERE a.[PoTaskId] = @PoTaskId AND a.[UserId] = t.[UserId]);
     END;
 
     COMMIT TRANSACTION;
 
-    SELECT @PoTaskId AS [PoTaskId],
-           @WasCreated AS [WasCreated],
-           @WasAttached AS [WasAttached],
-           1 AS [OrderCount],
-           CASE WHEN @WasCreated = 1 THEN N'BOM task created.'
-                ELSE N'Order already belongs to a BOM task.' END AS [Message];
+    SET @ResultPoTaskId = @PoTaskId;
+    IF ISNULL(@SuppressResult, 0) = 1
+        RETURN;
+
+    SELECT @PoTaskId AS PoTaskId, @WasCreated AS WasCreated, @WasAttached AS WasAttached;
 END;
 GO

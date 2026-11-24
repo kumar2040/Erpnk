@@ -15,7 +15,7 @@ public partial class MainDashboard : ComponentBase
 
     // Running orders and the Production Flow chart come live from the third-party (PLM) API.
     [Inject]
-    private NkplmErp.Blazor.Services.ThirdPartyApi.Manager.Interface.IThirdPartyApiManager ThirdPartyApiManager { get; set; } = default!;
+    private NkplmErp.Blazor.Services.ThirdPartyApi.Plm.Manager.Interface.IThirdPartyApiManager ThirdPartyApiManager { get; set; } = default!;
 
     [Inject]
     private Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider { get; set; } = default!;

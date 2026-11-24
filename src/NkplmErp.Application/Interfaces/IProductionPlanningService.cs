@@ -1,10 +1,10 @@
 using NkplmErp.Shared.DTOs;
+using NkplmErp.Shared.Wrapper;
 
 namespace NkplmErp.Application.Interfaces;
 
 public interface IProductionPlanningService
 {
-    Task<IEnumerable<MonthlyOrderDetailDto>> GetMonthlyOrderDetailsAsync(DateTime inputDate);
     Task<IEnumerable<GaugeUtilizationDto>> GetGaugeUtilizationReportAsync(double? targetGauge);
     Task<OrderPlanningDetailDto> GetOrderPlanningDetailAsync(string orderNo, int flag, string? gauge = null, string? ply = null);
     Task<IEnumerable<OrderDetailByGuageDto>> GetOrderDetailByGuageAsync(string orderNo, string guage, string? flag = null);
@@ -26,6 +26,10 @@ public interface IProductionPlanningService
     Task<List<KnitterAssignmentHistoryDto>> GetKnitterAssignmentHistoryAsync(int days = 30);
     Task<List<PlanSizeLineEditDto>> GetPlanSizeLinesAsync(int masterPlanDetailId);
     Task<SizeLineUpdateResultDto> UpdatePlanSizeLineAsync(int sizeLineId, decimal qty);
+
+    // Replan, MSSQL side (sp_Replan): saved plans with no knitter assigned, and moving one onto another machine.
+    Task<IResponse<List<NkplmErp.Shared.DTOs.OrderPlanningApi.PlanRowModel>>> GetReplanPlansAsync();
+    Task<IResponse<bool>> SaveReplanMachineAsync(NkplmErp.Shared.DTOs.OrderPlanningApi.ReplanMachineModel request, string userId);
 
     // Gauge of a single plan row - used by the API for Zero-Trust mutation checks.
     // Default implementation so HTTP-client implementations don't need it.

@@ -1,4 +1,8 @@
 ﻿using System.Text;
+using NkplmErp.ThirdPartyApi.Plm.Inbound.Manager.Implementation.MakeOrder;
+using NkplmErp.ThirdPartyApi.Plm.Inbound.Manager.Implementation.OrderReview;
+using NkplmErp.ThirdPartyApi.Plm.Inbound.Manager.Interface.MakeOrder;
+using NkplmErp.ThirdPartyApi.Plm.Inbound.Manager.Interface.OrderReview;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -174,9 +178,16 @@ builder.Services.AddScoped<ITaskManagementService, TaskManagementService>();
 builder.Services.AddScoped<ITaskGateService, TaskGateService>();
 builder.Services.AddScoped<IYarnOrderService, YarnOrderService>();
 builder.Services.AddScoped<IPoTaskService, PoTaskService>();
+builder.Services.AddScoped<IOrderReviewTaskService, OrderReviewTaskService>();
+builder.Services.AddScoped<IMakeOrderTaskService, MakeOrderTaskService>();
 // Third-party (PLM / PHP) API: one generic manager from the NkplmErp.ThirdPartyApi project.
-builder.Services.AddHttpClient<NkplmErp.ThirdPartyApi.Manager.Interface.IThirdPartyManager, NkplmErp.ThirdPartyApi.Manager.Implementation.ThirdPartyManager>(
+builder.Services.AddHttpClient<NkplmErp.ThirdPartyApi.Plm.Outbound.Manager.Interface.IThirdPartyManager, NkplmErp.ThirdPartyApi.Plm.Outbound.Manager.Implementation.ThirdPartyManager>(
     client => client.Timeout = TimeSpan.FromSeconds(builder.Configuration.GetValue("ThirdPartyApi:TimeoutSeconds", 60)));
+// Text-to-speech (external TTS server): typed settings + typed HttpClient.
+builder.Services.Configure<NkplmErp.ThirdPartyApi.Tts.Outbound.Model.TtsSettings>(
+    builder.Configuration.GetSection(NkplmErp.ThirdPartyApi.Tts.Outbound.Model.TtsSettings.SectionName));
+builder.Services.AddHttpClient<NkplmErp.ThirdPartyApi.Tts.Outbound.Manager.Interface.ITtsService, NkplmErp.ThirdPartyApi.Tts.Outbound.Manager.Implementation.TtsService>(
+    client => client.Timeout = TimeSpan.FromSeconds(builder.Configuration.GetValue("Tts:TimeoutSeconds", 120)));
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IDropdownService, DropdownService>();
 builder.Services.AddScoped<IGenericRepository, GenericRepository>();
@@ -228,7 +239,7 @@ builder.Services.AddCors(options =>
                .AllowCredentials();
     });
 });
-builder.Services.AddControllers().AddApplicationPart(typeof(NkplmErp.ThirdPartyApi.Controller.ThirdPartyProductionPlanController).Assembly);
+builder.Services.AddControllers().AddApplicationPart(typeof(NkplmErp.ThirdPartyApi.Plm.Outbound.Controller.ProductionPlan.ThirdPartyProductionPlanController).Assembly);
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 

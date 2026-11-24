@@ -125,6 +125,52 @@ else
                         }
                     </div>
                 }
+                @if (col.Id == "S")
+                {
+                    @* Fixed shipment alert: not a task, always first in the Scheduled column. *@
+                    <div class="ship-card @(ShipOverdueCount > 0 ? "has-overdue" : "")" @onclick="OpenShipPopup">
+                        <div class="ship-head">
+                            <span class="ship-title"><i class="fa-solid fa-truck-fast" aria-hidden="true"></i> Shipping alert</span>
+                            <span @onclick:stopPropagation="true">
+                                <select class="ship-select" value="@shipPreset" @onchange="OnShipPresetChanged" aria-label="Shipment range">
+                                    <option value="today">Today</option>
+                                    <option value="3">Next 3 days</option>
+                                    <option value="7">Next 7 days</option>
+                                    <option value="15">Next 15 days</option>
+                                    <option value="30">Next 30 days</option>
+                                    <option value="custom">Custom…</option>
+                                </select>
+                            </span>
+                        </div>
+                        @if (shipPreset == "custom")
+                        {
+                            <div class="ship-custom" @onclick:stopPropagation="true">
+                                <DatePicker @bind-Value="shipFrom" Placeholder="From" />
+                                <DatePicker @bind-Value="shipTo" Placeholder="To" MinDate="shipFrom" />
+                                <button type="button" class="ship-go" @onclick="OnShipCustomChanged">Go</button>
+                            </div>
+                        }
+                        <div class="ship-body">
+                            @if (shipLoading)
+                            {
+                                <span class="ship-muted">Loading…</span>
+                            }
+                            else if (shipFailed)
+                            {
+                                <span class="ship-muted">Couldn’t load from PLM</span>
+                            }
+                            else
+                            {
+                                <span class="ship-count">@ShipDueCount</span>
+                                <span class="ship-label">@(ShipDueCount == 1 ? "order" : "orders") · @ShipRangeLabel</span>
+                                @if (ShipOverdueCount > 0)
+                                {
+                                    <span class="ship-overdue">@ShipOverdueCount overdue</span>
+                                }
+                            }
+                        </div>
+                    </div>
+                }
                 @if (loading)
                 {
                     <div class="col-empty">Loading…</div>
@@ -137,7 +183,7 @@ else
                 {
                     @foreach (var card in Cards(col.Id))
                     {
-                        <div class="tcard @(IsHighlighted(card.TaskId) ? "tcard-highlight" : "")" @onclick="() => OpenDetail(card.TaskId)">
+                        <div class="tcard st-@card.Stage @(IsHighlighted(card.TaskId) ? "tcard-highlight" : "")" @onclick="() => OpenDetail(card.TaskId)">
                             @if (IsHighlighted(card.TaskId))
                             {
                                 <div class="tcard-new-badge">
@@ -171,7 +217,7 @@ else
                                 <div class="tcard-title">@(string.IsNullOrWhiteSpace(card.Title) ? "(untitled)" : card.Title)</div>
                             }
                             <div class="tcard-meta">
-                                <span>@card.StageName</span>
+                                <span class="stage-chip">@card.StageName</span>
                                 @if (!string.IsNullOrWhiteSpace(card.OrderNos ?? card.OrderNo))
                                 {
                                     <span>· PO @(card.OrderNos ?? card.OrderNo)</span>
@@ -490,6 +536,82 @@ else
         </div>
     </div>
 }
+
+@* ------------------------------------------------------- Shipment alert popup *@
+<PanelModal IsVisible="showShipPopup"
+            Title="@($"Shipping alert · {ShipRangeLabel}")"
+            Icon="fa-solid fa-truck-fast"
+            MaxWidth="820px"
+            OnClose="CloseShipPopup">
+<div class="ship-pop">
+    <div class="ship-pop-tools">
+        <select class="ship-select" value="@shipPreset" @onchange="OnShipPresetChanged" aria-label="Shipment range">
+            <option value="today">Today</option>
+            <option value="3">Next 3 days</option>
+            <option value="7">Next 7 days</option>
+            <option value="15">Next 15 days</option>
+            <option value="30">Next 30 days</option>
+            <option value="custom">Custom…</option>
+        </select>
+        @if (shipPreset == "custom")
+        {
+            <DatePicker @bind-Value="shipFrom" Placeholder="From" />
+            <DatePicker @bind-Value="shipTo" Placeholder="To" MinDate="shipFrom" />
+            <button type="button" class="ship-go" @onclick="OnShipCustomChanged">Go</button>
+        }
+        <input class="ship-search" placeholder="Search order or buyer" @bind="shipSearch" @bind:event="oninput" />
+        <span class="ship-muted">@ShipDueCount due · @ShipOverdueCount overdue</span>
+    </div>
+    @if (shipLoading)
+    {
+        <div class="ov-loading">Loading orders…</div>
+    }
+    else if (shipFailed)
+    {
+        <div class="ov-loading">Couldn’t load orders from PLM right now. Please try again shortly.</div>
+    }
+    else if (!ShipFiltered.Any())
+    {
+        <div class="ov-loading">No orders due to ship in this range.</div>
+    }
+    else
+    {
+        <div class="ship-scroll">
+            <table class="om-items-table ship-table">
+                <thead>
+                    <tr><th>Order</th><th>Buyer</th><th>Ship date</th><th>When</th><th title="Pieces still to ship: ordered minus dispatched">Qty</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var o in ShipFiltered)
+                    {
+                        <tr class="@(o.IsOverdue ? "is-overdue" : o.DaysLeft <= 1 ? "is-soon" : "")">
+                            <td class="om-style"><a class="ship-link" href="javascript:void(0)" title="View production flow" @onclick="() => OpenFlowAsync(o.OrderNo)">@o.OrderNo</a></td>
+                            <td>@o.Buyer</td>
+                            <td>@o.ShipDate</td>
+                            <td class="ship-when">@ShipDaysText(o)</td>
+                            <td class="om-qty">@o.Quantity.ToString("N0")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    @* Fixed footer: stays put while the list scrolls. Totals follow the search filter. *@
+    <div class="ship-foot">
+        <span>@ShipFiltered.Count() @(ShipFiltered.Count() == 1 ? "order" : "orders")</span>
+        <span>Pieces to ship <b>@ShipFiltered.Sum(o => o.Quantity).ToString("N0")</b></span>
+    </div>
+</div>
+</PanelModal>
+
+@* Production Flow for the clicked order. Declared after the shipping popup so it stacks on top. *@
+<PanelModal IsVisible="showFlowPopup"
+            Title="@($"Production Flow · {flowOrderNo}")"
+            Icon="fa-solid fa-diagram-project"
+            MaxWidth="95vw"
+            OnClose="CloseFlowPopup">
+    <ProductionFlow Items="flowItems" />
+</PanelModal>
 
 @* -------------------------------------------------------------- Order modal *@
 @* Opened by clicking a card's PO name (separate from the task/status drawer above).

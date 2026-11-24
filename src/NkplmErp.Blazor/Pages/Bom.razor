@@ -19,12 +19,7 @@ else
             <div class="bom-flow">PENDING ORDERS &nbsp;→&nbsp; CALCULATE BOM &nbsp;→&nbsp; PLACE YARN ORDER</div>
         </div>
 
-        @if (!string.IsNullOrEmpty(StatusMessage))
-        {
-            <div class="bom-status @(IsError ? "err" : "ok")">@StatusMessage</div>
-        }
-
-        <div class="bom-pipe">
+        <div class="bom-pipe" @ref="_pipe">
 
             @* ============ COLUMN 1 : ORDERS / BOM PENDING ============ *@
             <div class="bom-col">
@@ -48,6 +43,7 @@ else
                     }
                     else
                     {
+                        var ordersInBasket = OrdersInBasket;
                         @foreach (var o in FilteredOrders)
                         {
                             @* Trimmed / case-insensitive to match how order numbers are compared
@@ -60,10 +56,12 @@ else
                                order: order numbers here hold spaces ("PO-NK AW26-03 PRODUCTION"),
                                so a per-order id would need escaping. Only one row is ever
                                selected, so this stays unique. Null = attribute omitted. *@
-                            <div class="bom-ord @(isSelected ? "active" : "")"
+                            @* "added" = this order's import lines are already in the yarn order basket. *@
+                            var isAdded = ordersInBasket.Contains(o.OrderNo.Trim());
+                            <div class="bom-ord @(isSelected ? "active" : "") @(isAdded ? "added" : "")"
                                  id="@(isSelected ? "bom-selected-order" : null)"
                                  @onclick="@(() => SelectOrderAsync(o.OrderNo))">
-                                <div class="no">@o.OrderNo</div>
+                                <div class="no">@o.OrderNo@if (isAdded) { <span class="added-tick" title="Added to Yarn Order"> ✓</span> }</div>
                                 <div class="foot">
                                     <span>@o.MonthName @o.Year</span>
                                     <span class="pill">@o.TotalPieces.ToString("N0") pcs</span>
@@ -73,6 +71,8 @@ else
                     }
                 </div>
             </div>
+
+            <div class="bom-gutter" data-gutter="0" role="separator" aria-orientation="vertical" title="Drag to resize · double-click to reset"><i></i></div>
 
             @* ============ COLUMN 2 : CALCULATION ============ *@
             <div class="bom-col">
@@ -139,10 +139,6 @@ else
                                         <tr class="@(l.IsImport ? "shortage" : "")">
                                             <td class="l">
                                                 <span class="colorcell">@l.OrderColor</span>
-                                                @if (!string.IsNullOrWhiteSpace(l.StylePly))
-                                                {
-                                                    <span class="sub">@l.StylePly ply</span>
-                                                }
                                             </td>
                                             <td class="need">@l.SelfWt.ToString("N2")</td>
                                             <td>@l.OthWt.ToString("N1")</td>
@@ -155,9 +151,9 @@ else
                                                 {
                                                     <span class="qtyedit">
                                                         <input type="number" step="0.01" min="0" class="qtyinput"
-                                                               @bind="l.OrderQtyKg" @bind:event="oninput" /> kg
+                                                               value="@l.OrderQtyKg.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
+                                                               @onchange="e => SetOrderQty(l, e.Value?.ToString())" /> kg
                                                     </span>
-                                                    <div class="storebd">need @l.ImportKg.ToString("N2")</div>
                                                 }
                                                 else
                                                 {
@@ -191,6 +187,10 @@ else
                         {
                             <button class="bom-btn primary" disabled>✓ Import already requested</button>
                         }
+                        else if (AreImportLinesInBasket)
+                        {
+                            <button class="bom-btn primary" disabled>✓ Added to Yarn Order</button>
+                        }
                         else
                         {
                             <button class="bom-btn primary" @onclick="AddImportLinesToBasket">
@@ -200,6 +200,8 @@ else
                     </div>
                 }
             </div>
+
+            <div class="bom-gutter" data-gutter="1" role="separator" aria-orientation="vertical" title="Drag to resize · double-click to reset"><i></i></div>
 
             @* ============ COLUMN 3 : YARN ORDER BASKET ============ *@
             <div class="bom-col">
@@ -214,25 +216,52 @@ else
                     }
                     else
                     {
-                        @foreach (var l in Basket)
-                        {
-                            <div class="bom-line">
-                                <div class="top">
-                                    <div class="ly">@l.Display</div>
-                                    <span class="qty">@l.OrderedKg.ToString("N2") kg</span>
-                                    <span class="x" @onclick="@(() => RemoveFromBasket(l))">✕</span>
-                                </div>
-                                <div class="line-meta">
-                                    <span class="sub">@l.OrderColor@(string.IsNullOrWhiteSpace(l.StylePly) ? "" : $" · {l.StylePly}ply") · need @l.NeedKg.ToString("N2")</span>
-                                    <span class="orders">
-                                        @foreach (var ord in l.Orders)
-                                        {
-                                            <span class="ochip">@ord</span>
-                                        }
-                                    </span>
-                                </div>
-                            </div>
-                        }
+                        @* Table grouped by yarn name: one header row per yarn, its colour lines underneath. *@
+                        <table class="bom-btable">
+                            <colgroup>
+                                <col />
+                                <col style="width:44%" />
+                                <col style="width:64px" />
+                                <col style="width:26px" />
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>Color</th>
+                                    <th>Order</th>
+                                    <th class="r">Kg</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var grp in Basket.GroupBy(b => b.Display).OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
+                                {
+                                    <tr class="grp">
+                                        <td colspan="4" title="@grp.Key">
+                                            <span class="gname">@grp.Key</span>
+                                            <span class="gmeta">@grp.Count() @(grp.Count() == 1 ? "line" : "lines") · @grp.Sum(x => x.OrderedKg).ToString("N2") kg</span>
+                                        </td>
+                                    </tr>
+                                    @foreach (var l in grp)
+                                    {
+                                        <tr>
+                                            <td class="clr" title="@l.OrderColor">@l.OrderColor</td>
+                                            <td class="ords">
+                                                <div class="ochips">
+                                                    @foreach (var ord in l.Orders)
+                                                    {
+                                                        l.NeedQty.TryGetValue(ord, out var ordNeed);
+                                                        l.OrderQty.TryGetValue(ord, out var ordKg);
+                                                        <span class="ochip" title="@ord: need @ordNeed.ToString("N2") kg, ordering @ordKg.ToString("N2") kg">@ord (@ordKg.ToString("0.00"))</span>
+                                                    }
+                                                </div>
+                                            </td>
+                                            <td class="r kg">@l.OrderedKg.ToString("N2")</td>
+                                            <td class="rm"><span class="x" title="Remove" @onclick="@(() => RemoveFromBasket(l))">✕</span></td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
                     }
                 </div>
                 <div class="bom-col-foot">

@@ -218,6 +218,7 @@ namespace NkplmErp.Blazor.Pages.PoTasks
                 selectedFactoryType = scope.AssignedGauge;
 
              LoadBoardAsync();
+            _ = LoadShipmentsAsync();   // shipment alert card; independent of the task board
 
             // Subscribe to the shared notifier so the board auto-refreshes when
             // the NotificationBell receives a task push via SignalR.
@@ -225,6 +226,185 @@ namespace NkplmErp.Blazor.Pages.PoTasks
             BoardNotifier.OnNewTaskAsync -= OnNewTaskPushedAsync;
             BoardNotifier.OnNewTaskAsync += OnNewTaskPushedAsync;
         }
+
+        // ------------------------------------------------- shipment alert card ----
+        // Pinned on top of the Scheduled column. Not a task: a live count of orders due to ship in
+        // the chosen range, read from PLM (third-party API shipment/due-orders). Click opens the list.
+
+        [Inject] private NkplmErp.Blazor.Services.ThirdPartyApi.Plm.Manager.Interface.IThirdPartyApiManager ThirdParty { get; set; } = default!;
+
+        private const string ShipRangeStorageKey = "tasks-ship-range";
+        private string shipPreset = "7";                       // today | 3 | 7 | 15 | 30 | custom
+        private DateTime? shipFrom = DateTime.Today;
+        private DateTime? shipTo = DateTime.Today.AddDays(7);
+        private List<ShipmentDueOrderDto> shipOrders = new();
+        private bool shipLoading;
+        private bool shipFailed;
+        private bool showShipPopup;
+        private string shipSearch = "";
+        private int _shipSeq;
+
+        private IEnumerable<ShipmentDueOrderDto> ShipInRange => shipOrders.Where(o => !o.IsOverdue);
+        private int ShipDueCount => shipOrders.Count(o => !o.IsOverdue);
+        private int ShipOverdueCount => shipOrders.Count(o => o.IsOverdue);
+
+        private IEnumerable<ShipmentDueOrderDto> ShipFiltered => string.IsNullOrWhiteSpace(shipSearch)
+            ? shipOrders
+            : shipOrders.Where(o => o.OrderNo.Contains(shipSearch.Trim(), StringComparison.OrdinalIgnoreCase)
+                                    || (o.Buyer ?? "").Contains(shipSearch.Trim(), StringComparison.OrdinalIgnoreCase));
+
+        private string ShipRangeLabel => shipPreset switch
+        {
+            "today" => "Today",
+            "custom" => $"{shipFrom:dd MMM} – {shipTo:dd MMM}",
+            _ => $"Next {shipPreset} days"
+        };
+
+        private async Task LoadShipmentsAsync()
+        {
+            if (shipFrom is null || shipTo is null) return;
+            var token = ++_shipSeq;
+            shipLoading = true;
+            shipFailed = false;
+            StateHasChanged();
+
+            var res = await ThirdParty.GetShipmentDueOrdersAsync(
+                shipFrom.Value.ToString("yyyy-MM-dd"), shipTo.Value.ToString("yyyy-MM-dd"), includeOverdue: true);
+            if (token != _shipSeq) return;   // a newer range was picked meanwhile
+
+            shipFailed = !res.Succeeded;
+            shipOrders = res.Succeeded ? res.Data ?? new() : new();
+            shipLoading = false;
+            StateHasChanged();
+        }
+
+        private async Task OnShipPresetChanged(ChangeEventArgs e)
+        {
+            shipPreset = e.Value?.ToString() ?? "7";
+            if (shipPreset != "custom")
+            {
+                shipFrom = DateTime.Today;
+                shipTo = shipPreset == "today" ? DateTime.Today : DateTime.Today.AddDays(int.Parse(shipPreset));
+                await SaveShipRangeAsync();
+                await LoadShipmentsAsync();
+            }
+            else
+            {
+                await SaveShipRangeAsync();
+            }
+        }
+
+        private async Task OnShipCustomChanged()
+        {
+            if (shipFrom is null || shipTo is null) return;
+            if (shipTo < shipFrom) shipTo = shipFrom;
+            await SaveShipRangeAsync();
+            await LoadShipmentsAsync();
+        }
+
+        private async Task SaveShipRangeAsync()
+        {
+            try
+            {
+                var value = shipPreset == "custom"
+                    ? $"custom|{shipFrom:yyyy-MM-dd}|{shipTo:yyyy-MM-dd}"
+                    : shipPreset;
+                await JS.InvokeVoidAsync("localStorage.setItem", ShipRangeStorageKey, value);
+            }
+            catch { /* remembering the choice is a convenience only */ }
+        }
+
+        // Restore the remembered range (browser storage is only reachable after first render).
+        private async Task RestoreShipRangeAsync()
+        {
+            try
+            {
+                var saved = await JS.InvokeAsync<string?>("localStorage.getItem", ShipRangeStorageKey);
+                if (string.IsNullOrWhiteSpace(saved) || saved == shipPreset) return;
+
+                var parts = saved.Split('|');
+                if (parts[0] == "custom" && parts.Length == 3
+                    && DateTime.TryParse(parts[1], out var f) && DateTime.TryParse(parts[2], out var t))
+                {
+                    shipPreset = "custom"; shipFrom = f; shipTo = t;
+                }
+                else if (parts[0] is "today" or "3" or "7" or "15" or "30")
+                {
+                    shipPreset = parts[0];
+                    shipFrom = DateTime.Today;
+                    shipTo = shipPreset == "today" ? DateTime.Today : DateTime.Today.AddDays(int.Parse(shipPreset));
+                }
+                else return;
+
+                await LoadShipmentsAsync();
+            }
+            catch { /* ignore: default range stays */ }
+        }
+
+        protected override async Task OnAfterRenderAsync(bool firstRender)
+        {
+            if (firstRender && !AccessDenied) await RestoreShipRangeAsync();
+        }
+
+        private void OpenShipPopup()
+        {
+            shipSearch = "";
+            showShipPopup = true;
+        }
+
+        private void CloseShipPopup() => showShipPopup = false;
+
+        // Click an order in the shipping popup -> the dashboard's Production Flow component for that order,
+        // in a second popup on top (the shipping list stays open underneath).
+        [Inject] private ToastService Toasts { get; set; } = default!;
+        [Inject] private NkplmErp.Blazor.Services.Loading.LoadingService Loader { get; set; } = default!;
+
+        private bool showFlowPopup;
+        private string flowOrderNo = "";
+        private List<ProductionFlowDto> flowItems = new();
+
+        private async Task OpenFlowAsync(string orderNo)
+        {
+            if (string.IsNullOrWhiteSpace(orderNo)) return;
+            Loader.Show("Loading production flow…");
+            try
+            {
+                var res = await ThirdParty.GetProductionFlowAsync(0, orderNo);
+                if (!res.Succeeded)
+                {
+                    // A failed call is not "no data": say so, so a missing flow isn't blamed on the order.
+                    Toasts.ShowError($"Production flow for {orderNo} could not be loaded from PLM.");
+                    return;
+                }
+                var items = res.Data ?? new();
+                if (items.Count == 0)
+                {
+                    Toasts.ShowInfo($"No production flow found for {orderNo}.");
+                    return;
+                }
+                flowOrderNo = orderNo;
+                flowItems = items;
+                showFlowPopup = true;
+            }
+            catch
+            {
+                Toasts.ShowError("Production flow could not be loaded right now. Please try again shortly.");
+            }
+            finally
+            {
+                Loader.Hide();
+            }
+        }
+
+        private void CloseFlowPopup() => showFlowPopup = false;
+
+        private static string ShipDaysText(ShipmentDueOrderDto o) => o.DaysLeft switch
+        {
+            0 => "Today",
+            1 => "Tomorrow",
+            < 0 => $"{-o.DaysLeft} d overdue",
+            _ => $"in {o.DaysLeft} d"
+        };
 
         // -------------------------------------------------------------- board ----
 

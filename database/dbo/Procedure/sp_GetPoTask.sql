@@ -65,18 +65,6 @@ BEGIN
     DECLARE @WindowStart DATE = CAST(@StartDate AS DATE);
     DECLARE @WindowEnd   DATE = CAST(@EndDate   AS DATE);
 
-    /* ---------------------------------------------------- PENDINGREVIEWS
-       Keep every PoTask read behind this feature's shared read procedure. */
-    IF (@op = 'PENDINGREVIEWS')
-    BEGIN
-        DECLARE @pendingTop INT = ISNULL(@Top, 50);
-        DECLARE @pendingCutoff DATETIME = ISNULL(@CutoffDate, '2026-07-21');
-        EXEC [dbo].[sp_PoTask_PendingReviews]
-             @Top = @pendingTop,
-             @CutoffDate = @pendingCutoff;
-        RETURN;
-    END
-
     -- Shared display-name helpers reused by BOARD / MYTASKS / DETAIL.
     -- (Stage / Status / Priority -> friendly text.)
 
@@ -124,7 +112,7 @@ BEGIN
                           WHERE o.[PoTaskId] = t.[PoTaskId] AND o.[IsActive] = 1)
                     WHEN t.[OrderNo] IS NULL THEN 0 ELSE 1 END AS [OrderCount],
                t.[Stage],
-               CASE t.[Stage] WHEN 1 THEN 'PO entry' WHEN 2 THEN 'BOM task' WHEN 3 THEN 'Planning'
+               CASE t.[Stage] WHEN 1 THEN 'PO entry' WHEN 2 THEN 'BOM task' WHEN 3 THEN 'Planning' WHEN 4 THEN 'New order'
                               WHEN 10 THEN 'Yarn issue' WHEN 11 THEN 'Product return' WHEN 12 THEN 'Yarn order'
                               WHEN 20 THEN 'Manual' ELSE 'Task' END AS [StageName],
                t.[Status],
@@ -224,6 +212,10 @@ BEGIN
                                    + ISNULL(N'&gauge=' + q.[Guage], N'')
                                    + ISNULL(om.[MonthParam], N'') END
 
+            -- New order (4) -> NO link on purpose: the card only announces that PLM placed an order.
+            -- NULL = not clickable, so there is nothing to open and no route to maintain.
+            WHEN 4  THEN NULL
+
             -- Yarn order lifecycle (12: placed / departure / arrival) -> the placed order on
             -- /yarn-orders, keyed exactly by RefId. The OrderNo lookup remains only for tasks
             -- created before Stage 12 tasks began carrying the yarn-order reference.
@@ -242,7 +234,7 @@ BEGIN
 
             ELSE NULL
         END                                            AS [LinkUrl],
-        CASE t.[Stage] WHEN 1 THEN 'PO entry' WHEN 2 THEN 'BOM task' WHEN 3 THEN 'Planning'
+        CASE t.[Stage] WHEN 1 THEN 'PO entry' WHEN 2 THEN 'BOM task' WHEN 3 THEN 'Planning' WHEN 4 THEN 'New order'
                        WHEN 10 THEN 'Yarn issue' WHEN 11 THEN 'Product return' WHEN 12 THEN 'Yarn order'
                        WHEN 20 THEN 'Manual' ELSE 'Task' END AS [StageName],
         t.[Title],
