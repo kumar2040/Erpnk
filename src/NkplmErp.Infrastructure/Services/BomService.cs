@@ -7,6 +7,8 @@ using NkplmErp.Application.Interfaces;
 using NkplmErp.Shared.DataAccess.GenericRepository;
 using NkplmErp.Shared.DTOs;
 using NkplmErp.Shared.Wrapper;
+using NkplmErp.ThirdPartyApi.Plm.Outbound.Manager.Interface;
+using NkplmErp.ThirdPartyApi.Plm.Outbound.Route;
 
 namespace NkplmErp.Infrastructure.Services;
 
@@ -21,13 +23,16 @@ public class BomService : IBomService
     private readonly IGenericRepository _genericRepository;
     private readonly IRoleManagementService _roleManagementService;
     private readonly ILogger<BomService> _logger;
+    private readonly IThirdPartyManager _thirdParty;
 
     public BomService(
         IConfiguration configuration,
         IGenericRepository genericRepository,
         IRoleManagementService roleManagementService,
-        ILogger<BomService> logger)
+        ILogger<BomService> logger,
+        IThirdPartyManager thirdParty)
     {
+        _thirdParty = thirdParty;
         _configuration = configuration;
         _connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
@@ -36,21 +41,56 @@ public class BomService : IBomService
         _logger = logger;
     }
 
+    // The yarn requirement is calculated by PLM (its orders, styles and stock are live there); ERP only
+    // says which orders are selected. The task's own orders live in ERP (PoTaskOrder), so they are
+    // resolved here and sent along.
     public async Task<IResponse<List<BomYarnLineDto>>> GetYarnRequirementAsync(string? orderNo, int flag = 1, int? poTaskId = null)
     {
         try
         {
-            var rows = await _genericRepository.GetQueryResultAsync<BomYarnLineDto>(
-                "knitYarnRequirement",
-                new { OrderNo = orderNo, Flag = flag, PoTaskId = poTaskId },
-                CommandType.StoredProcedure);
-            return Response<List<BomYarnLineDto>>.Success(rows);
+            var orderNos = await GetRequirementOrderNosAsync(orderNo, poTaskId);
+            if (orderNos.Count == 0)
+                return Response<List<BomYarnLineDto>>.Fail("Order number or BOM task id is required.");
+
+            var response = await _thirdParty.CallAsync<List<BomYarnLineDto>>(
+                ThirdPartyRouter.BomYarnRequirement, new { orderNos, flag = flag == 2 ? 2 : 1 });
+            return response.Succeeded && response.Data is not null
+                ? Response<List<BomYarnLineDto>>.Success(response.Data)
+                : Response<List<BomYarnLineDto>>.Fail(string.IsNullOrWhiteSpace(response.Messages)
+                    ? "The BOM calculation could not be loaded from PLM."
+                    : response.Messages);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "BOM calculation failed for order {OrderNo}, task {PoTaskId}.", orderNo, poTaskId);
             return Response<List<BomYarnLineDto>>.Fail(ex.Message);
         }
+    }
+
+    // The task's active orders plus the card's own order (a legacy single-order task has no membership
+    // rows, and the original order must stay even after newer orders joined the task).
+    private async Task<List<string>> GetRequirementOrderNosAsync(string? orderNo, int? poTaskId)
+    {
+        var result = new List<string>();
+        void Add(string? no)
+        {
+            no = no?.Trim();
+            if (!string.IsNullOrEmpty(no) && !result.Contains(no, StringComparer.OrdinalIgnoreCase)) result.Add(no);
+        }
+
+        if (poTaskId is not null)
+        {
+            using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync();
+            using var cmd = new SqlCommand(
+                "SELECT DISTINCT LTRIM(RTRIM([OrderNo])) FROM [dbo].[PoTaskOrder] WHERE [PoTaskId] = @id AND [IsActive] = 1", connection);
+            cmd.Parameters.AddWithValue("@id", poTaskId.Value);
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync()) Add(reader.IsDBNull(0) ? null : reader.GetString(0));
+        }
+
+        Add(orderNo);
+        return result;
     }
 
     public async Task<IResponse<PlaceYarnOrderResult>> PlaceYarnOrderAsync(

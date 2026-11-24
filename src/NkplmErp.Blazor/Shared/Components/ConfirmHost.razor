@@ -1,0 +1,26 @@
+@namespace NkplmErp.Blazor.Shared.Components
+@using NkplmErp.Blazor.Services.Confirm
+@implements IDisposable
+@inject ConfirmService Confirm
+
+@* The one place ConfirmService questions are shown, using the shared ConfirmModal. The wrapper's z-index
+   keeps the dialog above the app-wide loader (9998) and toasts (9999). *@
+<div style="position:relative;z-index:10000">
+    <ConfirmModal IsVisible="Confirm.IsVisible"
+                  Title="@Confirm.Title"
+                  Icon="@(Confirm.Danger ? "⚠" : null)"
+                  Danger="Confirm.Danger"
+                  ConfirmText="@Confirm.ConfirmText"
+                  CancelText="@Confirm.CancelText"
+                  OnResult="Confirm.Resolve">
+        <div style="white-space:pre-line">@Confirm.Message</div>
+    </ConfirmModal>
+</div>
+
+@code {
+    protected override void OnInitialized() => Confirm.OnChange += HandleChange;
+
+    private async void HandleChange() => await InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Confirm.OnChange -= HandleChange;
+}

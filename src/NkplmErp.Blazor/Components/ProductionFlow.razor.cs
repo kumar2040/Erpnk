@@ -58,6 +58,18 @@ public partial class ProductionFlow : ComponentBase
         await OnShowOrderAnalysis.InvokeAsync(orderNo);
     }
 
+    [Inject]
+    private NkplmErp.Blazor.Services.ThirdPartyApi.Manager.Interface.IThirdPartyApiManager ThirdParty { get; set; } = default!;
+
+    // Department stock comes from the third-party (PLM) API; the local service is only a fallback when
+    // that call fails (same pattern as the dashboard's order list and flow chart).
+    private async Task<IEnumerable<DepartmentStockDto>> LoadDepartmentStockAsync(string? orderNo, string deptCode)
+    {
+        var live = await ThirdParty.GetDepartmentStockAsync(deptCode, orderNo);
+        if (live.Succeeded && live.Data is not null) return live.Data;
+        return await BuyerOrderSummaryService.GetdepartmentStockAsync(orderNo, deptCode);
+    }
+
     private async Task ShowOrderDetails(string orderNo)
     {
         if (string.IsNullOrEmpty(orderNo)) return;
@@ -77,7 +89,7 @@ public partial class ProductionFlow : ComponentBase
 
         try
         {
-            StockItems = await BuyerOrderSummaryService.GetdepartmentStockAsync(orderNo, deptCode);
+            StockItems = await LoadDepartmentStockAsync(orderNo, deptCode);
             
             // Extract unique size headers across all items
             SizeHeaderColumns = StockItems
@@ -106,7 +118,7 @@ public partial class ProductionFlow : ComponentBase
             try
             {
                 // Pass orderNo as null for department-wide stock details
-                DetailsItems = await BuyerOrderSummaryService.GetdepartmentStockAsync(null, SelectedDeptCode);
+                DetailsItems = await LoadDepartmentStockAsync(null, SelectedDeptCode);
                 DetailsSizeHeaders = DetailsItems
                     .SelectMany(x => x.Sizes.Keys)
                     .Select(x => x.Trim())

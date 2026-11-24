@@ -5,6 +5,19 @@
     {
         public const string Base = "api/v1/ThirdPartyProductionPlan";
         public const string DashboardBase = "api/v1/ThirdPartyDashboard";
+        public const string BomBase = "api/v1/ThirdPartyBom";
+
+        // Production Flow department stock
+        public static string DepartmentStock(string dept, string? orderNo) =>
+            $"{DashboardBase}/department-stock?dept={Uri.EscapeDataString(dept)}&orderNo={Uri.EscapeDataString(orderNo ?? string.Empty)}";
+
+        // Task board shipment alert
+        public const string ShipmentBase = "api/v1/ThirdPartyShipment";
+        public static string ShipmentDueOrders(string from, string to, bool includeOverdue) =>
+            $"{ShipmentBase}/due-orders?from={Uri.EscapeDataString(from)}&to={Uri.EscapeDataString(to)}&includeOverdue={(includeOverdue ? "true" : "false")}";
+
+        // BOM page
+        public static string BomOrders(DateTime month) => $"{BomBase}/orders?month={month:yyyy-MM-dd}";
 
         // Main dashboard
         public static string OrderStatus(int year, string status) =>

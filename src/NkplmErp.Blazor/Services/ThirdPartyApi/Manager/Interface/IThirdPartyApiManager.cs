@@ -9,6 +9,13 @@ namespace NkplmErp.Blazor.Services.ThirdPartyApi.Manager.Interface
         // Main dashboard
         Task<IResponse<List<OrderStatusDetailDto>>> GetOrderStatusAsync(int year, string status);
         Task<IResponse<List<ProductionFlowDto>>> GetProductionFlowAsync(int buyerId, string? orderNo);
+        Task<IResponse<List<DepartmentStockDto>>> GetDepartmentStockAsync(string dept, string? orderNo);
+
+        // Task board shipment alert
+        Task<IResponse<List<ShipmentDueOrderDto>>> GetShipmentDueOrdersAsync(string from, string to, bool includeOverdue);
+
+        // BOM page
+        Task<IResponse<List<MonthlyOrderDetailDto>>> GetBomOrdersAsync(DateTime month);
 
         // Order planning
         Task<IResponse<List<MonthlyOrderSummaryDto>>> GetMonthsAsync(DateTime inputDate);

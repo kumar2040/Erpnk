@@ -10,6 +10,7 @@ public partial class PagesManagement : IDisposable
     [Inject] private RoleManagementApiClient RoleApi { get; set; } = default!;
     [Inject] private PermissionService PermSvc { get; set; } = default!;
     [Inject] private IJSRuntime JS { get; set; } = default!;
+    [Inject] private NkplmErp.Blazor.Services.Confirm.ConfirmService Confirm { get; set; } = default!;
 
     private List<AppPageDto> Pages = new();
     private List<MenuDto> Menus = new();
@@ -115,8 +116,9 @@ public partial class PagesManagement : IDisposable
 
     private async Task DeletePage(AppPageDto page)
     {
-        var ok = await JS.InvokeAsync<bool>("confirm",
-            $"Delete page '{page.PageName}' ({page.PageKey})? This removes its View/Edit/Delete permissions and any role grants of them.");
+        var ok = await Confirm.ConfirmAsync(
+            $"Delete page '{page.PageName}' ({page.PageKey})? This removes its View/Edit/Delete permissions and any role grants of them.",
+            title: "Delete page", confirmText: "Delete", danger: true);
         if (!ok) return;
 
         var result = await RoleApi.DeletePageAsync(page.AppPageId);

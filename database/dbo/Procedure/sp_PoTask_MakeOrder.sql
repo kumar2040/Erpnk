@@ -3,7 +3,7 @@
    "Make order" (OrderDraft::submit), through the inbound third-party API.
    One @Flag per page / feature:
      MAKE_ORDER : in ONE transaction
-        1. a task for the new order on the /tasks board (dbo.PoTask, manual Stage 20)
+        1. a task for the new order on the /tasks board (dbo.PoTask, Stage 4 'New order', no link)
            assigned to the Production Manager(s) in @AssigneeUserIds
         2. one in-app notification per active assignee (dbo.PoTaskNotification)
    Any failure rolls back all of it (XACT_ABORT). Idempotent: re-sending the same
@@ -74,7 +74,7 @@ BEGIN
     BEGIN
         INSERT INTO @made ([PoTaskId])
         EXEC [dbo].[sp_ManagePoTask]
-             @Flag = N'CREATE', @OrderNo = @OrderNo, @Stage = NULL,        -- NULL => Manual (20)
+             @Flag = N'CREATE', @OrderNo = @OrderNo, @Stage = 4,           -- New order (no link)
              @Title = @title, @Detail = @detail,
              @StartDate = @today, @DueDate = @due,
              @CompletionRule = 2,                                          -- Any: one PM acknowledging completes it

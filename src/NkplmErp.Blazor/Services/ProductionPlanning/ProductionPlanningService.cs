@@ -17,26 +17,6 @@ public class ProductionPlanningService : IProductionPlanningService
         _logger = logger;
     }
 
-    public async Task<IEnumerable<MonthlyOrderDetailDto>> GetMonthlyOrderDetailsAsync(DateTime inputDate)
-    {
-        var url = $"api/v1/ProductionPlanning/monthly-details?inputDate={inputDate:yyyy-MM-dd}";
-        try
-        {
-            var response = await _httpClient.GetAsync(url);
-            if (response.IsSuccessStatusCode)
-            {
-                var list = await response.Content.ReadFromJsonAsync<IEnumerable<MonthlyOrderDetailDto>>() ?? Enumerable.Empty<MonthlyOrderDetailDto>();
-                Console.WriteLine($"DEBUG: GetMonthlyOrderDetailsAsync returned {list.Count()} items for URL: {url}");
-                return list;
-            }
-            throw new HttpRequestException($"API Error {response.StatusCode}");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error in GetMonthlyOrderDetailsAsync");
-            throw;
-        }
-    }
     public async Task<IEnumerable<GaugeUtilizationDto>> GetGaugeUtilizationReportAsync(double? targetGauge)
     {
         var url = $"api/v1/ProductionPlanning/gauge-utilization-report";

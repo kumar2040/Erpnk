@@ -15,6 +15,15 @@ namespace NkplmErp.Blazor.Services.ThirdPartyApi.Manager.Implementation
         public Task<IResponse<List<ProductionFlowDto>>> GetProductionFlowAsync(int buyerId, string? orderNo) =>
             http.GetAsync<List<ProductionFlowDto>>(ThirdPartyApiEndpoint.ProductionFlow(buyerId, orderNo));
 
+        public Task<IResponse<List<DepartmentStockDto>>> GetDepartmentStockAsync(string dept, string? orderNo) =>
+            http.GetAsync<List<DepartmentStockDto>>(ThirdPartyApiEndpoint.DepartmentStock(dept, orderNo));
+
+        public Task<IResponse<List<ShipmentDueOrderDto>>> GetShipmentDueOrdersAsync(string from, string to, bool includeOverdue) =>
+            http.GetAsync<List<ShipmentDueOrderDto>>(ThirdPartyApiEndpoint.ShipmentDueOrders(from, to, includeOverdue));
+
+        public Task<IResponse<List<MonthlyOrderDetailDto>>> GetBomOrdersAsync(DateTime month) =>
+            http.GetAsync<List<MonthlyOrderDetailDto>>(ThirdPartyApiEndpoint.BomOrders(month));
+
         public Task<IResponse<List<MonthlyOrderSummaryDto>>> GetMonthsAsync(DateTime inputDate) =>
             http.GetAsync<List<MonthlyOrderSummaryDto>>(ThirdPartyApiEndpoint.Months(inputDate));
 

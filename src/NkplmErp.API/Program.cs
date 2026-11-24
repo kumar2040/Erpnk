@@ -177,8 +177,13 @@ builder.Services.AddScoped<IPoTaskService, PoTaskService>();
 builder.Services.AddScoped<IOrderReviewTaskService, OrderReviewTaskService>();
 builder.Services.AddScoped<IMakeOrderTaskService, MakeOrderTaskService>();
 // Third-party (PLM / PHP) API: one generic manager from the NkplmErp.ThirdPartyApi project.
-builder.Services.AddHttpClient<NkplmErp.ThirdPartyApi.Outbound.Manager.Interface.IThirdPartyManager, NkplmErp.ThirdPartyApi.Outbound.Manager.Implementation.ThirdPartyManager>(
+builder.Services.AddHttpClient<NkplmErp.ThirdPartyApi.Plm.Outbound.Manager.Interface.IThirdPartyManager, NkplmErp.ThirdPartyApi.Plm.Outbound.Manager.Implementation.ThirdPartyManager>(
     client => client.Timeout = TimeSpan.FromSeconds(builder.Configuration.GetValue("ThirdPartyApi:TimeoutSeconds", 60)));
+// Text-to-speech (external TTS server): typed settings + typed HttpClient.
+builder.Services.Configure<NkplmErp.ThirdPartyApi.Tts.Outbound.Model.TtsSettings>(
+    builder.Configuration.GetSection(NkplmErp.ThirdPartyApi.Tts.Outbound.Model.TtsSettings.SectionName));
+builder.Services.AddHttpClient<NkplmErp.ThirdPartyApi.Tts.Outbound.Manager.Interface.ITtsService, NkplmErp.ThirdPartyApi.Tts.Outbound.Manager.Implementation.TtsService>(
+    client => client.Timeout = TimeSpan.FromSeconds(builder.Configuration.GetValue("Tts:TimeoutSeconds", 120)));
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IDropdownService, DropdownService>();
 builder.Services.AddScoped<IGenericRepository, GenericRepository>();
@@ -230,7 +235,7 @@ builder.Services.AddCors(options =>
                .AllowCredentials();
     });
 });
-builder.Services.AddControllers().AddApplicationPart(typeof(NkplmErp.ThirdPartyApi.Outbound.Controller.ThirdPartyProductionPlanController).Assembly);
+builder.Services.AddControllers().AddApplicationPart(typeof(NkplmErp.ThirdPartyApi.Plm.Outbound.Controller.ThirdPartyProductionPlanController).Assembly);
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 

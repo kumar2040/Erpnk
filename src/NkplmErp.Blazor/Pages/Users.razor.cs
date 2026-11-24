@@ -12,6 +12,7 @@ public partial class Users
     [Inject] private NkplmErp.Blazor.Services.RoleManagement.PermissionService Permissions { get; set; } = default!;
     [Inject] private NkplmErp.Blazor.Services.RoleManagement.RoleManagementApiClient RoleApi { get; set; } = default!;
     [Inject] private Microsoft.JSInterop.IJSRuntime JS { get; set; } = default!;
+    [Inject] private NkplmErp.Blazor.Services.Confirm.ConfirmService Confirm { get; set; } = default!;
 
     private List<UserListItemDto> users = new();
     private IEnumerable<UserListItemDto> filteredUsers => FilterUsersList();
@@ -281,8 +282,9 @@ public partial class Users
 
     private async Task ForceLogout(string userId, string fullName)
     {
-        var ok = await JS.InvokeAsync<bool>("confirm",
-            $"Force logout {fullName}? This ends all their active sessions immediately — they'll have to sign in again.");
+        var ok = await Confirm.ConfirmAsync(
+            $"Force logout {fullName}? This ends all their active sessions immediately — they'll have to sign in again.",
+            title: "Force logout", confirmText: "Force logout", danger: true);
         if (!ok) return;
 
         try

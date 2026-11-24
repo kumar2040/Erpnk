@@ -92,13 +92,6 @@ public class ProductionPlanningController : ControllerBase
         return perms.IsRowAllowed(planKnitType, planGauge);
     }
 
-    [HttpGet("monthly-details")]
-    public async Task<IActionResult> GetMonthlyOrderDetails([FromQuery] DateTime inputDate)
-    {
-        var result = await _productionPlanningService.GetMonthlyOrderDetailsAsync(inputDate);
-        return Ok(result);
-    }
-
     [HttpGet("gauge-utilization-report")]
     public async Task<IActionResult> GetGaugeUtilizationReport([FromQuery] double? targetGauge)
     {
@@ -230,6 +223,9 @@ public class ProductionPlanningController : ControllerBase
             // Making the plan IS completing the "Create plan" (Stage 1) task the
             // order-review sweep opened for the Production Manager — close it.
             await _poTaskService.CompleteStageAsync(request.OrderNo, 1, "auto: plan created", GetCurrentUserId());
+
+            // A plan saved with a machine moves its Planning task to In Progress now, not at the next sweep.
+            await _poTaskService.RunPlanProgressSyncAsync();
         }
         catch (Exception ex)
         {
@@ -388,6 +384,14 @@ public class ProductionPlanningController : ControllerBase
 
         var result = await _productionPlanningService.SaveKnitterAssignmentAsync(
             request.MasterPlanDetailId, request.CardNo, request.KnitterName, GetCurrentUserName());
+
+        // Knitter on every line completes the plan's Planning task now, not at the next sweep. Best-effort:
+        // the assignment is already saved in SQL Server and PLM.
+        if (result)
+        {
+            try { await _poTaskService.RunPlanProgressSyncAsync(); }
+            catch (Exception ex) { _logger.LogWarning(ex, "Plan progress sync after knitter assignment failed for plan {PlanId}", request.MasterPlanDetailId); }
+        }
         return Ok(result);
     }
 

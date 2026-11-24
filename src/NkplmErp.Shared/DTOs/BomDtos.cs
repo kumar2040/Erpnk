@@ -59,6 +59,9 @@ public class BomYarnLineDto
     /// <summary>'Import' or 'In-stock'.</summary>
     public string Decision { get; set; } = string.Empty;
 
+    /// <summary>Kg of this yarn x colour each selected order needs (order no -> kg). Lets a multi-order import be split between orders without asking PLM again.</summary>
+    public Dictionary<string, decimal> OrderShares { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Total requirement: this order plus backlog.</summary>
     public decimal TotalNeed => SelfWt + OthWt;
 

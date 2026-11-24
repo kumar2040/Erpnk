@@ -6,8 +6,8 @@ using NkplmErp.Shared.DTOs;
 using NkplmErp.Shared.DTOs.OrderPlanningApi;
 using NkplmErp.Shared.DataAccess.GenericRepository;
 using NkplmErp.Shared.Wrapper;
-using NkplmErp.ThirdPartyApi.Outbound.Manager.Interface;
-using NkplmErp.ThirdPartyApi.Outbound.Route;
+using NkplmErp.ThirdPartyApi.Plm.Outbound.Manager.Interface;
+using NkplmErp.ThirdPartyApi.Plm.Outbound.Route;
 
 namespace NkplmErp.Infrastructure.Services;
 
@@ -65,53 +65,6 @@ public class ProductionPlanningService : IProductionPlanningService
             Console.WriteLine($"SaveReplanMachineAsync Error: {ex.Message}");
             return Response<bool>.Fail("The plan could not be saved.");
         }
-    }
-
-    public async Task<IEnumerable<MonthlyOrderDetailDto>> GetMonthlyOrderDetailsAsync(DateTime inputDate)
-    {
-        var result = new List<MonthlyOrderDetailDto>();
-        try
-        {
-            using (var connection = new SqlConnection(_connectionString))
-            {
-                await connection.OpenAsync();
-                using (var command = new SqlCommand("sp_GetMonthlyOrderReport", connection))
-                {
-                    command.CommandType = CommandType.StoredProcedure;
-                    command.Parameters.AddWithValue("@InputDate", inputDate);
-                    command.Parameters.AddWithValue("@Flag", "monthsorders");
-
-                    using (var reader = await command.ExecuteReaderAsync())
-                    {
-                        while (await reader.ReadAsync())
-                        {
-                            var dto = new MonthlyOrderDetailDto();
-                            for (int i = 0; i < reader.FieldCount; i++)
-                            {
-                                string col = reader.GetName(i).Replace("_", "").Replace(" ", "").ToLower();
-                                if (reader.IsDBNull(i)) continue;
-
-                                if (col == "orderno" || col == "order_no") dto.OrderNo = reader[i].ToString() ?? string.Empty;
-                                else if (col.Contains("totalpieces") || col.Contains("total_pieces")) dto.TotalPieces = Convert.ToDecimal(reader[i]);
-                                else if (col == "monthstartdate") dto.MonthStartDate = Convert.ToDateTime(reader[i]);
-                                else if (col == "orderldate" || col == "order_ldate" || col == "orderdate") dto.OrderLDate = Convert.ToDateTime(reader[i]);
-                                else if (col == "monthname") dto.MonthName = reader[i].ToString() ?? string.Empty;
-                                else if (col == "year") dto.Year = Convert.ToInt32(reader[i]);
-                                // Order entry date (any common naming) - used for the 65% knit-deadline rule.
-                                else if (col == "orderedate" || col == "orderentrydate" || col == "entrydate" || col == "ordersdate") dto.OrderEntryDate = Convert.ToDateTime(reader[i]);
-                            }
-                            result.Add(dto);
-                        }
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"GetMonthlyOrderDetailsAsync Error: {ex.Message}");
-            throw;
-        }
-        return result;
     }
 
     public async Task<IEnumerable<GaugeUtilizationDto>> GetGaugeUtilizationReportAsync(double? targetGauge)

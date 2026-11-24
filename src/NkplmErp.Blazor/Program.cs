@@ -46,6 +46,9 @@ builder.Services.AddScoped<TaskBoardNotifier>();
 // user circuit gets its own: a Singleton would show one user's spinner to everyone.
 builder.Services.AddScoped<NkplmErp.Blazor.Services.Loading.LoadingService>();
 
+// App-wide confirmation dialog (replaces the browser's confirm()). Scoped for the same reason.
+builder.Services.AddScoped<NkplmErp.Blazor.Services.Confirm.ConfirmService>();
+
 // Login task gate state: scoped so it lives per circuit, shared by the gate
 // modal and the header badge.
 builder.Services.AddScoped<TaskGateState>();
@@ -129,6 +132,14 @@ builder.Services.AddHttpClient<ITaskManagementManager, TaskManagementManager>(cl
 {
     client.BaseAddress = new Uri(apiBaseUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddHttpMessageHandler<AuthenticationDelegatingHandler>();
+
+// Text-to-speech (read notifications aloud), through the API's TtsController
+builder.Services.AddHttpClient<NkplmErp.Blazor.Services.Tts.Manager.Interface.ITtsManager, NkplmErp.Blazor.Services.Tts.Manager.Implementation.TtsManager>(client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(120);   // generating speech takes a while
 })
 .AddHttpMessageHandler<AuthenticationDelegatingHandler>();
 

@@ -70,6 +70,7 @@ BEGIN
             CASE t.[Stage] WHEN 1  THEN 'PO entry'
                            WHEN 2  THEN 'BOM task'
                            WHEN 3  THEN 'Planning'
+                           WHEN 4  THEN 'New order'
                            WHEN 10 THEN 'Yarn issue'
                            WHEN 11 THEN 'Product return'
                            WHEN 20 THEN 'Manual'

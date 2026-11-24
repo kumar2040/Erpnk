@@ -11,8 +11,11 @@ namespace NkplmErp.Blazor.Pages;
 public partial class Bom
 {
     [Inject] private BomApiClient BomApi { get; set; } = default!;
-    [Inject] private IProductionPlanningService PlanningService { get; set; } = default!;
+    // The month's orders come from PLM through the third-party API.
+    [Inject] private NkplmErp.Blazor.Services.ThirdPartyApi.Manager.Interface.IThirdPartyApiManager ThirdPartyApiManager { get; set; } = default!;
+    [Inject] private NkplmErp.Blazor.Services.Toast.ToastService ToastService { get; set; } = default!;
     [Inject] private PermissionService PermSvc { get; set; } = default!;
+    [Inject] private NkplmErp.Blazor.Services.Loading.LoadingService _loading { get; set; } = default!;
     [Inject] private IJSRuntime JS { get; set; } = default!;
 
     // ===== State =====
@@ -67,20 +70,41 @@ public partial class Bom
         public Dictionary<string, decimal> OrderQty { get; } = new(StringComparer.OrdinalIgnoreCase);
         // orderNo -> actual requirement kg (for reference / display).
         public Dictionary<string, decimal> NeedQty { get; } = new(StringComparer.OrdinalIgnoreCase);
-        public decimal OrderedKg => OrderQty.Values.Sum();
+        // Add first, round after: the per-order figures stay exact and the line is rounded up to a whole kg once,
+        // on their sum (0.600 + 0.300 -> 1 kg), never order by order.
+        public decimal OrderedKg => OrderQty.Values.Sum() is var s && s > 0 ? Math.Ceiling(s) : 0m;
+
+        // What is saved per order: the line's rounded kg shared out in proportion to each order's exact kg
+        // (2 decimals; the rounding leftover goes to the biggest order so the rows add up to OrderedKg).
+        public Dictionary<string, decimal> AllocatedKg()
+        {
+            var result = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+            var total = OrderQty.Values.Sum();
+            var ordered = OrderedKg;
+            if (total <= 0 || ordered <= 0) return result;
+
+            foreach (var (order, kg) in OrderQty) result[order] = Math.Round(ordered * kg / total, 2);
+            var biggest = OrderQty.OrderByDescending(o => o.Value).First().Key;
+            result[biggest] += ordered - result.Values.Sum();
+            return result;
+        }
         public decimal NeedKg => NeedQty.Values.Sum();
         public IEnumerable<string> Orders => OrderQty.Keys;
         public string Display => string.IsNullOrWhiteSpace(YarnName) ? ProductId : YarnName;
     }
-
-    private string StatusMessage = "";
-    private bool IsError = false;
 
     private IEnumerable<MonthlyOrderDetailDto> FilteredOrders =>
         Orders
             .Where(o => !PlacedOrders.Contains(o.OrderNo.Trim()))
             .Where(o => string.IsNullOrWhiteSpace(OrderSearch)
                         || o.OrderNo.Contains(OrderSearch, StringComparison.OrdinalIgnoreCase));
+
+    // The import input shows and keeps 2 decimals (1.21, never 1.2099999). Applied when the user leaves the field.
+    private static void SetOrderQty(BomYarnLineDto line, string? text)
+    {
+        if (decimal.TryParse(text, NumberStyles.Number, CultureInfo.InvariantCulture, out var kg))
+            line.OrderQtyKg = Math.Round(kg, 2);
+    }
 
     // ===== Column 2 roll-ups =====
     private decimal TotalNeed => YarnLines.Sum(l => l.TotalNeed);
@@ -105,6 +129,10 @@ public partial class Bom
                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                    .Any(requestedOrders.Contains);
     }
+
+    // Orders that already have import lines in the basket (trimmed, case-insensitive) - highlighted in the list.
+    private HashSet<string> OrdersInBasket =>
+        new(Basket.SelectMany(b => b.OrderQty.Keys).Select(o => o.Trim()), StringComparer.OrdinalIgnoreCase);
 
     // ===== Column 3 roll-ups =====
     private decimal BasketOrderedKg => Basket.Sum(l => l.OrderedKg);  // user-edited order qty
@@ -147,8 +175,17 @@ public partial class Bom
 
     private bool _scrollToSelected;
 
+    private ElementReference _pipe;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            // Resizable panels. Not rendered when access is denied, and a missing element is harmless.
+            try { await JS.InvokeVoidAsync("bomSplit.init", _pipe); }
+            catch (Exception) { /* no pipe on screen (access denied) or JS not ready: layout stays at defaults */ }
+        }
+
         if (!_scrollToSelected) return;
         _scrollToSelected = false;   // cleared first, so this runs once even if the call throws
         await JS.InvokeVoidAsync("scrollElementIntoView", "bom-selected-order");
@@ -157,11 +194,25 @@ public partial class Bom
     private async Task LoadOrdersAsync()
     {
         IsLoadingOrders = true;
+        _loading.Show("Loading orders…");
         StateHasChanged();
-        var data = await PlanningService.GetMonthlyOrderDetailsAsync(SelectedMonth);
-        Orders = data?.ToList() ?? new();
-        IsLoadingOrders = false;
-        StateHasChanged();
+        try
+        {
+            var response = await ThirdPartyApiManager.GetBomOrdersAsync(SelectedMonth);
+            if (response.Succeeded && response.Data is not null)
+                Orders = response.Data;
+            else
+            {
+                Orders = new();
+                ToastService.ShowInfo("Orders could not be loaded from PLM right now. Please try again shortly.");
+            }
+        }
+        finally
+        {
+            _loading.Hide();
+            IsLoadingOrders = false;
+            StateHasChanged();
+        }
     }
 
     private async Task LoadPlacedOrdersAsync()
@@ -181,16 +232,23 @@ public partial class Bom
         YarnLines = new();
         StateHasChanged();
 
-        var response = await BomApi.GetYarnRequirementAsync(orderNo, flag: 1, poTaskId: CalculationPoTaskId);
-        if (response.Succeeded)
-            YarnLines = response.Data ?? new();
-        else
-            CalculationError = string.IsNullOrWhiteSpace(response.Messages)
-                ? "The BOM calculation failed without an error message."
-                : response.Messages;
-
-        IsCalculating = false;
-        StateHasChanged();
+        _loading.Show("Calculating yarn requirement…");
+        try
+        {
+            var response = await BomApi.GetYarnRequirementAsync(orderNo, flag: 1, poTaskId: CalculationPoTaskId);
+            if (response.Succeeded)
+                YarnLines = response.Data ?? new();
+            else
+                CalculationError = string.IsNullOrWhiteSpace(response.Messages)
+                    ? "The BOM calculation failed without an error message."
+                    : response.Messages;
+        }
+        finally
+        {
+            _loading.Hide();
+            IsCalculating = false;
+            StateHasChanged();
+        }
     }
 
     private Task RecalculateAsync() =>
@@ -203,41 +261,43 @@ public partial class Bom
     private static string LineKey(BomYarnLineDto l) => LineKey(l.ProductId, l.OrderColor);
     private static string LineKey(BasketLine l) => LineKey(l.ProductId, l.OrderColor);
 
-    private async Task AddImportLinesToBasket()
+    // All order numbers in this BOM calculation batch (e.g. OTO-5924, OTO-5925, OTO-5926, OTO-5927)
+    private List<string> OrdersInBom()
+    {
+        var orders = (CalculationOrderNos ?? SelectedOrderNo ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (orders.Count == 0 && !string.IsNullOrEmpty(SelectedOrderNo)) orders.Add(SelectedOrderNo);
+        return orders;
+    }
+
+    // True once every import line of the current calculation is in the basket for this batch's orders.
+    // Clearing the basket or removing a line makes it false again, so the button comes back.
+    private bool AreImportLinesInBasket
+    {
+        get
+        {
+            var imports = YarnLines.Where(l => l.IsImport).ToList();
+            if (imports.Count == 0) return false;
+            var orders = OrdersInBom();
+            return imports.All(l => Basket.Any(b => LineKey(b) == LineKey(l) && orders.Any(o => b.OrderQty.ContainsKey(o))));
+        }
+    }
+
+    // Instant: everything it needs (including each order's own share of a yarn) is already in YarnLines,
+    // so nothing is fetched.
+    private void AddImportLinesToBasket()
     {
         if (string.IsNullOrEmpty(SelectedOrderNo)) return;
         if (IsImportAlreadyRequested)
         {
-            ShowStatus($"Import already requested for {CalculationOrderNos ?? SelectedOrderNo}.", false);
+            ToastService.ShowInfo($"Import already requested for {CalculationOrderNos ?? SelectedOrderNo}.");
             return;
         }
+        if (AreImportLinesInBasket) return;
 
-        // All order numbers in this BOM calculation batch (e.g. OTO-5924, OTO-5925, OTO-5926, OTO-5927)
-        var ordersInBom = (CalculationOrderNos ?? SelectedOrderNo)
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        if (ordersInBom.Count == 0) ordersInBom.Add(SelectedOrderNo);
-
-        // Which order really uses each yarn x colour: calculate every order on its own and keep its own
-        // required kg (SelfWt). The batch calculation only gives the combined line, so splitting it evenly
-        // would tag orders with yarns they never use.
-        var weights = new Dictionary<string, Dictionary<string, decimal>>(StringComparer.OrdinalIgnoreCase);
-        if (ordersInBom.Count > 1)
-        {
-            foreach (var ord in ordersInBom)
-            {
-                var r = await BomApi.GetYarnRequirementAsync(ord, flag: 1);
-                if (!r.Succeeded) { ShowStatus($"Could not read the yarn need of {ord}: {r.Messages}", true); return; }
-                foreach (var l in r.Data ?? new())
-                {
-                    var k = LineKey(l);
-                    if (!weights.TryGetValue(k, out var m)) weights[k] = m = new(StringComparer.OrdinalIgnoreCase);
-                    m[ord] = m.GetValueOrDefault(ord) + l.SelfWt;
-                }
-            }
-        }
+        var ordersInBom = OrdersInBom();
 
         var touched = 0;
         foreach (var line in YarnLines.Where(l => l.IsImport))
@@ -258,31 +318,26 @@ public partial class Bom
             // Orders that use this yarn, weighted by their own requirement (all orders, evenly, if unknown).
             var share = ordersInBom.Count == 1
                 ? new Dictionary<string, decimal> { [ordersInBom[0]] = 1m }
-                : (weights.TryGetValue(LineKey(line), out var w)
-                    ? w.Where(x => x.Value > 0).ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase)
-                    : new Dictionary<string, decimal>());
+                : line.OrderShares.Where(x => x.Value > 0 && ordersInBom.Contains(x.Key, StringComparer.OrdinalIgnoreCase))
+                      .ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
             if (share.Count == 0) share = ordersInBom.ToDictionary(o => o, _ => 1m, StringComparer.OrdinalIgnoreCase);
             var totalShare = share.Values.Sum();
             var users = share.Keys.ToList();
 
+            // Exact (unrounded) kg per order: the whole-kg rounding happens once, on the basket line's sum
+            // (BasketLine.OrderedKg), not per order and not per add.
             foreach (var orderNo in users)
             {
-                bl.OrderQty[orderNo] = Math.Round(line.OrderKg * share[orderNo] / totalShare, 2);
-                bl.NeedQty[orderNo] = Math.Round(line.ImportKg * share[orderNo] / totalShare, 2);
+                bl.OrderQty[orderNo] = line.OrderQtyKg * share[orderNo] / totalShare;
+                bl.NeedQty[orderNo] = line.ImportKg * share[orderNo] / totalShare;
             }
-
-            // Put the rounding difference on the order with the biggest share so the sums match exactly.
-            var main = users.OrderByDescending(o => share[o]).First();
-            var orderDiff = line.OrderKg - bl.OrderQty.Values.Sum();
-            if (orderDiff != 0) bl.OrderQty[main] += orderDiff;
-            var needDiff = line.ImportKg - bl.NeedQty.Values.Sum();
-            if (needDiff != 0) bl.NeedQty[main] += needDiff;
 
             touched++;
         }
-        ShowStatus(touched > 0
-            ? $"Added/updated {touched} line(s) for {string.Join(", ", ordersInBom)}."
-            : "No import lines to add.", touched == 0);
+        if (touched > 0)
+            ToastService.ShowSuccess($"Added/updated {touched} line(s) for {string.Join(", ", ordersInBom)}.");
+        else
+            ToastService.ShowInfo("No import lines to add.");
     }
 
     private void RemoveFromBasket(BasketLine line) => Basket.RemoveAll(b => LineKey(b) == LineKey(line));
@@ -296,7 +351,7 @@ public partial class Bom
         if (Basket.Count == 0) { ShowStatus("Basket is empty.", true); return; }
 
         // Expand each summed cart line into per-order rows (order_no tracking).
-        var lines = Basket.SelectMany(b => b.OrderQty.Select(o => new YarnOrderLineDto
+        var lines = Basket.SelectMany(b => b.AllocatedKg().Select(o => new YarnOrderLineDto
         {
             ProductId = b.ProductId,
             YarnName = b.YarnName,
@@ -336,10 +391,10 @@ public partial class Bom
         }
     }
 
+    // Messages go to the app toaster (no banner on the page).
     private void ShowStatus(string message, bool isError)
     {
-        StatusMessage = message;
-        IsError = isError;
-        StateHasChanged();
+        if (isError) ToastService.ShowError(message);
+        else ToastService.ShowSuccess(message);
     }
 }

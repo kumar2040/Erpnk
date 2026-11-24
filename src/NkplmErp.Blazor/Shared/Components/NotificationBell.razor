@@ -11,9 +11,11 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NkplmErp.Blazor.Services.Toast.ToastService Toast
 @inject NkplmErp.Blazor.Services.Toast.TaskBoardNotifier BoardNotifier
+@inject NkplmErp.Blazor.Services.Tts.Manager.Interface.ITtsManager Tts
+@inject Microsoft.JSInterop.IJSRuntime JS
 @implements IAsyncDisposable
 
-<div class="relative">
+<div class="relative flex items-center">
     <button class="relative flex h-10 w-10 items-center justify-center rounded-full text-amber-500 hover:bg-gray-50 transition-colors"
             @onclick="Toggle" title="Notifications">
         <i class="oi oi-bell" style="font-size: 1.25rem;"></i>
@@ -27,7 +29,9 @@
 
     @if (_open)
     {
-        <div class="absolute right-0 mt-2 w-80 rounded-xl border border-gray-100 bg-white shadow-lg z-50">
+        @* top-full: the parent is a flex row now, where an absolute child with no top would be centred on
+           the bell (and ride up over the header) instead of sitting under it. *@
+        <div class="absolute right-0 top-full mt-2 w-80 rounded-xl border border-gray-100 bg-white shadow-lg z-50">
             <div class="flex items-center justify-between border-b border-gray-100 px-4 py-2">
                 <span class="text-sm font-bold text-gray-800">Notifications</span>
                 @if (_unread > 0)
@@ -118,6 +122,10 @@
                         if (_items.Count > 30) _items = _items.Take(30).ToList();
                         if (!n.IsRead) _unread++;
                         Toast.ShowInfo(string.IsNullOrWhiteSpace(n.Body) ? n.Title : $"{n.Title} — {n.Body}");
+
+                        // Read it aloud. Fire and forget: generating speech takes seconds and must never
+                        // hold up the badge, the toast or the board refresh.
+                        _ = ReadAloudAsync(string.IsNullOrWhiteSpace(n.Body) ? n.Title : $"{n.Title}. {n.Body}");
                     }
 
                     // Relay to the task board page so it can auto-refresh + highlight.
@@ -137,6 +145,40 @@
             // Hub unavailable -> the 2-min reconcile + bell reads keep things working.
             _hub = null;
         }
+    }
+
+    // ---- read-aloud ----
+    // Always on: there is no mute switch.
+    private DateTime _lastTtsErrorAt = DateTime.MinValue;
+
+    private async Task ReadAloudAsync(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+        try
+        {
+            // lang "auto": the TTS server picks English or Nepali from the script of the text.
+            var res = await Tts.SpeakAsync(new NkplmErp.Shared.DTOs.Tts.TtsRequestModel { Text = text, Lang = "auto", Speed = 1 });
+            if (!res.Succeeded || res.Data is null)
+            {
+                await ReportTtsProblemAsync(res.Messages ?? "no audio came back");
+                return;
+            }
+
+            await InvokeAsync(async () => await JS.InvokeVoidAsync("tts.play", res.Data.Audio, res.Data.ContentType));
+        }
+        catch (Exception ex)
+        {
+            await ReportTtsProblemAsync(ex.Message);
+        }
+    }
+
+    // Read-aloud is an extra, so a problem is one short toast (at most one a minute), never an error page.
+    private async Task ReportTtsProblemAsync(string reason)
+    {
+        Console.WriteLine($"Read-aloud failed: {reason}");
+        if (DateTime.UtcNow - _lastTtsErrorAt < TimeSpan.FromMinutes(1)) return;
+        _lastTtsErrorAt = DateTime.UtcNow;
+        await InvokeAsync(() => Toast.ShowInfo($"Read-aloud unavailable: {reason}"));
     }
 
     private async Task ReconcileAsync()

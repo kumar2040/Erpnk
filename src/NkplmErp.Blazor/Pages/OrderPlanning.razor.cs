@@ -32,6 +32,9 @@ public partial class OrderPlanning
     private NkplmErp.Blazor.Services.Loading.LoadingService _loading { get; set; } = default!;
 
     [Inject]
+    private NkplmErp.Blazor.Services.Confirm.ConfirmService Confirm { get; set; } = default!;
+
+    [Inject]
     private ToastService ToastService { get; set; } = default!;
 
     [Inject]
@@ -1639,11 +1642,15 @@ public partial class OrderPlanning
 
             if (knitEnd.Date > knitDeadline.Date)
             {
-                bool proceed = await JS.InvokeAsync<bool>("confirm",
+                // The saving loader would sit behind the question, so lift it while the user decides.
+                _loading.Hide();
+                bool proceed = await Confirm.ConfirmAsync(
                     $"Knitting ends {knitEnd:dd-MMM-yyyy} but the knit deadline is {knitDeadline:dd-MMM-yyyy} " +
                     $"(at least {ShipBufferDays} days before ship {shipDate:dd-MMM-yyyy} are reserved for later departments).\n\n" +
-                    "Consider enabling Overtime / Work Saturdays.\n\nContinue anyway?");
+                    "Consider enabling Overtime / Work Saturdays.\n\nContinue anyway?",
+                    title: "Knit deadline", confirmText: "Continue anyway");
                 if (!proceed) return;
+                _loading.Show("Saving plan…");
             }
         }
 
@@ -3186,7 +3193,8 @@ public partial class OrderPlanning
 
     private async Task DeleteWeavePlanDetail(PlannedDataDto plan)
     {
-        bool confirm = await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete this weave allocation of Qty: {plan.Quantity:N0}?");
+        bool confirm = await Confirm.ConfirmAsync($"Are you sure you want to delete this weave allocation of Qty: {plan.Quantity:N0}?",
+            title: "Delete weave allocation", confirmText: "Delete", danger: true);
         if (!confirm) return;
 
         var orderNo = SelectedOrders.LastOrDefault()?.OrderNo ?? "";
@@ -4278,7 +4286,8 @@ public partial class OrderPlanning
         }
         catch { /* warning is best-effort; deletion check must not block */ }
 
-        bool confirm = await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete this plan of Qty: {plan.Quantity:N0}?{knitterWarning}");
+        bool confirm = await Confirm.ConfirmAsync($"Are you sure you want to delete this plan of Qty: {plan.Quantity:N0}?{knitterWarning}",
+            title: "Delete plan", confirmText: "Delete", danger: true);
         if (!confirm) return;
 
         var orderNo = SelectedOrders.LastOrDefault()?.OrderNo ?? "";

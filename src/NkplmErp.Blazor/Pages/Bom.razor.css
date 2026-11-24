@@ -17,7 +17,12 @@
 .bom-status.ok{background:rgba(5,150,105,.1);color:#047857;border:1px solid rgba(5,150,105,.25)}
 .bom-status.err{background:rgba(220,38,38,.08);color:#b91c1c;border:1px solid rgba(220,38,38,.25)}
 
-.bom-pipe{display:grid;grid-template-columns:300px 1fr 340px;gap:14px;align-items:start}
+.bom-pipe{display:grid;grid-template-columns:var(--bom-left,300px) 8px minmax(0,1fr) 8px var(--bom-right,380px);gap:0;align-items:start}
+/* Drag handles between the three panels (wired up by window.bomSplit in site.js). */
+.bom-gutter{align-self:stretch;min-height:200px;cursor:col-resize;display:flex;align-items:center;justify-content:center;touch-action:none;border-radius:6px}
+.bom-gutter i{width:3px;height:36px;border-radius:3px;background:#d3dae4;transition:background .12s,height .12s}
+.bom-gutter:hover i,.bom-gutter.drag i{background:var(--teal);height:56px}
+.bom-gutter.drag{background:rgba(42,179,177,.08)}
 .bom-col{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(16,24,40,.05);display:flex;flex-direction:column;max-height:calc(100vh - 150px)}
 .bom-col-head{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--line);background:#fafbfd}
 .bom-col-head .t{font-weight:800;font-size:.8rem;display:flex;align-items:center;gap:7px;color:var(--navy)}
@@ -44,6 +49,9 @@
 .bom-ord{border:1px solid var(--line);border-left:4px solid var(--pend);border-radius:8px;padding:7px 10px;cursor:pointer;background:#fff;transition:transform .1s}
 .bom-ord:hover{transform:translateY(-1px);box-shadow:0 2px 8px rgba(16,24,40,.06)}
 .bom-ord.active{border-color:var(--teal);border-left-color:var(--teal);box-shadow:0 0 0 2px rgba(42,179,177,.18)}
+.bom-ord.added{background:rgba(5,150,105,.08);border-left-color:#059669}
+.bom-ord.added.active{border-color:var(--teal);border-left-color:#059669}
+.added-tick{color:#059669;font-weight:800}
 .bom-ord .no{font-weight:800;color:var(--navy);font-size:.82rem}
 .bom-ord .foot{display:flex;justify-content:space-between;align-items:center;margin-top:5px;font-size:.69rem;color:var(--muted)}
 .pill{font-size:.64rem;font-weight:800;padding:2px 7px;border-radius:5px;background:#eef1f6;color:#475569}
@@ -88,6 +96,20 @@ span.sub{margin-left:6px}
 .line-meta .orders{display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end}
 .ochip{font-size:.58rem;font-weight:700;color:#475569;background:#eef1f6;border-radius:4px;padding:1px 5px;white-space:nowrap}
 .ochip-qty{font-weight:600;color:#64748b}
+/* Basket as a table grouped by yarn name */
+.bom-btable{width:100%;border-collapse:collapse;table-layout:fixed;font-size:.74rem}
+.bom-btable th{position:sticky;top:0;z-index:1;background:var(--navy);color:#fff;font-size:.62rem;font-weight:700;letter-spacing:.03em;text-align:left;padding:6px 8px}
+.bom-btable th.r,.bom-btable td.r{text-align:right}
+.bom-btable td{padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+.bom-btable tr.grp td{background:#f1f4f9;padding:6px 8px;border-bottom:1px solid var(--line)}
+.bom-btable .gname{font-weight:800;color:var(--navy);font-size:.76rem}
+.bom-btable .gmeta{margin-left:8px;color:var(--muted);font-size:.66rem;font-weight:600;white-space:nowrap}
+.bom-btable td.clr{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#334155}
+.bom-btable .ochips{display:flex;flex-wrap:wrap;gap:4px 6px}
+.bom-btable td.kg{font-weight:800;color:var(--import);white-space:nowrap}
+.bom-btable td.rm{text-align:center;padding:5px 2px}
+.bom-btable .x{color:#cbd5e1;font-weight:800;cursor:pointer;line-height:1}
+.bom-btable .x:hover{color:var(--import)}
 .basket-tot{display:flex;justify-content:space-between;font-size:.8rem;font-weight:800;color:var(--navy);padding:2px 2px 10px}
 .basket-tot .imp-txt{color:var(--import)}
 .basket-actions{display:flex;gap:8px}

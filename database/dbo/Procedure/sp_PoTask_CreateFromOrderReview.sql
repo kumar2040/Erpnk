@@ -5,6 +5,8 @@
      2. Stage 1 "create production plan" task  (sp_ManagePoTask CREATE)
      3. Stage 2 "BOM" task                     (sp_PoTask_AttachOrCreateBom)
      4. in-app notifications for the assignees (dbo.PoTaskNotification)
+     5. completes the order's "<order> placed - new order" task (Manual, Stage 20,
+        made by sp_PoTask_MakeOrder): the order is confirmed once it is reviewed
    Any failure rolls back all of it (XACT_ABORT). Idempotent: re-sending the
    same review returns the existing tasks instead of duplicating them.
    Same task shape as the old background sweep (PoTaskReminderService).
@@ -135,6 +137,34 @@ BEGIN
                           WHERE n.[PoTaskId] = @BomPoTaskId AND n.[UserId] = a.[UserId]
                             AND n.[Title] = N'Order added to BOM task'
                             AND n.[Body] = LEFT(N'Order ' + @OrderNo + N' was added. Recalculate the combined BOM.', 400));
+
+    -- 5) The order is confirmed: complete its open "placed - new order" task (sp_PoTask_MakeOrder's title,
+    --    Stage 4 'New order', or Manual 20 for older ones). Assignee rows first, so a later rollup can't reopen it, then the task + history.
+    --    No such task (order made before that flow) = nothing to do. A repeat call finds it already 'C'.
+    DECLARE @placedTitle nvarchar(200) = @OrderNo + N' placed - new order';
+    DECLARE @placed TABLE ([PoTaskId] int, [FromStatus] char(1));
+
+    UPDATE t
+    SET [Status]        = 'C',
+        [CompletedDate] = GETDATE(),
+        [ModifiedBy]    = @UserId,
+        [ModifiedDate]  = GETDATE()
+    OUTPUT inserted.[PoTaskId], deleted.[Status] INTO @placed
+    FROM [dbo].[PoTask] t
+    WHERE t.[OrderNo] = @OrderNo AND t.[Title] = @placedTitle AND t.[Stage] IN (4, 20)
+      AND t.[IsActive] = 1 AND t.[Status] NOT IN ('C','X');
+
+    UPDATE a
+    SET [Status]        = 'C',
+        [StartDate]     = ISNULL(a.[StartDate], GETDATE()),
+        [CompletedDate] = GETDATE()
+    FROM [dbo].[PoTaskAssignee] a
+    INNER JOIN @placed p ON p.[PoTaskId] = a.[PoTaskId]
+    WHERE a.[IsActive] = 1 AND a.[Status] <> 'C';
+
+    INSERT INTO [dbo].[PoTaskHistory] ([PoTaskId],[FromStatus],[ToStatus],[Note],[ChangedBy])
+    SELECT [PoTaskId], [FromStatus], 'C', N'auto: order reviewed in PLM', @UserId
+    FROM @placed;
 
     COMMIT TRANSACTION;
 
